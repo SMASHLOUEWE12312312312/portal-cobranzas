@@ -1,0 +1,2240 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviar EECC - Transperuana</title>
+    <style>
+        :root {
+            --tp-red: #D32F2F;
+            --tp-red-dark: #B71C1C;
+            --tp-red-light: #FFCDD2;
+            --gray-50: #FAFAFA;
+            --gray-100: #F5F5F5;
+            --gray-200: #EEEEEE;
+            --gray-300: #E0E0E0;
+            --gray-700: #616161;
+            --gray-900: #212121;
+            --success: #2E7D32;
+            --error: #C62828;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
+            --transition: 150ms ease;
+            --content-padding: 28px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--gray-900);
+            background: var(--gray-100);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* DEBUG LOG - Estilos aplicados via inline en HTML */
+
+        .debug-entry {
+            padding: 4px 12px;
+            margin: 0;
+            border-bottom: 1px solid #E8E8E8;
+            word-wrap: break-word;
+        }
+
+        .debug-entry.error {
+            color: #d32f2f;
+            font-weight: 600;
+            background: #FFEBEE;
+        }
+
+        .debug-entry.success {
+            color: #2e7d32;
+            background: #E8F5E9;
+        }
+
+        .debug-entry.info {
+            color: #1976d2;
+        }
+
+        /* HEADER */
+        .drawer-header {
+            padding: 24px 32px;
+            background: linear-gradient(135deg, var(--tp-red-dark), var(--tp-red));
+            color: white;
+            box-shadow: var(--shadow-md);
+            position: relative;
+        }
+
+        .drawer-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .drawer-subtitle {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .status-dot.disconnected {
+            background: var(--error);
+            animation: none;
+        }
+
+        /* TABS */
+        .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-700);
+            transition: all var(--transition);
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            background: var(--gray-50);
+        }
+
+        .tab.active {
+            color: var(--tp-red);
+            font-weight: 600;
+            border-bottom-color: var(--tp-red);
+        }
+
+        /* CONTENT - Padding uniforme FORZADO */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 32px !important;
+            background: #FAFAFA !important;
+            box-sizing: border-box !important;
+        }
+
+        .tab-pane {
+            display: none;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .tab-pane.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* CARDS ESTILO MÓDULO EECC */
+        .eecc-card,
+        .section-card {
+            background: #fff !important;
+            border-radius: 12px !important;
+            padding: 16px 20px !important;
+            margin-bottom: 16px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+            border: 1px solid #E0E0E0 !important;
+            box-sizing: border-box !important;
+        }
+
+        .section-header {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-header::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--tp-red);
+            border-radius: 2px;
+        }
+
+        /* FORMS */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="date"],
+        input[type="datetime-local"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            background: white;
+            color: var(--gray-900);
+            transition: all var(--transition);
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--tp-red);
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+        }
+
+        select[multiple] {
+            height: 150px;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--gray-700);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        /* BUTTONS */
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary {
+            background: var(--tp-red);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--tp-red-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--gray-900);
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--gray-50);
+            border-color: var(--gray-700);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* ALERTS */
+        .alert {
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            border-left: 4px solid;
+        }
+
+        .alert-info {
+            background: #FEF2F2;
+            color: #B71C1C;
+            border-left-color: #D32F2F;
+        }
+
+        .alert-success {
+            background: #E8F5E9;
+            color: var(--success);
+            border-left-color: var(--success);
+        }
+
+        .alert-error {
+            background: #FFEBEE;
+            color: var(--error);
+            border-left-color: var(--error);
+        }
+
+        /* CHECKBOX */
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            transition: background var(--transition);
+        }
+
+        .checkbox-label:hover {
+            background: var(--gray-50);
+        }
+
+        /* PREVIEW */
+        .preview-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .preview-item {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            transition: all var(--transition);
+        }
+
+        .preview-item:hover {
+            border-color: var(--tp-red-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .preview-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .preview-item-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-pending {
+            background: #FFF3CD;
+            color: #856404;
+        }
+
+        .status-approved {
+            background: #E8F5E9;
+            color: var(--success);
+        }
+
+        .status-excluded {
+            background: #FFEBEE;
+            color: var(--error);
+        }
+
+        /* FOOTER */
+        .drawer-actions {
+            padding: 16px 20px;
+            background: white;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .action-info {
+            font-size: 13px;
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        /* UTILS */
+        .hidden {
+            display: none !important;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-700);
+        }
+
+        .empty-state-icon {
+            font-size: 56px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+
+        .spinner {
+            border: 3px solid var(--gray-300);
+            border-top-color: var(--tp-red);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ESTILOS FORZADOS (USER REQUEST) */
+        .eecc-container {
+            padding: 32px 40px !important;
+            box-sizing: border-box !important;
+            background: #FAFAFA !important;
+            border-radius: 12px !important;
+            border: 1px solid #E0E0E0 !important;
+            margin: 20px !important;
+        }
+
+        .eecc-card {
+            background: #FFFFFF !important;
+            border-radius: 10px !important;
+            padding: 16px 20px !important;
+            margin-bottom: 16px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+            border: 1px solid #e0e0e0 !important;
+        }
+
+        /* Ajustes para que el contenido se vea bien dentro de las cards */
+        .section-header {
+            margin-top: 0 !important;
+        }
+
+        /* FEEDBACK UI STYLES */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .spinner-large {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--tp-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10000;
+        }
+
+        .toast {
+            padding: 12px 16px;
+            border-radius: 8px;
+            background: #333;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            max-width: 400px;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            background: #E8F5E9;
+            color: #1B5E20;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .toast.error {
+            background: #FFEBEE;
+            color: #B71C1C;
+            border-left: 4px solid #F44336;
+        }
+
+        .toast.info {
+            background: #FEF2F2;
+            color: #B71C1C;
+            border-left: 4px solid #D32F2F;
+        }
+
+        .toast.warning {
+            background: #FFF3E0;
+            color: #E65100;
+            border-left: 4px solid #FF9800;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* REFACTORED STYLES (Cleaned up from inline) */
+        .drawer-header-styled {
+            background: white;
+            padding: 24px 32px;
+            border-bottom: 3px solid var(--tp-red);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .stepper-container {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .step-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+
+        .step-badge.active {
+            background: #FFEBEE;
+            color: var(--tp-red);
+            border-color: var(--tp-red-light);
+        }
+
+        .step-badge.inactive {
+            background: var(--gray-100);
+            color: #999;
+            font-weight: 400;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 !important;
+        }
+
+        .eecc-container-styled {
+            padding: 32px 40px !important;
+            box-sizing: border-box;
+            background: #FAFAFA;
+            border-radius: 12px;
+            margin: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .card-styled {
+            background: #FFFFFF;
+            border-radius: 10px;
+            padding: 16px 20px !important;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e0e0e0;
+        }
+
+        .radio-option-label {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tab-pane-inner-padding {
+            padding: 0 40px !important;
+            box-sizing: border-box;
+        }
+
+        .footer-styled {
+            margin-top: 16px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 12px 24px;
+        }
+
+        .log-container {
+            margin-top: 16px;
+            padding: 0;
+            background: #F7F7F7;
+            border-radius: 8px;
+            border: 1px solid #DDDDDD;
+            height: 140px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        .log-header-styled {
+            position: sticky;
+            top: 0;
+            background: #F7F7F7;
+            border-bottom: 1px solid #DDDDDD;
+            padding: 8px 12px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .radio-item {
+            margin: 0;
+            width: 18px;
+            height: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-large"></div>
+        <div id="loadingMessage" style="color: #555; font-weight: 500;">Cargando...</div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- WRAPPER GLOBAL PARA EVITAR PROBLEMAS CON IFRAME DE APPS SCRIPT -->
+    <div class="app-wrapper"
+        style="display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: #F5F5F5;">
+        <!-- DEBUG STYLE BLOCK IN BODY -->
+        <style>
+            /* ESTILOS FORZADOS (USER REQUEST) - EN BODY PARA ASEGURAR CARGA */
+            .eecc-container {
+                padding: 32px 40px !important;
+                box-sizing: border-box !important;
+                background: #FAFAFA !important;
+                border-radius: 12px !important;
+                margin: 20px !important;
+            }
+
+            .eecc-card {
+                background: #FFFFFF !important;
+                border-radius: 10px !important;
+                padding: 16px 24px !important;
+                margin-bottom: 16px !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+                border: 1px solid #e0e0e0 !important;
+            }
+
+            .eecc-footer {
+                margin-top: 16px !important;
+                display: flex;
+                justify-content: flex-end;
+                gap: 12px;
+                padding: 12px 0;
+            }
+
+            .eecc-log {
+                height: 160px !important;
+                overflow-y: auto !important;
+                padding: 12px 16px !important;
+                background: #F8F9FA !important;
+                border: 1px solid #E0E0E0 !important;
+                border-radius: 8px !important;
+                margin-top: 12px !important;
+                font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+                font-size: 12px;
+                color: #333;
+                box-sizing: border-box !important;
+            }
+
+            /* Scrollbar styles for log - claro corporativo */
+            .eecc-log::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            .eecc-log::-webkit-scrollbar-track {
+                background: #EEEEEE;
+                border-radius: 3px;
+            }
+
+            .eecc-log::-webkit-scrollbar-thumb {
+                background: #BDBDBD;
+                border-radius: 3px;
+            }
+
+            .eecc-log::-webkit-scrollbar-thumb:hover {
+                background: #9E9E9E;
+            }
+
+            /* INLINE MODE: Ocultar header duplicado cuando está en inline-render-mode */
+            .inline-render-mode .drawer-header,
+            .inline-render-mode .drawer-header-styled {
+                display: none !important;
+            }
+
+            /* Reducir padding superior cuando no hay header en inline */
+            .inline-render-mode .drawer-content-styled {
+                padding-top: 16px !important;
+            }
+
+            /* [FIX CRÍTICO] Estilos globales forzados para layout y padding */
+            html,
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 100vh !important;
+                overflow: hidden !important;
+            }
+
+            #app-wrapper .eecc-container {
+                padding: 32px 40px !important;
+                width: calc(100% - 40px) !important;
+                /* Margen de 20px a cada lado */
+                max-width: 100% !important;
+            }
+
+            #app-wrapper .eecc-card {
+                padding: 16px 24px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+        </style>
+
+        <!-- HEADER -->
+        <!-- HEADER HERO + STEPPER -->
+        <div class="drawer-header drawer-header-styled">
+            <div style="margin-bottom: 20px;">
+                <div class="drawer-title" style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 4px;">📧
+                    Enviar EECC por Correo</div>
+                <div class="drawer-subtitle" style="font-size: 14px; color: #666;">Gestiona el envío masivo de estados
+                    de
+                    cuenta</div>
+            </div>
+
+            <!-- STEPPER HORIZONTAL -->
+            <div class="stepper stepper-container">
+                <!-- Step 1: Active -->
+                <div class="step active step-badge active" id="step-1">
+                    1. Seleccionar
+                </div>
+
+                <div style="color: #ccc;">→</div>
+
+                <!-- Step 2: Inactive -->
+                <div class="step step-badge inactive" id="step-2">
+                    2. Parámetros
+                </div>
+
+                <div style="color: #ccc;">→</div>
+
+                <!-- Step 3: Inactive -->
+                <div class="step step-badge inactive" id="step-3">
+                    3. Aprobación y Envío
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content content-wrapper">
+            <!-- WRAPPER GLOBAL FORZADO CON ESTILOS INLINE -->
+            <div class="eecc-container eecc-container-styled">
+
+                <div style="text-align: right; font-size: 10px; color: #999; margin-bottom: 10px;">Versión: v1.10 (Tab
+                    Padding Fix)</div>
+
+                <!-- Tab 1 -->
+                <div class="tab-pane active" id="tab-seleccionar">
+                    <div class="alert alert-info">
+                        <span>ℹ️</span>
+                        <div>Selecciona las empresas a las que deseas enviar estados de cuenta.</div>
+                    </div>
+
+                    <!-- Sección: Modo de Envío -->
+                    <div class="eecc-card card-styled">
+                        <h3 class="section-header">Modo de envío</h3>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <label class="checkbox-label">
+                                    <input type="radio" name="sendMode" value="perEmpresa" checked
+                                        style="margin: 0; width: 18px; height: 18px;" onchange="reloadListByMode()">
+                                    <span style="font-size: 14px; flex: 1;">
+                                        <strong>Per-empresa</strong><br>
+                                        <small style="color: #666;">Enviar un correo individual a cada empresa
+                                            seleccionada</small>
+                                    </span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="radio" name="sendMode" value="consolidado"
+                                        style="margin: 0; width: 18px; height: 18px;" onchange="reloadListByMode()">
+                                    <span style="font-size: 14px; flex: 1;">
+                                        <strong>Consolidado por grupo</strong><br>
+                                        <small style="color: #666;">Enviar un correo consolidado por cada grupo
+                                            económico</small>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Seleccionar Destinatarios -->
+                    <div class="eecc-card card-styled">
+                        <h3 class="section-header">Seleccionar destinatarios</h3>
+
+                        <!-- Custom Filter UI -->
+                        <div class="custom-select-container">
+                            <div class="search-box">
+                                <input type="text" id="searchInput" placeholder="🔍 Buscar empresa o grupo..."
+                                    onkeyup="filterList()">
+                                <button class="btn-icon" onclick="clearSearch()" title="Limpiar búsqueda">✕</button>
+                            </div>
+
+                            <div class="actions-bar">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                    <span>Seleccionar todo</span>
+                                </label>
+                                <span id="selectedCount">0 seleccionados</span>
+                            </div>
+
+                            <!-- SCROLLABLE LIST CONTAINER -->
+                            <div class="eecc-destinatarios-scroll"
+                                style="max-height: 320px; min-height: 320px; overflow-y: auto; padding-right: 8px; margin-bottom: 16px;">
+                                <div id="itemsList" class="items-list"
+                                    style="height: auto !important; min-height: auto !important; max-height: none !important; border: none !important;">
+                                    <div class="empty-state-small">Cargando datos...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    /* [MEJORA ENVIAR_EECC_CORREO] Estilos para el filtro tipo Excel */
+                    .custom-select-container {
+                        border: 1px solid var(--gray-300);
+                        border-radius: var(--radius-md);
+                        background: white;
+                        overflow: hidden;
+                        box-shadow: var(--shadow-sm);
+                    }
+
+                    .search-box {
+                        padding: 12px;
+                        border-bottom: 1px solid var(--gray-200);
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        background: var(--gray-50);
+                    }
+
+                    .search-box input {
+                        border: 1px solid var(--gray-300);
+                        padding: 8px 12px;
+                        font-size: 13px;
+                        border-radius: 6px;
+                        flex: 1;
+                    }
+
+                    .search-box input:focus {
+                        outline: none;
+                        border-color: var(--tp-red);
+                        box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+                    }
+
+                    .btn-icon {
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        color: var(--gray-700);
+                        font-size: 16px;
+                        padding: 6px 8px;
+                        border-radius: 4px;
+                        transition: all var(--transition);
+                    }
+
+                    .btn-icon:hover {
+                        background: var(--gray-200);
+                        color: var(--gray-900);
+                    }
+
+                    .actions-bar {
+                        padding: 10px 16px;
+                        background: var(--gray-100);
+                        border-bottom: 1px solid var(--gray-200);
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        font-size: 13px;
+                        font-weight: 500;
+                    }
+
+                    .items-list {
+                        height: 380px !important;
+                        min-height: 380px !important;
+                        max-height: 380px !important;
+                        overflow-y: auto !important;
+                        border-top: 1px solid var(--gray-200);
+                        padding: 8px;
+                        display: block;
+                        background: white;
+                    }
+
+                    .list-item {
+                        padding: 14px 16px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        cursor: pointer;
+                        transition: all 0.15s;
+                        font-size: 14px;
+                        line-height: 1.5;
+                        border-radius: 6px;
+                        margin: 3px 0;
+                        border: 1px solid transparent;
+                    }
+
+                    .list-item:hover {
+                        background: var(--gray-50);
+                        border-color: var(--gray-300);
+                    }
+
+                    .list-item.selected {
+                        background: #E3F2FD;
+                        border-color: #90CAF9;
+                    }
+
+                    .list-item.selected:hover {
+                        background: #BBDEFB;
+                    }
+
+                    .list-item input[type="checkbox"] {
+                        width: 18px;
+                        height: 18px;
+                        cursor: pointer;
+                        flex-shrink: 0;
+                    }
+
+                    .item-label {
+                        flex: 1;
+                        font-weight: 500;
+                        color: var(--gray-900);
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
+
+                    .item-type {
+                        font-size: 10px;
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        background: var(--gray-200);
+                        color: var(--gray-700);
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        flex-shrink: 0;
+                    }
+
+                    .item-type.grupo {
+                        background: #E8EAF6;
+                        color: #3F51B5;
+                    }
+
+                    .count-badge {
+                        background: var(--tp-red);
+                        color: white;
+                        padding: 3px 10px;
+                        border-radius: 12px;
+                        font-size: 11px;
+                        font-weight: 600;
+                    }
+
+                    .empty-state-small {
+                        padding: 40px 20px;
+                        text-align: center;
+                        color: var(--gray-700);
+                        font-size: 13px;
+                    }
+                </style>
+
+                <div id="selectionSummary" class="alert alert-info hidden">
+                    <span>ℹ️</span>
+                    <div id="selectionSummaryText"></div>
+                </div>
+            </div>
+
+            <!-- Tab 2 -->
+            <div class="tab-pane tab-pane-inner-padding" id="tab-parametros">
+                <!-- Sección: Parámetros del envío -->
+                <div class="eecc-card card-styled">
+                    <h3 class="section-header">Parámetros del envío</h3>
+
+                    <div class="form-group">
+                        <label class="form-label" for="fechaCorte">Fecha de corte</label>
+                        <input type="date" id="fechaCorte">
+                        <p class="hint">Selecciona la fecha de corte para los estados de cuenta</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Archivos adjuntos</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="adjuntarPdf" checked>
+                                <span>Adjuntar PDF</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="adjuntarXlsx" checked>
+                                <span>Adjuntar XLSX</span>
+                            </label>
+                        </div>
+                        <p class="hint">Selecciona al menos un formato de archivo para adjuntar</p>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="templateSelect">Plantilla de correo</label>
+                        <select id="templateSelect" onchange="updatePreviewTemplate()">
+                            <option value="REGULAR">Cargando plantillas...</option>
+                        </select>
+                        <p class="hint">Define el asunto y cuerpo del correo</p>
+                    </div>
+                </div>
+            </div><!-- End Tab 2 -->
+
+            <!-- Tab 3 -->
+            <div class="tab-pane tab-pane-inner-padding" id="tab-previsualizar">
+                <div class="alert alert-success">
+                    <span>✅</span>
+                    <div>Revisa y aprueba cada destinatario antes de enviar los correos.</div>
+                </div>
+
+                <!-- Sección: Aprobación de destinatarios -->
+                <div class="eecc-card card-styled">
+                    <h3 class="section-header">Aprobación y envío</h3>
+                    <div id="previewContainer">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <div>Completa los pasos anteriores para previsualizar</div>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- End Tab 3 -->
+
+            <!-- FOOTER -->
+            <!-- FOOTER (.eecc-footer) -->
+            <div class="eecc-footer footer-styled">
+                <div class="action-info" id="selectionInfo"
+                    style="margin-right: auto; padding-left: 10px; color: #666;">
+                    <span id="approvedCount">0</span> seleccionados
+                </div>
+
+                <button class="btn btn-secondary" id="btnPrev" onclick="prevStep()" style="visibility: hidden;">←
+                    Anterior</button>
+                <button class="btn btn-primary" id="btnNext" onclick="nextStep()">Siguiente →</button>
+
+                <!-- FINAL ACTIONS -->
+                <div id="finalActions" class="final-actions hidden" style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="handleScheduleAction()" id="btnSchedule" disabled>📅
+                        Programar</button>
+                    <button class="btn btn-primary" onclick="handleSendNowAction()" id="btnSendNow" disabled>✉️
+                        Enviar</button>
+                </div>
+            </div>
+
+            <!-- LOG (Registro de Actividad) -->
+            <div style="padding: 0 20px 20px 20px;">
+                <div class="eecc-log log-container" id="debugLog">
+                    <!-- Header fijo -->
+                    <div class="eecc-log-header log-header-styled">
+                        📋 Registro de Actividad
+                    </div>
+                    <!-- El contenido del log se agregará aquí mediante JS -->
+                </div>
+            </div>
+
+            <style>
+                /* STEPPER STYLES */
+                .stepper {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 16px 32px;
+                    background: white;
+                    border-bottom: 2px solid var(--gray-200);
+                }
+
+                .step {
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #999;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    transition: all var(--transition);
+                }
+
+                .step.active {
+                    color: var(--tp-red);
+                    background: rgba(211, 47, 47, 0.08);
+                    font-weight: 600;
+                }
+
+                .step-line {
+                    flex: 1;
+                    height: 2px;
+                    background: var(--gray-200);
+                    margin: 0 12px;
+                }
+
+                /* WIZARD ACTIONS - Footer fijo con mejores botones */
+                .wizard-actions {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 18px 32px;
+                    background: white;
+                    border-top: 2px solid var(--gray-200);
+                    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+                }
+
+                .wizard-actions .btn {
+                    min-width: 120px;
+                }
+
+                .final-actions {
+                    display: flex;
+                    gap: 12px;
+                }
+
+                /* ACTIVITY LOG - Panel inferior con altura fija y scroll */
+                .drawer-footer-log {
+                    height: 140px;
+                    min-height: 140px;
+                    max-height: 140px;
+                    border-top: 2px solid var(--gray-300);
+                    background: #1e1e1e;
+                    color: #eee;
+                    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+                    font-size: 11px;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                }
+
+                .log-header {
+                    padding: 8px 16px;
+                    background: #2a2a2a;
+                    font-weight: 600;
+                    font-size: 11px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.8px;
+                    color: #aaa;
+                    border-bottom: 1px solid #333;
+                    flex-shrink: 0;
+                }
+
+                .debug-log-content {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 12px 16px;
+                    line-height: 1.4;
+                }
+
+                /* Scrollbar para el log */
+                .debug-log-content::-webkit-scrollbar {
+                    width: 8px;
+                }
+
+                .debug-log-content::-webkit-scrollbar-track {
+                    background: #2a2a2a;
+                }
+
+                .debug-log-content::-webkit-scrollbar-thumb {
+                    background: #555;
+                    border-radius: 4px;
+                }
+
+                .debug-log-content::-webkit-scrollbar-thumb:hover {
+                    background: #777;
+                }
+            </style>
+
+            <script>
+                // ========== UTILS ==========
+                function normalizeText(text) {
+                    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+                }
+
+                // ========== FEEDBACK UI HELPERS ==========
+                function showLoading(show, message = 'Cargando...') {
+                    const overlay = document.getElementById('loadingOverlay');
+                    const msgEl = document.getElementById('loadingMessage');
+                    if (overlay && msgEl) {
+                        msgEl.textContent = message;
+                        if (show) {
+                            overlay.classList.add('visible');
+                        } else {
+                            overlay.classList.remove('visible');
+                        }
+                    }
+                }
+
+                function showToast(message, type = 'info', duration = 5000) {
+                    const container = document.getElementById('toastContainer');
+                    if (!container) return;
+
+                    const toast = document.createElement('div');
+                    toast.className = `toast ${type}`;
+
+                    const iconMap = {
+                        success: '✅',
+                        error: '❌',
+                        info: 'ℹ️',
+                        warning: '⚠️'
+                    };
+
+                    toast.innerHTML = `
+                        <div style="font-size: 18px;">${iconMap[type] || 'ℹ️'}</div>
+                        <div style="flex: 1;">${message}</div>
+                        <div style="cursor: pointer; opacity: 0.7;" onclick="this.parentElement.remove()">✕</div>
+                    `;
+
+                    container.appendChild(toast);
+
+                    // Trigger animation
+                    requestAnimationFrame(() => {
+                        toast.classList.add('show');
+                    });
+
+                    setTimeout(() => {
+                        toast.classList.remove('show');
+                        setTimeout(() => toast.remove(), 300);
+                    }, duration);
+                }
+
+                // ========== DEBUG ==========
+                function logDebug(message, data, type = 'info') {
+                    const time = new Date().toLocaleTimeString();
+                    const logDiv = document.getElementById('debugLog');
+
+                    console.log(`[${time}] ${message}`, data || '');
+
+                    if (logDiv) {
+                        const entry = document.createElement('div');
+                        entry.className = `debug-entry ${type}`;
+                        entry.textContent = `${time} | ${message}${data ? ' | ' + JSON.stringify(data) : ''}`;
+                        logDiv.appendChild(entry);
+                        logDiv.scrollTop = logDiv.scrollHeight;
+                    }
+                }
+
+                // ========== ESTADO ==========
+                let STATE = {
+                    token: null,
+                    clientes: [], // Lista completa de strings (empresas)
+                    grupos: [],   // Lista completa de strings (grupos)
+                    items: [],    // Lista unificada { id, label, type, selected, visible }
+                    previews: [],
+                    currentStep: 1, // Wizard Step: 1, 2, 3
+                    sendMode: 'perEmpresa', // 'perEmpresa' | 'consolidado'
+                    sending: false // FIX: Guard anti-doble click
+                };
+
+                // ... (INIT y getToken se mantienen igual) ...
+
+                function loadData() {
+                    logDebug('📊 Cargando datos...', null, 'info');
+                    showLoading(true, 'Cargando datos y plantillas...');
+
+                    // Cargar asegurados y grupos en paralelo (simulado)
+                    const p1 = new Promise((resolve, reject) => {
+                        google.script.run
+                            .withSuccessHandler(data => resolve({ type: 'clientes', data }))
+                            .withFailureHandler(error => reject(error))
+                            .getAseguradosSafe(STATE.token);
+                    });
+
+                    const p2 = new Promise((resolve, reject) => {
+                        google.script.run
+                            .withSuccessHandler(data => resolve({ type: 'grupos', data }))
+                            .withFailureHandler(error => reject(error))
+                            .getGrupos_API(STATE.token);
+                    });
+
+                    // Cargar plantillas
+                    const p3 = new Promise((resolve, reject) => {
+                        google.script.run
+                            .withSuccessHandler(response => resolve({ type: 'templates', response }))
+                            .withFailureHandler(error => reject(error))
+                            .getTemplates_API(STATE.token);
+                    });
+
+                    Promise.all([p1, p2, p3])
+                        .then(results => {
+                            const clientesData = results.find(r => r.type === 'clientes').data;
+                            const gruposData = results.find(r => r.type === 'grupos').data;
+                            const templatesRes = results.find(r => r.type === 'templates')?.response;
+
+                            // Process Clientes & Grupos
+                            if (clientesData && clientesData.ok) STATE.clientes = clientesData.list || [];
+                            if (gruposData && gruposData.ok) STATE.grupos = gruposData.data || [];
+
+                            // Process Templates
+                            const select = document.getElementById('templateSelect');
+                            if (templatesRes && templatesRes.ok && templatesRes.data && templatesRes.data.length > 0) {
+                                select.innerHTML = templatesRes.data.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+                                logDebug('✅ Plantillas cargadas', { count: templatesRes.data.length }, 'success');
+                            } else {
+                                select.innerHTML = '<option value="REGULAR">Regular (Default)</option>';
+                            }
+
+                            logDebug('✅ Datos cargados', { clientes: STATE.clientes.length, grupos: STATE.grupos.length }, 'success');
+
+                            // FIX CRÍTICO: Filtrar items según sendMode
+                            const currentMode = STATE.sendMode || 'perEmpresa';
+                            const items = [];
+
+                            if (currentMode === 'perEmpresa') {
+                                STATE.clientes.forEach(c => items.push({ id: c, label: c, type: 'cliente', selected: false, approved: false, visible: true }));
+                            } else {
+                                STATE.grupos.forEach(g => items.push({ id: g, label: g, type: 'grupo', selected: false, approved: false, visible: true }));
+                            }
+
+                            STATE.items = items;
+                            renderList();
+                            updateWizardUI();
+                            showLoading(false);
+                            showToast('Datos cargados correctamente', 'success');
+                        })
+                        .catch(error => {
+                            logDebug('❌ Error cargando datos', error, 'error');
+                            document.getElementById('itemsList').innerHTML = `<div class="empty-state-small error">Error: ${error.message}</div>`;
+                            showLoading(false);
+                            showToast('Error cargando datos: ' + error.message, 'error');
+                        });
+
+                    // Fecha por defecto
+                    const fechaInput = document.getElementById('fechaCorte');
+                    if (fechaInput) {
+                        fechaInput.valueAsDate = new Date();
+                    }
+                }
+
+                // [MEJORA ENVIAR_EECC_CORREO] Actualizar preview si cambia plantilla
+                function updatePreviewTemplate() {
+                    // Si ya hay previews generados, podríamos querer refrescarlos
+                    // Por ahora, solo logueamos el cambio
+                    const templateId = document.getElementById('templateSelect').value;
+                    logDebug('📝 Plantilla seleccionada', { templateId }, 'info');
+                } // [MEJORA ENVIAR_EECC_CORREO] Inicializar lista unificada
+                function initItemsList() {
+                    STATE.items = [];
+
+                    // Agregar Grupos
+                    STATE.grupos.forEach(g => {
+                        STATE.items.push({ id: g, label: g, type: 'grupo', selected: false, visible: true });
+                    });
+
+                    // Agregar Empresas
+                    STATE.clientes.forEach(c => {
+                        STATE.items.push({ id: c, label: c, type: 'empresa', selected: false, visible: true });
+                    });
+
+                    // Ordenar alfabéticamente
+                    STATE.items.sort((a, b) => a.label.localeCompare(b.label));
+                }
+
+                // [MEJORA ENVIAR_EECC_CORREO] Renderizar lista virtual (simple)
+                function renderList() {
+                    const container = document.getElementById('itemsList');
+                    const visibleItems = STATE.items.filter(i => i.visible);
+
+                    if (visibleItems.length === 0) {
+                        container.innerHTML = '<div class="empty-state-small">No se encontraron resultados</div>';
+                        return;
+                    }
+
+                    // Optimización: Renderizar solo los primeros 100 si son muchos (lazy render básico)
+                    // Para este caso simple, renderizamos todo pero con HTML string builder eficiente
+                    const html = visibleItems.map(item => `
+                <div class="list-item ${item.selected ? 'selected' : ''}" onclick="toggleItem('${item.id.replace(/'/g, "\\'")}')">
+                    <input type="checkbox" ${item.selected ? 'checked' : ''} readonly>
+                    <span class="item-label" title="${item.label}">${item.label}</span>
+                    <span class="item-type ${item.type}">${item.type === 'grupo' ? 'GRUPO' : 'EMP'}</span>
+                </div>
+            `).join('');
+
+                    container.innerHTML = html;
+                    updateSummary();
+                }
+
+                // [MEJORA ENVIAR_EECC_CORREO] Filtrar lista
+                function filterList() {
+                    const term = normalizeText(document.getElementById('searchInput').value);
+
+                    STATE.items.forEach(item => {
+                        const label = normalizeText(item.label);
+                        item.visible = label.includes(term);
+                    });
+
+                    renderList();
+                }
+
+                function clearSearch() {
+                    document.getElementById('searchInput').value = '';
+                    filterList();
+                }
+
+                // [MEJORA ENVIAR_EECC_CORREO] Toggle selección individual
+                function toggleItem(id) {
+                    const item = STATE.items.find(i => i.id === id);
+                    if (item) {
+                        item.selected = !item.selected;
+                        renderList(); // Re-render para actualizar clases y checkboxes
+                    }
+                }
+
+                // [MEJORA ENVIAR_EECC_CORREO] Toggle seleccionar todo
+                function toggleSelectAll() {
+                    const checkbox = document.getElementById('selectAll');
+                    if (!checkbox) {
+                        logDebug('❌ Checkbox selectAll no encontrado', null, 'error');
+                        return;
+                    }
+                    const checked = checkbox.checked;
+
+                    // Solo afectar a los visibles y filtrados por modo
+                    const currentMode = STATE.sendMode || 'perEmpresa';
+                    STATE.items.forEach(item => {
+                        if (item.visible) {
+                            // Aplicar filtro de modo
+                            const matchesMode = (currentMode === 'perEmpresa' && item.type === 'cliente') ||
+                                (currentMode === 'consolidado' && item.type === 'grupo');
+                            if (matchesMode) {
+                                item.selected = checked;
+                            }
+                        }
+                    });
+
+                    renderList();
+                }
+
+                function updateSummary() {
+                    const selectedCount = STATE.items.filter(i => i.selected).length;
+
+                    // Actualizar contador (usar ID correcto)
+                    const countEl = document.getElementById('selectedCount');
+                    if (countEl) {
+                        countEl.textContent = `${selectedCount} seleccionados`;
+                    }
+
+                    const summary = document.getElementById('selectionSummary');
+                    const text = document.getElementById('selectionSummaryText');
+
+                    if (summary && text) {
+                        if (selectedCount > 0) {
+                            const grupos = STATE.items.filter(i => i.selected && i.type === 'grupo').length;
+                            const empresas = selectedCount - grupos;
+                            text.textContent = `Seleccionados: ${empresas} empresa(s), ${grupos} grupo(s) económico(s)`;
+                            summary.classList.remove('hidden');
+                        } else {
+                            summary.classList.add('hidden');
+                        }
+                    }
+
+                    // Update wizard state if needed
+                    if (window.updateWizardUI && STATE.currentStep === 1) {
+                        // Solo actualizar si estamos en paso 1
+                    }
+                }
+
+                // [CRÍTICO] Recargar lista cuando cambia el modo
+                window.reloadListByMode = function () {
+                    const selectedMode = document.querySelector('input[name="sendMode"]:checked').value;
+                    logDebug('🔄 Cambiando modo', { mode: selectedMode }, 'info');
+
+                    STATE.sendMode = selectedMode;
+
+                    // Recargar items filtrados
+                    const items = [];
+                    if (selectedMode === 'perEmpresa') {
+                        STATE.clientes.forEach(c => {
+                            items.push({
+                                id: c,
+                                label: c,
+                                type: 'cliente',
+                                selected: false,
+                                approved: false,
+                                visible: true
+                            });
+                        });
+                        logDebug('📋 Lista recargada: Per-empresa', { count: items.length }, 'success');
+                    } else {
+                        STATE.grupos.forEach(g => {
+                            items.push({
+                                id: g,
+                                label: g,
+                                type: 'grupo',
+                                selected: false,
+                                approved: false,
+                                visible: true
+                            });
+                        });
+                        logDebug('📋 Lista recargada: Consolidado', { count: items.length }, 'success');
+                    }
+
+                    STATE.items = items;
+                    renderList();
+                    updateSummary();
+                };
+
+                function setupListeners() {
+                    // Ya no necesario - se manejan con onchange inline
+                    logDebug('ℹ️ setupListeners - usando handlers inline', null, 'info');
+                }
+
+                // ... (filterByGrupo ya no es necesario con el nuevo filtro unificado) ...
+
+                function switchTab(tabName) {
+                    // ... (igual) ...
+                    logDebug('📑 Cambio de tab', { tabName }, 'info');
+
+                    STATE.currentTab = tabName;
+
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+                    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                    document.getElementById(`tab-${tabName}`).classList.add('active');
+
+                    if (tabName === 'previsualizar') {
+                        loadPreview();
+                    }
+                }
+
+                function loadPreview() {
+                    // Obtener seleccionados del STATE.items
+                    const selectedItems = STATE.items.filter(i => i.selected);
+
+                    logDebug('👁️ Cargando preview', { count: selectedItems.length }, 'info');
+
+                    if (selectedItems.length === 0) {
+                        document.getElementById('previewContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div>Selecciona destinatarios primero</div>
+                    </div>
+                `;
+                        return;
+                    }
+
+                    STATE.previews = selectedItems.map(item => ({
+                        aseguradoId: item.id,
+                        type: item.type,
+                        status: 'pending'
+                    }));
+
+                    renderPreview();
+
+                    document.getElementById('btnTest').disabled = false;
+                    document.getElementById('btnSend').disabled = false;
+                }
+
+                function renderPreview() {
+                    let html = '<div class="preview-list">';
+
+                    STATE.previews.forEach(item => {
+                        const statusClass = { pending: 'status-pending', approved: 'status-approved', excluded: 'status-excluded' }[item.status];
+                        const statusText = { pending: 'Pendiente', approved: 'Aprobado', excluded: 'Excluido' }[item.status];
+                        const typeBadge = item.type === 'grupo' ? '<span class="status-badge" style="background:#E8EAF6;color:#3F51B5">GRUPO</span>' : '';
+
+                        html += `
+                <div class="preview-item">
+                    <div class="preview-item-header">
+                        <div class="preview-item-name">${item.aseguradoId} ${typeBadge}</div>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="btn-group" style="margin-top: 8px;">
+                        ${item.status !== 'approved' ? `<button class="btn btn-primary" onclick="approveItem('${item.aseguradoId.replace(/'/g, "\\'")}')">✅ Aprobar</button>` : ''}
+                        ${item.status !== 'excluded' ? `<button class="btn btn-secondary" onclick="excludeItem('${item.aseguradoId.replace(/'/g, "\\'")}')">❌ Excluir</button>` : ''}
+                    </div>
+                </div>
+                `;
+                    });
+
+                    html += '</div>';
+                    document.getElementById('previewContainer').innerHTML = html;
+
+                    updateApprovedCount();
+                }
+
+                // ... (approveItem, excludeItem, updateApprovedCount se mantienen, solo asegurar manejo de comillas en IDs) ...
+
+                function approveItem(id) {
+                    const item = STATE.previews.find(p => p.aseguradoId === id);
+                    if (item) {
+                        item.status = 'approved';
+                        renderPreview();
+                    }
+                }
+
+
+
+                function excludeItem(id) {
+                    const item = STATE.previews.find(p => p.aseguradoId === id);
+                    if (item) {
+                        item.status = 'excluded';
+                        renderPreview();
+                    }
+                }
+
+                const count = STATE.previews.filter(p => p.status === 'approved').length;
+                document.getElementById('approvedCount').textContent = count;
+
+                // [MEJORA ENVIAR_EECC_CORREO] UI de Programación - REMOVED (Obsolete)
+
+                // ========== PREVIEW & ACTIONS ==========
+                function renderPreviewList(items) {
+                    const container = document.getElementById('previewContainer');
+                    if (!items || items.length === 0) {
+                        container.innerHTML = '<div class="empty-state">No hay destinatarios seleccionados</div>';
+                        return;
+                    }
+
+                    // Add approval button at top
+                    let html = '<div style="padding: 0 4px;">'; // Wrapper extra para asegurar margen visual
+                    html += '<div style="margin-bottom: 15px; padding: 10px; background: #f0f8ff; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">';
+                    html += '<span style="font-weight: bold; color: #D32F2F;">📋 Destinatarios seleccionados</span>';
+                    html += '<button onclick="aprobarTodos()" class="btn btn-success" style="padding: 8px 16px;">✅ Aprobar Todos</button>';
+                    html += '</div>';
+
+                    html += '<div class="preview-list" style="height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px;">';
+                    items.forEach(item => {
+                        // Default to approved if undefined
+                        if (item.approved === undefined) item.approved = true;
+
+                        html += `
+                    <div class="preview-item" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
+                            <input type="checkbox" ${item.approved ? 'checked' : ''} onchange="toggleApproval('${item.id}', this.checked)" style="width: 16px; height: 16px;">
+                            <span style="font-weight: 500;">${item.label}</span>
+                        </label>
+                        <span class="status-badge status-pending" id="status-${item.id}">Pendiente</span>
+                    </div>`;
+                    });
+                    html += '</div>';
+
+                    // Add Summary
+                    html += `<div style="padding: 10px; text-align: right; font-weight: bold; color: #666;">
+                Total a enviar: <span id="totalApproved">${items.filter(i => i.approved).length}</span>
+            </div>`;
+
+                    // Add Schedule Form (Hidden by default)
+                    html += `
+                <div id="scheduleConfig" class="schedule-config hidden" style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                    <h4 style="margin: 0 0 10px 0; color: #D32F2F;">📅 Configurar Programación</h4>
+                    <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 12px; margin-bottom: 4px;">Fecha y Hora</label>
+                            <input type="datetime-local" id="scheduleDate" class="input-sm" style="width: 100%;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 12px; margin-bottom: 4px;">Frecuencia</label>
+                            <select id="scheduleFreq" class="input-sm" style="width: 100%;">
+                                <option value="ONCE">Una vez</option>
+                                <option value="WEEKLY">Semanal</option>
+                                <option value="BIWEEKLY">Quincenal</option>
+                                <option value="MONTHLY">Mensual</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+                    html += '</div>'; // Close wrapper
+                    container.innerHTML = html;
+
+                    // Enable buttons
+                    document.getElementById('btnSendNow').disabled = false;
+                    document.getElementById('btnSchedule').disabled = false;
+                }
+
+                window.toggleApproval = function (id, isApproved) {
+                    const item = STATE.items.find(i => i.id === id);
+                    if (item) item.approved = isApproved;
+
+                    // Update counter
+                    const count = STATE.items.filter(i => i.selected && i.approved).length;
+                    const counterEl = document.getElementById('totalApproved');
+                    if (counterEl) counterEl.textContent = count;
+                };
+
+                window.aprobarTodos = function () {
+                    // Approve all selected items in STATE
+                    STATE.items.forEach(item => {
+                        if (item.selected) item.approved = true;
+                    });
+
+                    // Update checkboxes AND status badges
+                    STATE.items.filter(i => i.selected).forEach(item => {
+                        // Update checkbox
+                        const checkbox = document.querySelector(`#status-${item.id}`)?.closest('.preview-item')?.querySelector('input[type="checkbox"]');
+                        if (checkbox) checkbox.checked = true;
+
+                        // Update status badge from "Pendiente" to "Aprobado"
+                        const badge = document.getElementById(`status-${item.id}`);
+                        if (badge) {
+                            badge.textContent = 'Aprobado';
+                            badge.classList.remove('status-pending');
+                            badge.classList.add('status-approved');
+                        }
+                    });
+
+                    // Update counter
+                    const count = STATE.items.filter(i => i.selected && i.approved).length;
+                    const counterEl = document.getElementById('totalApproved');
+                    if (counterEl) counterEl.textContent = count;
+
+                    alert(`✅ ${count} destinatarios aprobados para envío`);
+                };
+
+                function handleSendNowAction() {
+                    const toSend = STATE.items.filter(i => i.selected && i.approved !== false);
+                    if (toSend.length === 0) {
+                        alert('No hay destinatarios aprobados para enviar.');
+                        return;
+                    }
+
+                    if (confirm(`¿Estás seguro de enviar ${toSend.length} correos ahora?`)) {
+                        sendNow();
+                    }
+                }
+
+                function handleScheduleAction() {
+                    const configDiv = document.getElementById('scheduleConfig');
+                    const btn = document.getElementById('btnSchedule');
+
+                    if (configDiv.classList.contains('hidden')) {
+                        // Show config
+                        configDiv.classList.remove('hidden');
+                        btn.innerHTML = '✅ CONFIRMAR PROGRAMACIÓN';
+                        btn.classList.remove('btn-secondary');
+                        btn.classList.add('btn-success'); // Assuming btn-success exists or it will just be green
+
+                        // Set default date if empty
+                        if (!document.getElementById('scheduleDate').value) {
+                            const now = new Date();
+                            now.setMinutes(now.getMinutes() + 10); // +10 mins
+                            now.setMinutes(0, 0, 0); // Round
+                            const pad = n => String(n).padStart(2, '0');
+                            const str = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+                            document.getElementById('scheduleDate').value = str;
+                        }
+                    } else {
+                        // Submit schedule
+                        scheduleJob();
+                    }
+                }
+
+                // ========== WIZARD NAVIGATION ==========
+                function nextStep() {
+                    if (STATE.currentStep < 3) {
+                        // Validaciones antes de avanzar
+                        if (STATE.currentStep === 1) {
+                            const selected = STATE.items.filter(i => i.selected).length;
+                            if (selected === 0) {
+                                alert('Por favor selecciona al menos un destinatario.');
+                                return;
+                            }
+                        }
+
+                        STATE.currentStep++;
+                        updateWizardUI();
+                    }
+                }
+
+                function prevStep() {
+                    if (STATE.currentStep > 1) {
+                        STATE.currentStep--;
+                        updateWizardUI();
+                    }
+                }
+
+                function updateWizardUI() {
+                    // 1. Update Stepper
+                    document.querySelectorAll('.step').forEach((el, idx) => {
+                        const stepNum = idx + 1;
+                        el.classList.toggle('active', stepNum === STATE.currentStep);
+                        // Optional: mark completed steps
+                        if (stepNum < STATE.currentStep) el.style.color = 'var(--primary-color)';
+                        else if (stepNum > STATE.currentStep) el.style.color = 'var(--gray-500)';
+                    });
+
+                    // 2. Show/Hide Content Tabs
+                    document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+                    const tabMap = { 1: 'tab-seleccionar', 2: 'tab-parametros', 3: 'tab-previsualizar' };
+                    document.getElementById(tabMap[STATE.currentStep]).classList.add('active');
+
+                    // 3. Update Buttons
+                    const btnPrev = document.getElementById('btnPrev');
+                    const btnNext = document.getElementById('btnNext');
+                    const finalActions = document.getElementById('finalActions');
+
+                    btnPrev.style.visibility = STATE.currentStep === 1 ? 'hidden' : 'visible';
+
+                    if (STATE.currentStep === 3) {
+                        btnNext.style.display = 'none';
+                        finalActions.classList.remove('hidden');
+                        // Trigger preview generation
+                        updatePreview();
+                    } else {
+                        btnNext.style.display = 'block';
+                        finalActions.classList.add('hidden');
+                    }
+                }
+
+                // ========== PREVIEW ==========
+                function updatePreview() {
+                    const container = document.getElementById('previewContainer');
+                    const selectedItems = STATE.items.filter(i => i.selected);
+
+                    if (selectedItems.length === 0) {
+                        container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div>Selecciona empresas para previsualizar</div>
+                    </div>`;
+                        return;
+                    }
+
+                    // Mostrar spinner
+                    container.innerHTML = '<div class="spinner"></div><div style="text-align:center; color:#666;">Generando vista previa...</div>';
+
+                    // Simular generación (o llamar al backend si fuera real)
+                    // Aquí realmente deberíamos llamar a renderPreviewList con los datos reales
+                    // Pero por ahora usaremos los datos locales
+                    setTimeout(() => {
+                        renderPreviewList(selectedItems);
+                    }, 500);
+                }
+
+                function handleSendAction() {
+                    const isLater = document.querySelector('input[name="scheduleType"]:checked').value === 'later';
+                    if (isLater) {
+                        scheduleJob();
+                    } else {
+                        sendNow();
+                    }
+                }
+
+                function scheduleJob() {
+                    const approved = STATE.items.filter(i => i.selected && i.approved !== false);
+                    if (approved.length === 0) {
+                        alert('Aprueba al menos un ítem para programar');
+                        return;
+                    }
+
+                    const dateStr = document.getElementById('scheduleDate').value;
+                    if (!dateStr) {
+                        alert('Selecciona fecha y hora de inicio');
+                        return;
+                    }
+
+                    const scheduledFor = new Date(dateStr);
+                    if (scheduledFor <= new Date()) {
+                        alert('La fecha de programación debe ser futura');
+                        return;
+                    }
+
+                    const freq = document.getElementById('scheduleFreq').value;
+                    const mode = document.querySelector('input[name="sendMode"]:checked').value;
+                    const fechaCorte = document.getElementById('fechaCorte').value;
+                    const adjuntarPdf = document.getElementById('adjuntarPdf').checked;
+                    const adjuntarXlsx = document.getElementById('adjuntarXlsx').checked;
+                    const templateId = document.getElementById('templateSelect').value;
+
+                    if (!adjuntarPdf && !adjuntarXlsx) {
+                        alert('Debes seleccionar al menos un tipo de adjunto (PDF o XLSX)');
+                        return;
+                    }
+
+                    if (!confirm(`¿Programar envío para ${approved.length} destinatarios?\nInicio: ${scheduledFor.toLocaleString()}\nFrecuencia: ${freq}`)) return;
+
+                    // FIX: Usar el botón correcto (btnSchedule) en lugar de btnSend
+                    const btn = document.getElementById('btnSchedule');
+                    btn.disabled = true;
+                    btn.innerHTML = '⏳ Guardando...';
+                    showLoading(true, 'Programando envío...');
+
+                    const jobData = {
+                        scheduledFor: scheduledFor.toISOString(),
+                        frequency: freq,
+                        config: {
+                            items: approved.map(i => ({ id: i.id, type: i.type })),
+                            mode: mode,
+                            fechaCorte: fechaCorte,
+                            adjuntarPdf: adjuntarPdf,
+                            adjuntarXlsx: adjuntarXlsx,
+                            templateId: templateId
+                        }
+                    };
+
+                    google.script.run
+                        .withSuccessHandler(function (res) {
+                            btn.disabled = false;
+                            btn.innerHTML = '✅ CONFIRMAR PROGRAMACIÓN'; // Restaurar texto original del estado activo
+                            showLoading(false);
+
+                            if (res && res.ok) {
+                                logDebug(`📅 Envío programado exitosamente`, { id: res.id, fecha: scheduledFor.toLocaleString() }, 'success');
+                                showToast('✅ Envío programado exitosamente (ID: ' + res.id + ')', 'success');
+
+                                // Opcional: Resetear UI o cerrar drawer
+                                // document.getElementById('scheduleConfig').classList.add('hidden');
+                            } else {
+                                logDebug(`❌ Error al programar`, { error: res?.error }, 'error');
+                                showToast('❌ Error al programar: ' + (res?.error || 'Desconocido'), 'error');
+                            }
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.innerHTML = '✅ CONFIRMAR PROGRAMACIÓN';
+                            showLoading(false);
+                            showToast('❌ Error fatal: ' + err.message, 'error');
+                        })
+                        .scheduleJob_API(jobData, STATE.token);
+                }
+
+                function sendNow() {
+                    const approved = STATE.items.filter(i => i.selected && i.approved !== false);
+
+                    if (approved.length === 0) {
+                        alert('Aprueba al menos un ítem');
+                        return;
+                    }
+
+                    const adjuntarPdf = document.getElementById('adjuntarPdf').checked;
+                    const adjuntarXlsx = document.getElementById('adjuntarXlsx').checked;
+
+                    if (!adjuntarPdf && !adjuntarXlsx) {
+                        alert('Debes seleccionar al menos un tipo de adjunto (PDF o XLSX)');
+                        return;
+                    }
+
+                    // FIX: Guard anti-doble click
+                    if (STATE.sending) {
+                        console.warn('[SEND] Already sending, ignoring duplicate click');
+                        return;
+                    }
+                    STATE.sending = true;
+
+                    if (!confirm(`¿Enviar ${approved.length} correos AHORA?`)) {
+                        STATE.sending = false;
+                        return;
+                    }
+
+                    const mode = document.querySelector('input[name="sendMode"]:checked').value;
+                    const fechaCorte = document.getElementById('fechaCorte').value;
+                    const templateId = document.getElementById('templateSelect').value;
+
+                    // FIX CRÍTICO: Deduplicar items por ID para evitar envíos duplicados
+                    const seen = new Set();
+                    const uniqueApproved = approved.filter(item => {
+                        const key = item.id || item.aseguradoId || JSON.stringify(item);
+                        if (seen.has(key)) {
+                            console.warn('[SEND] Duplicado detectado y omitido:', key);
+                            return false;
+                        }
+                        seen.add(key);
+                        return true;
+                    });
+
+                    console.log('[SEND] Total items:', approved.length, '| Únicos:', uniqueApproved.length);
+
+                    if (uniqueApproved.length === 0) {
+                        alert('No hay destinatarios únicos para enviar');
+                        STATE.sending = false;
+                        return;
+                    }
+
+                    startSendingProcess(uniqueApproved, {
+                        mode,
+                        fechaCorte,
+                        adjuntarPdf,
+                        adjuntarXlsx,
+                        templateId
+                    });
+                }
+
+                // [MEJORA ENVIAR_EECC_CORREO] Nueva función orquestadora de envío
+                function startSendingProcess(items, options) {
+                    const btn = document.getElementById('btnSendNow'); // FIX: ID correcto
+                    if (!btn) {
+                        alert('❌ Error: Botón de envío no encontrado');
+                        return;
+                    }
+
+                    btn.disabled = true;
+                    btn.innerHTML = '⏳ Enviando...';
+
+                    let processed = 0;
+                    let errors = 0;
+                    const total = items.length;
+
+                    logDebug(`📨 Iniciando envío de ${total} correos`, { mode: options.mode }, 'info');
+
+                    // Procesar secuencialmente
+                    const processNext = (index) => {
+                        if (index >= total) {
+                            btn.disabled = false;
+                            btn.innerHTML = '✉️ ENVIAR';
+                            STATE.sending = false; // FIX: Reset guard
+                            const exitosos = processed - errors;
+                            logDebug(`✅ Proceso finalizado`, { enviados: exitosos, errores: errors }, exitosos > 0 ? 'success' : 'error');
+                            if (errors === 0) {
+                                showToast(`Proceso finalizado. Enviados: ${exitosos}`, 'success');
+                            } else {
+                                showToast(`Finalizado con errores. Enviados: ${exitosos}, Errores: ${errors}`, 'warning');
+                            }
+                            return;
+                        }
+
+                        const item = items[index];
+                        const badge = document.getElementById(`status-${item.id}`);
+
+                        if (badge) badge.textContent = '⏳ Enviando...';
+                        logDebug(`📧 Enviando correo ${index + 1}/${total}`, { destinatario: item.id, type: item.type }, 'info');
+
+                        // ROUTING: Grupos vs Clientes
+                        if (item.type === 'grupo') {
+                            // Envío consolidado por grupo económico
+                            google.script.run
+                                .withSuccessHandler(res => {
+                                    processed++;
+                                    if (res && res.ok) {
+                                        if (badge) {
+                                            badge.textContent = '✅ Enviado';
+                                            badge.className = 'status-badge status-approved';
+                                        }
+                                        logDebug(`✅ Grupo procesado`, { grupo: item.id }, 'success');
+                                    } else {
+                                        errors++;
+                                        if (badge) {
+                                            badge.textContent = '❌ Error';
+                                            badge.className = 'status-badge status-excluded';
+                                            badge.title = res?.error || 'Error desconocido';
+                                        }
+                                        logDebug(`❌ Error al procesar grupo`, { grupo: item.id, error: res?.error }, 'error');
+                                    }
+                                    processNext(index + 1);
+                                })
+                                .withFailureHandler(err => {
+                                    processed++;
+                                    errors++;
+                                    if (badge) {
+                                        badge.textContent = '❌ Fallo';
+                                        badge.className = 'status-badge status-excluded';
+                                        badge.title = err.message;
+                                    }
+                                    logDebug(`❌ Fallo crítico en grupo`, { grupo: item.id, error: err.message }, 'error');
+                                    processNext(index + 1);
+                                })
+                                .sendEmailsByGrupo_API(item.id, {
+                                    fechaCorte: options.fechaCorte,
+                                    adjuntarPdf: options.adjuntarPdf,
+                                    adjuntarXlsx: options.adjuntarXlsx,
+                                    templateId: options.templateId
+                                }, STATE.token);
+                        } else {
+                            // Envío individual por empresa
+                            google.script.run
+                                .withSuccessHandler(res => {
+                                    processed++;
+                                    if (res && res.ok) {
+                                        if (badge) {
+                                            badge.textContent = '✅ Enviado';
+                                            badge.className = 'status-badge status-approved';
+                                        }
+                                        logDebug(`✅ Correo enviado`, { destinatario: item.id }, 'success');
+                                    } else {
+                                        errors++;
+                                        if (badge) {
+                                            badge.textContent = '❌ Error';
+                                            badge.className = 'status-badge status-excluded';
+                                            badge.title = res?.error || 'Error desconocido';
+                                        }
+                                        logDebug(`❌ Error al enviar`, { destinatario: item.id, error: res?.error }, 'error');
+                                    }
+                                    processNext(index + 1);
+                                })
+                                .withFailureHandler(err => {
+                                    processed++;
+                                    errors++;
+                                    if (badge) {
+                                        badge.textContent = '❌ Fallo';
+                                        badge.className = 'status-badge status-excluded';
+                                        badge.title = err.message;
+                                    }
+                                    logDebug(`❌ Fallo crítico`, { destinatario: item.id, error: err.message }, 'error');
+                                    processNext(index + 1);
+                                })
+                                .sendEmailsNow([{ aseguradoId: item.id }], {
+                                    templateId: options.templateId,
+                                    fechaCorte: options.fechaCorte,
+                                    adjuntarPdf: options.adjuntarPdf,
+                                    adjuntarXlsx: options.adjuntarXlsx
+                                }, STATE.token);
+                        }
+                    };
+
+                    processNext(0);
+                }
+
+                // ========== INITIALIZATION ==========
+                function initDrawer() {
+                    logDebug('🚀 Inicializando drawer...', null, 'info');
+
+                    // CRÍTICO: Resetear wizard siempre al Paso 1
+                    STATE.currentStep = 1;
+
+                    // 1. Obtener token
+                    if (typeof TOKEN !== 'undefined') {
+                        STATE.token = TOKEN;
+                    } else {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        STATE.token = urlParams.get('token');
+                    }
+
+                    if (!STATE.token) {
+                        logDebug('⚠️ No se encontró token', null, 'warning');
+                    } else {
+                        logDebug('✅ Token obtenido', { token: STATE.token.substring(0, 10) + '...' }, 'success');
+                    }
+
+                    // 2. Cargar datos
+                    loadData();
+
+                    // 3. Configurar listeners
+                    setTimeout(() => {
+                        setupListeners();
+                    }, 500);
+                }
+
+                // Exponer globalmente para ser llamado desde index.html
+                window.initDrawer = initDrawer;
+            </script>
+        </div><!-- Fin app-wrapper -->
+</body>
+
+</html>

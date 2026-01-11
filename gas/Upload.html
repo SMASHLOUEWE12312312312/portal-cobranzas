@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 16px;
+      margin: 0;
+    }
+    
+    h3 {
+      margin: 0 0 16px;
+      color: #212121;
+      font-size: 18px;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    label {
+      display: block;
+      font-weight: 600;
+      color: #424242;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    
+    input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      background: white;
+    }
+    
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #616161;
+      font-weight: normal;
+    }
+    
+    .hint {
+      color: #757575;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #D32F2F;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    button:hover {
+      background: #B71C1C;
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .status {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    
+    .status-success {
+      background: #E8F5E9;
+      color: #2E7D32;
+      border: 1px solid #C8E6C9;
+    }
+    
+    .status-error {
+      background: #FFEBEE;
+      color: #C62828;
+      border: 1px solid #FFCDD2;
+    }
+  </style>
+</head>
+<body>
+  <h3>Importar datos desde tu PC</h3>
+  
+  <div class="form-group">
+    <label for="archivo">Archivo (.xlsx, .xls o .csv)</label>
+    <input type="file" id="archivo" accept=".xlsx,.xls,.csv">
+    <div class="hint">El archivo se procesa y luego se elimina automáticamente</div>
+  </div>
+  
+  <div class="form-group">
+    <label for="hoja">Hoja destino (opcional)</label>
+    <input type="text" id="hoja" placeholder="Si lo dejas vacío, usa 'BD'">
+  </div>
+  
+  <div class="form-group">
+    <label class="checkbox-label">
+      <input type="checkbox" id="chkHeader" checked>
+      El archivo tiene encabezados en la primera fila
+    </label>
+  </div>
+  
+  <button id="btn" onclick="importar()">Importar</button>
+  
+  <div id="msg"></div>
+  
+  <script>
+    const btn = document.getElementById('btn');
+    const msg = document.getElementById('msg');
+    
+    async function importar() {
+      msg.textContent = '';
+      
+      const input = document.getElementById('archivo');
+      const hoja = document.getElementById('hoja').value.trim();
+      const tieneEncabezado = document.getElementById('chkHeader').checked;
+      
+      if (!input.files || input.files.length === 0) {
+        msg.className = 'status status-error';
+        msg.textContent = 'Selecciona un archivo';
+        return;
+      }
+      
+      const file = input.files[0];
+      
+      try {
+        const base64 = await fileToBase64(file);
+        
+        btn.disabled = true;
+        btn.textContent = 'Importando...';
+        
+        google.script.run
+          .withSuccessHandler(res => {
+            btn.disabled = false;
+            btn.textContent = 'Importar';
+            
+            if (res && res.ok) {
+              msg.className = 'status status-success';
+              msg.textContent = `${res.mensaje}\n${res.filas || 0} filas importadas`;
+            } else {
+              msg.className = 'status status-error';
+              msg.textContent = res ? res.mensaje : 'Error desconocido';
+            }
+          })
+          .withFailureHandler(err => {
+            btn.disabled = false;
+            btn.textContent = 'Importar';
+            msg.className = 'status status-error';
+            msg.textContent = 'Error: ' + err.message;
+          })
+          .importarArchivoLocal({
+            name: file.name,
+            mimeType: file.type,
+            dataBase64: base64,
+            tieneEncabezado: tieneEncabezado,
+            nombreHojaDestino: hoja || 'BD'
+          });
+      } catch (e) {
+        msg.className = 'status status-error';
+        msg.textContent = 'Error: ' + e.message;
+      }
+    }
+    
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+  </script>
+</body>
+</html>

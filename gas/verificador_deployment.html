@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Verificador de Deployment</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .status-box {
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      border: 2px solid #ddd;
+    }
+    .success {
+      background-color: #d4edda;
+      border-color: #28a745;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      border-color: #dc3545;
+      color: #721c24;
+    }
+    .warning {
+      background-color: #fff3cd;
+      border-color: #ffc107;
+      color: #856404;
+    }
+    .info {
+      background-color: #d1ecf1;
+      border-color: #17a2b8;
+      color: #0c5460;
+    }
+    h1 { color: #333; }
+    h2 { color: #555; margin-top: 30px; }
+    code {
+      background-color: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    .step {
+      margin: 15px 0;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-left: 4px solid #17a2b8;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Verificador de Deployment - Bitácora v3.0</h1>
+  
+  <div class="info status-box">
+    <h3>📋 Propósito</h3>
+    <p>Esta herramienta verifica que tu deployment Web App esté usando la versión más reciente del código.</p>
+  </div>
+
+  <button onclick="verificarCodigoLocal()">1️⃣ Verificar Código Local</button>
+  <button onclick="verificarDeployment()">2️⃣ Verificar Deployment Web App</button>
+  
+  <div id="loading">
+    <p>⏳ Verificando...</p>
+  </div>
+
+  <div id="resultadoLocal"></div>
+  <div id="resultadoDeployment"></div>
+  <div id="instrucciones"></div>
+
+  <script>
+    function verificarCodigoLocal() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('resultadoLocal').innerHTML = '';
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          document.getElementById('loading').style.display = 'none';
+          
+          let html = '<div class="success status-box">';
+          html += '<h3>✅ CÓDIGO LOCAL - OK</h3>';
+          html += '<p><strong>Versión:</strong> ' + result.version + '</p>';
+          html += '<p><strong>Timestamp:</strong> ' + result.timestamp + '</p>';
+          html += '<p><strong>SPREADSHEET_ID:</strong> ' + (result.spreadsheetIdConfigured ? '✅ Configurado' : '❌ NO configurado') + '</p>';
+          if (result.spreadsheetIdConfigured) {
+            html += '<p><strong>Valor:</strong> <code>' + result.spreadsheetIdValue + '</code></p>';
+          }
+          html += '<p>' + result.message + '</p>';
+          html += '</div>';
+          
+          html += '<div class="warning status-box">';
+          html += '<h3>⚠️ SIGUIENTE PASO</h3>';
+          html += '<p>El código local está actualizado. Ahora verifica el deployment Web App usando el botón "2️⃣ Verificar Deployment Web App".</p>';
+          html += '<p><strong>IMPORTANTE:</strong> Si el deployment devuelve una versión diferente o error, necesitas actualizar el deployment.</p>';
+          html += '</div>';
+          
+          document.getElementById('resultadoLocal').innerHTML = html;
+        })
+        .withFailureHandler(function(error) {
+          document.getElementById('loading').style.display = 'none';
+          
+          let html = '<div class="error status-box">';
+          html += '<h3>❌ ERROR</h3>';
+          html += '<p>' + error.message + '</p>';
+          html += '</div>';
+          
+          document.getElementById('resultadoLocal').innerHTML = html;
+        })
+        .getDeploymentVersion();
+    }
+    
+    function verificarDeployment() {
+      let url = prompt('Pega la URL de tu deployment Web App:\n(Ejemplo: https://script.google.com/macros/s/ABC123.../exec)');
+      
+      if (!url) {
+        alert('❌ URL no proporcionada');
+        return;
+      }
+      
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('resultadoDeployment').innerHTML = '';
+      
+      // Agregar parámetro para llamar a la función de verificación
+      let testUrl = url + '?action=checkVersion';
+      
+      fetch(testUrl, {
+        redirect: 'follow'
+      })
+      .then(response => response.text())
+      .then(data => {
+        document.getElementById('loading').style.display = 'none';
+        
+        // Intentar parsear como JSON
+        try {
+          let result = JSON.parse(data);
+          mostrarResultadoDeployment(result, true);
+        } catch (e) {
+          // No es JSON, probablemente HTML del portal
+          mostrarResultadoDeployment({ error: 'El deployment no responde con la versión esperada' }, false);
+        }
+      })
+      .catch(error => {
+        document.getElementById('loading').style.display = 'none';
+        mostrarResultadoDeployment({ error: error.message }, false);
+      });
+    }
+    
+    function mostrarResultadoDeployment(result, exito) {
+      let html = '';
+      
+      if (exito && result.version) {
+        html += '<div class="success status-box">';
+        html += '<h3>✅ DEPLOYMENT - OK</h3>';
+        html += '<p><strong>Versión:</strong> ' + result.version + '</p>';
+        html += '<p><strong>SPREADSHEET_ID:</strong> ' + (result.spreadsheetIdConfigured ? '✅ Configurado' : '❌ NO configurado') + '</p>';
+        html += '</div>';
+        
+        html += '<div class="success status-box">';
+        html += '<h3>🎉 ¡TODO LISTO!</h3>';
+        html += '<p>El deployment está usando la versión correcta del código.</p>';
+        html += '<p>Ahora puedes abrir la bitácora en el portal y debería funcionar correctamente.</p>';
+        html += '</div>';
+      } else {
+        html += '<div class="error status-box">';
+        html += '<h3>❌ DEPLOYMENT - DESACTUALIZADO</h3>';
+        html += '<p>El deployment NO está usando la versión más reciente del código.</p>';
+        html += '<p><strong>Error:</strong> ' + (result.error || 'Versión incorrecta') + '</p>';
+        html += '</div>';
+        
+        html += mostrarInstruccionesActualizacion();
+      }
+      
+      document.getElementById('resultadoDeployment').innerHTML = html;
+    }
+    
+    function mostrarInstruccionesActualizacion() {
+      let html = '<div class="warning status-box">';
+      html += '<h3>🔧 CÓMO ACTUALIZAR EL DEPLOYMENT</h3>';
+      
+      html += '<div class="step">';
+      html += '<h4>PASO 1: Eliminar Deployments Viejos</h4>';
+      html += '<ol>';
+      html += '<li>En Apps Script Editor, click en <strong>"Implementar"</strong> (arriba a la derecha)</li>';
+      html += '<li>Click en <strong>"Gestionar implementaciones"</strong></li>';
+      html += '<li>Para CADA deployment en la lista:';
+      html += '<ul><li>Click en los 3 puntos (⋮)</li>';
+      html += '<li>Click en <strong>"Archivar"</strong></li></ul></li>';
+      html += '<li>Asegúrate de que la lista quede <strong>VACÍA</strong></li>';
+      html += '</ol>';
+      html += '</div>';
+      
+      html += '<div class="step">';
+      html += '<h4>PASO 2: Crear Deployment NUEVO</h4>';
+      html += '<ol>';
+      html += '<li>En Apps Script Editor, click en <strong>"Implementar"</strong></li>';
+      html += '<li>Click en <strong>"Nueva implementación"</strong></li>';
+      html += '<li>Click en el ⚙️ junto a "Seleccionar tipo"</li>';
+      html += '<li>Selecciona <strong>"Aplicación web"</strong></li>';
+      html += '<li>Configuración:';
+      html += '<ul>';
+      html += '<li><strong>Descripción:</strong> <code>Bitácora v4.0 FINAL - 2025-01-15</code></li>';
+      html += '<li><strong>Ejecutar como:</strong> Yo (tu email)</li>';
+      html += '<li><strong>Quién tiene acceso:</strong> Cualquier persona</li>';
+      html += '</ul></li>';
+      html += '<li>Click en <strong>"Implementar"</strong></li>';
+      html += '<li><strong>COPIA LA URL NUEVA</strong> que aparece</li>';
+      html += '</ol>';
+      html += '</div>';
+      
+      html += '<div class="step">';
+      html += '<h4>PASO 3: Probar</h4>';
+      html += '<ol>';
+      html += '<li>Cierra TODAS las ventanas del portal</li>';
+      html += '<li>Abre <strong>ventana de incógnito</strong></li>';
+      html += '<li>Pega la URL nueva</li>';
+      html += '<li>Inicia sesión</li>';
+      html += '<li>Abre la bitácora</li>';
+      html += '</ol>';
+      html += '</div>';
+      
+      html += '</div>';
+      
+      return html;
+    }
+  </script>
+</body>
+</html>
+
