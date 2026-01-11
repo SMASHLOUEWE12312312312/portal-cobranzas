@@ -1,9 +1,16 @@
+# env
 .env
 .env.*
 !.env.example
+
+# node/next
 node_modules
 .next
 out
 dist
+
+# logs
 *.log
+
+# mac
 .DS_Store
