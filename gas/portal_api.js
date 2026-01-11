@@ -430,8 +430,8 @@ function previewAsegurado(asegurado, maxRows, includeObs, obsForRAM, token) {
       });
 
     if (includeObs) {
-      const obsIdx = Utils.findColumnIndex(baseData.headers, getConfig('BD.COLUMNS.BREVE_DESCRIPCION'));
-      if (obsIdx >= 0) columnMap.BREVE_DESCRIPCION = obsIdx;
+      const obsIdx = Utils.findColumnIndex(baseData.headers, getConfig('BD.COLUMNS.MOTIVO'));
+      if (obsIdx >= 0) columnMap.MOTIVO = obsIdx;
     }
 
     if (columnMap.ASEGURADO === undefined) {
@@ -459,11 +459,11 @@ function previewAsegurado(asegurado, maxRows, includeObs, obsForRAM, token) {
       }
 
       let obs = '';
-      if (includeObs && columnMap.BREVE_DESCRIPCION !== undefined) {
+      if (includeObs && columnMap.MOTIVO !== undefined) {
         if (obsForRAMSet === '__ALL__') {
-          obs = row[columnMap.BREVE_DESCRIPCION] || '';
+          obs = row[columnMap.MOTIVO] || '';
         } else if (obsForRAMSet && obsForRAMSet.has && obsForRAMSet.has(ram)) {
-          obs = row[columnMap.BREVE_DESCRIPCION] || '';
+          obs = row[columnMap.MOTIVO] || '';
         }
       }
 

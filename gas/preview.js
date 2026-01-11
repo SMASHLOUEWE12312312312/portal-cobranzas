@@ -17,7 +17,7 @@ const PreviewService = {
     try {
       // Reusar previewAsegurado existente pero sin colores
       const previewData = this._getPreviewData(aseguradoId, opts);
-      
+
       if (!previewData || !previewData.rows) {
         return { htmlPreview: '<p>No hay datos para este asegurado</p>', meta: {} };
       }
@@ -44,7 +44,7 @@ const PreviewService = {
   _getPreviewData(aseguradoId, opts) {
     const baseData = SheetsIO.readSheet(getConfig('SHEETS.BASE'));
     const aseguradoCol = Utils.findColumnIndex(baseData.headers, getConfig('BD.COLUMNS.ASEGURADO'));
-    
+
     if (aseguradoCol === -1) {
       throw new Error('Columna ASEGURADO no encontrada');
     }
@@ -55,10 +55,10 @@ const PreviewService = {
 
     const columnMap = {};
     ['CIA', 'POLIZA', 'RAM', 'NUM_CUOTA', 'CUPON', 'MON', 'IMPORTE',
-     'VIG_DEL', 'VIG_AL', 'FEC_VENCIMIENTO_COB', 'BREVE_DESCRIPCION'].forEach(col => {
-      const idx = Utils.findColumnIndex(baseData.headers, getConfig(`BD.COLUMNS.${col}`, col));
-      if (idx >= 0) columnMap[col] = idx;
-    });
+      'VIG_DEL', 'VIG_AL', 'FEC_VENCIMIENTO_COB', 'MOTIVO'].forEach(col => {
+        const idx = Utils.findColumnIndex(baseData.headers, getConfig(`BD.COLUMNS.${col}`, col));
+        if (idx >= 0) columnMap[col] = idx;
+      });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -71,10 +71,10 @@ const PreviewService = {
       }
 
       let obs = '';
-      if (opts.includeObs && columnMap.BREVE_DESCRIPCION !== undefined) {
+      if (opts.includeObs && columnMap.MOTIVO !== undefined) {
         const ram = Utils.cleanText(row[columnMap.RAM]);
         if (opts.obsForRAM === '__ALL__' || (opts.obsForRAM && opts.obsForRAM.has && opts.obsForRAM.has(ram))) {
-          obs = row[columnMap.BREVE_DESCRIPCION] || '';
+          obs = row[columnMap.MOTIVO] || '';
         }
       }
 

@@ -740,14 +740,14 @@ const EECCCore = {
         subtotal += importe;
 
         let obs = '';
-        if (opts.includeObs && columnMap.BREVE_DESCRIPCION !== undefined) {
+        if (opts.includeObs && columnMap.MOTIVO !== undefined) {
           const ramActual = Utils.cleanText(item[columnMap.RAM]);
 
           // Chequear si este RAM debe incluir OBS
           if (opts.obsForRAM === '__ALL__') {
-            obs = item[columnMap.BREVE_DESCRIPCION] || '';
+            obs = item[columnMap.MOTIVO] || '';
           } else if (opts.obsForRAM && opts.obsForRAM.has && opts.obsForRAM.has(ramActual)) {
-            obs = item[columnMap.BREVE_DESCRIPCION] || '';
+            obs = item[columnMap.MOTIVO] || '';
           }
         }
 
