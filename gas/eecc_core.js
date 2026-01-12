@@ -167,6 +167,14 @@ const EECCCore = {
 
       Logger.info(context, 'Headless generation complete', result);
 
+      // Phase 1: Audit EECC generation (soft-fail)
+      try {
+        AuditService.log(AuditService.ACTIONS.GENERATE_EECC, nombreAsegurado, {
+          pdfUrl: result.pdfUrl || null,
+          xlsxUrl: result.xlsxUrl || null
+        });
+      } catch (e) { /* ignore audit errors */ }
+
       // ========== REGISTRAR EN BITÁCORA ==========
       // Registrar la generación del EECC en la bitácora de gestiones
       try {

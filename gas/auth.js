@@ -152,6 +152,11 @@ const AuthService = {
         durationMs: duration
       });
 
+      // Phase 1: Audit login (soft-fail)
+      try {
+        AuditService.log(AuditService.ACTIONS.LOGIN, cleanUsername, { durationMs: duration });
+      } catch (e) { /* ignore audit errors */ }
+
       return {
         ok: true,
         token,
@@ -245,9 +250,27 @@ const AuthService = {
     }
 
     try {
-      const cache = CacheService.getScriptCache();
-      cache.remove('sess:' + token.trim());
+      // Get user before removing session for audit
+      let sessionUser = 'unknown';
+      try {
+        const cache = CacheService.getScriptCache();
+        const sessData = cache.get('sess:' + token.trim());
+        if (sessData) {
+          sessionUser = JSON.parse(sessData).user || 'unknown';
+        }
+        cache.remove('sess:' + token.trim());
+      } catch (e) {
+        // Fallback: just remove
+        CacheService.getScriptCache().remove('sess:' + token.trim());
+      }
+
       Logger.info(context, 'Logout successful');
+
+      // Phase 1: Audit logout (soft-fail)
+      try {
+        AuditService.log(AuditService.ACTIONS.LOGOUT, sessionUser);
+      } catch (e) { /* ignore audit errors */ }
+
       return { ok: true };
     } catch (error) {
       Logger.error(context, 'Logout failed', error);

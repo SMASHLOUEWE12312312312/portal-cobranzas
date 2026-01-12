@@ -1252,6 +1252,16 @@ function sendEmailsNow(items, options, token) {
     // Último flush para el log de completado
     Logger.flush();
 
+    // Phase 1: Audit email send (soft-fail)
+    try {
+      AuditService.log(AuditService.ACTIONS.SEND_EMAIL, requestId, {
+        sent: results.sent,
+        failed: results.failed,
+        totalItems: items.length,
+        durationMs: metrics.totalMs
+      }, correlationId);
+    } catch (e) { /* ignore audit errors */ }
+
     return {
       ok: true,
       sent: results.sent,
