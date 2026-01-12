@@ -568,6 +568,10 @@
   .autocomplete-wrapper {
     position: relative;
     width: 100%;
+    z-index: 1001;
+    /* FIX: Contexto de apilamiento para dropdown */
+    overflow: visible;
+    /* FIX: Permitir que dropdown salga del contenedor */
   }
 
   .autocomplete-input-container {
@@ -690,14 +694,17 @@
     top: 100%;
     left: 0;
     right: 0;
-    max-height: 280px;
+    max-height: min(280px, 40vh);
+    /* FIX: Responsive, se adapta a viewport */
     overflow-y: auto;
     background: var(--tp-surface);
     border: 1px solid var(--tp-border-light);
     border-radius: var(--tp-radius-md);
-    box-shadow: var(--tp-shadow-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    /* FIX: Sombra más pronunciada */
     margin-top: 4px;
-    z-index: 1000;
+    z-index: 10000;
+    /* FIX: Máxima prioridad visual sobre footer */
     animation: dropdownFadeIn 0.15s var(--tp-ease-out);
   }
 
@@ -2803,6 +2810,8 @@
     /* Hereda estilos de .card pero con mejoras */
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     border: 2px solid transparent;
+    overflow: visible;
+    /* FIX: No cortar dropdowns que se extienden */
   }
 
   .step-card:hover {
@@ -2841,11 +2850,15 @@
   .portal-footer {
     background: var(--tp-surface-overlay);
     border-top: 1px solid var(--tp-border-light);
-    padding: var(--tp-space-5) var(--tp-space-6);
-    margin-top: var(--tp-space-12);
+    padding: var(--tp-space-6) var(--tp-space-6);
+    /* FIX: Más padding vertical */
+    margin-top: calc(var(--tp-space-12) + 100px);
+    /* FIX: Espacio extra para dropdowns */
     position: relative;
     bottom: 0;
     width: 100%;
+    z-index: 10;
+    /* FIX: Menor prioridad que dropdowns */
   }
 
   .footer-content {
@@ -2881,6 +2894,16 @@
     .footer-left,
     .footer-right {
       font-size: var(--tp-text-xs);
+    }
+
+    /* FIX: Ajustes de dropdown en móvil */
+    .autocomplete-dropdown {
+      max-height: 200px;
+    }
+
+    .portal-footer {
+      margin-top: var(--tp-space-8);
+      padding: var(--tp-space-4) var(--tp-space-4);
     }
   }
 
