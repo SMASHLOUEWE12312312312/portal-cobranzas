@@ -399,6 +399,113 @@ function getAseguradosSafe(token) {
   }
 }
 
+/**
+ * Phase 1: Paginated endpoint with efficient column read
+ * DOES NOT break existing getAseguradosSafe (zero regression)
+ * 
+ * @param {string} token - Session token
+ * @param {Object} options - { limit, cursor, search }
+ * @return {Object} { ok, items, nextCursor, total, hasMore }
+ */
+function getAseguradosPaged(token, options = {}) {
+  const context = 'getAseguradosPaged';
+  const { limit = 100, cursor = null, search = '' } = options || {};
+
+  try {
+    AuthService.validateSession(token);
+
+    // Cache key for efficient column read
+    const cacheKey = 'asegurados:paged:v1';
+    const cache = CacheService.getScriptCache();
+    let allAsegurados;
+
+    // Try cache first
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      allAsegurados = JSON.parse(cached);
+      Logger.debug(context, 'From cache', { count: allAsegurados.length });
+    } else {
+      // EFFICIENT READ: Only read headers + ASEGURADO column
+      const ss = SpreadsheetApp.getActive();
+      const sheet = ss.getSheetByName(getConfig('SHEETS.BASE'));
+      if (!sheet) {
+        throw new Error('Hoja BD no encontrada');
+      }
+
+      // Read headers (row 1 only)
+      const lastCol = sheet.getLastColumn();
+      const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+      // Find ASEGURADO column index
+      const aseguradoColName = getConfig('BD.COLUMNS.ASEGURADO');
+      let aseguradoColIdx = -1;
+      for (let i = 0; i < headers.length; i++) {
+        if (Utils.cleanText(headers[i]) === Utils.cleanText(aseguradoColName)) {
+          aseguradoColIdx = i + 1; // 1-indexed for getRange
+          break;
+        }
+      }
+
+      if (aseguradoColIdx === -1) {
+        throw new Error('Columna ASEGURADO no encontrada');
+      }
+
+      // Read ONLY the ASEGURADO column (efficient)
+      const lastRow = sheet.getLastRow();
+      if (lastRow <= 1) {
+        allAsegurados = [];
+      } else {
+        const colData = sheet.getRange(2, aseguradoColIdx, lastRow - 1, 1).getValues();
+
+        // Unique + trim + filter empty
+        const set = new Set();
+        colData.forEach(row => {
+          const val = Utils.cleanText(row[0]);
+          if (val) set.add(val);
+        });
+
+        allAsegurados = Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
+      }
+
+      // Cache for 10 minutes
+      cache.put(cacheKey, JSON.stringify(allAsegurados), 600);
+      Logger.info(context, 'Built list from column read', { count: allAsegurados.length });
+    }
+
+    // Apply search filter
+    let filtered = allAsegurados;
+    if (search && search.trim()) {
+      const searchLower = search.toLowerCase().trim();
+      filtered = allAsegurados.filter(a => a.toLowerCase().includes(searchLower));
+    }
+
+    // Apply cursor pagination
+    let startIndex = 0;
+    if (cursor) {
+      const cursorIdx = filtered.findIndex(a => a === cursor);
+      startIndex = cursorIdx >= 0 ? cursorIdx + 1 : 0;
+    }
+
+    // Slice page
+    const effectiveLimit = Math.min(Math.max(1, Number(limit) || 100), 500);
+    const page = filtered.slice(startIndex, startIndex + effectiveLimit);
+    const nextCursor = page.length === effectiveLimit ? page[page.length - 1] : null;
+
+    return {
+      ok: true,
+      items: page,
+      nextCursor,
+      total: filtered.length,
+      hasMore: nextCursor !== null
+    };
+
+  } catch (error) {
+    Logger.error(context, 'Failed', error);
+    return { ok: false, error: error.message };
+  }
+}
+
+
 // ========== PREVIEW ASEGURADO ==========
 function previewAsegurado(asegurado, maxRows, includeObs, obsForRAM, token) {
   const context = 'previewAsegurado';
