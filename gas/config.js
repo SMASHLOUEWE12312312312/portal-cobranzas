@@ -207,12 +207,21 @@ const CONFIG = {
     ENABLE_CORRELATION_ID: true,         // CorrelationId in Logger
     BITACORA_CACHE_DURATION_MS: 30000,   // 30 seconds (was 3000)
     ENABLE_LOGO_CACHE: false,            // Disabled: logo is embedded in EECC_Template
-    LOGO_CACHE_TTL_SECONDS: 3600         // 1 hour cache for logo
+    LOGO_CACHE_TTL_SECONDS: 3600,        // 1 hour cache for logo
+    // Phase 1 Enterprise Foundations (2026-01-12)
+    PIPELINE_ENABLED: false,             // EECC Pipeline with persisted states
+    MAIL_QUEUE_MODE: false               // Persistent mail queue (vs direct send)
   },
 
   // ========== LOCK ==========
   LOCK: {
     SEND_EMAIL_TIMEOUT_MS: 30000         // 30 second lock timeout for sendEmailsNow
+  },
+
+  // ========== MAIL QUEUE (Phase 1) ==========
+  MAIL_QUEUE: {
+    BATCH_SIZE: 10,                      // Items processed per trigger run
+    MAX_RETRIES: 3                       // Max retry attempts before FAILED
   },
 
   // ========== API ==========

@@ -1196,6 +1196,14 @@ function sendEmailsNow(items, options, token) {
           throw new Error(`Error en EECC: ${eecc.error}`);
         }
 
+        // Phase 1: Pipeline ENVIANDO transition
+        let pipelineId = eecc.pipelineId; // Returned from generateHeadless if pipeline enabled
+        try {
+          if (pipelineId) {
+            EECCPipeline.transition(pipelineId, EECCPipeline.STATES.ENVIANDO);
+          }
+        } catch (e) { /* ignore pipeline errors */ }
+
         const attachments = prepareAttachments(eecc);
 
         // FIX: Usar plantilla si se especifica templateId
@@ -1236,25 +1244,33 @@ function sendEmailsNow(items, options, token) {
         // ENVIAR CORREO REAL
         const messageId = MailerService.sendEmail({
           to: contact.emailTo,
-          cc: contact.emailCc || [],
-          bcc: contact.emailBcc || [],
+          cc: contact.emailCc,
+          bcc: contact.emailBcc,
           subject: subject,
-          bodyHtml: bodyHtml,
-          blobs: attachments.blobs,
-          urls: attachments.urls
+          htmlBody: bodyHtml,
+          attachments: attachments,
+          name: 'Portal de Cobranzas'
         });
+
+        // Phase 1: Pipeline ENVIADO transition
+        try {
+          if (pipelineId && messageId) {
+            EECCPipeline.transition(pipelineId, EECCPipeline.STATES.ENVIADO, {
+              messageId: messageId
+            });
+          }
+        } catch (e) { /* ignore pipeline errors */ }
 
         results.sent++;
         results.details.push({
           aseguradoId: item.aseguradoId,
-          status: 'success',
+          status: 'sent',
           messageId: messageId
         });
 
         Logger.info(context, 'Email sent', {
           aseguradoId: item.aseguradoId,
-          messageId: messageId,
-          to: contact.emailTo.join(', '),
+          messageId,
           correlationId
         });
 
@@ -1301,6 +1317,15 @@ function sendEmailsNow(items, options, token) {
         });
 
         Logger.error(context, 'Failed to send', error, { aseguradoId: item.aseguradoId, correlationId });
+
+        // Phase 1: Pipeline ERROR transition
+        try {
+          if (pipelineId) {
+            EECCPipeline.transition(pipelineId, EECCPipeline.STATES.ERROR, {
+              error: error.message
+            });
+          }
+        } catch (e) { /* ignore pipeline errors */ }
 
         // ========== REGISTRAR ERROR EN BITÁCORA ==========
         try {

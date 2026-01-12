@@ -105,6 +105,16 @@ const EECCCore = {
     const context = 'EECCCore.generateHeadless';
     Logger.info(context, 'Starting headless generation', { asegurado: nombreAsegurado, opts });
 
+    // Phase 1: Pipeline tracking (only if flag ON)
+    let pipelineId = null;
+    try {
+      const pipelineResult = EECCPipeline.create(nombreAsegurado, opts, Logger.getCorrelationId());
+      if (pipelineResult.ok && pipelineResult.pipelineId) {
+        pipelineId = pipelineResult.pipelineId;
+        EECCPipeline.transition(pipelineId, EECCPipeline.STATES.GENERANDO);
+      }
+    } catch (e) { /* ignore pipeline errors */ }
+
     try {
       validateConfig();
 
@@ -210,16 +220,36 @@ const EECCCore = {
         Logger.error(context, 'Error al registrar en bitácora (no crítico)', bitacoraError);
       }
 
+      // Phase 1: Pipeline success transition
+      try {
+        if (pipelineId) {
+          EECCPipeline.transition(pipelineId, EECCPipeline.STATES.GENERADO, {
+            pdfUrl: result.pdfUrl,
+            xlsxUrl: result.xlsxUrl
+          });
+        }
+      } catch (e) { /* ignore pipeline errors */ }
+
       return {
         ok: true,
         message: `EECC generado para ${nombreAsegurado}`,
         pdfUrl: result.pdfUrl || null,
         xlsxUrl: result.xlsxUrl || null,
-        folderPath: DriveIO.getFolderPath(folder)
+        folderPath: DriveIO.getFolderPath(folder),
+        pipelineId: pipelineId // Phase 1: Return pipelineId for email step
       };
 
     } catch (error) {
       Logger.error(context, 'Headless generation failed', error);
+
+      // Phase 1: Pipeline error transition
+      try {
+        if (pipelineId) {
+          EECCPipeline.transition(pipelineId, EECCPipeline.STATES.ERROR, {
+            error: error.message
+          });
+        }
+      } catch (e) { /* ignore pipeline errors */ }
 
       // ========== REGISTRAR ERROR EN BITÁCORA ==========
       try {
