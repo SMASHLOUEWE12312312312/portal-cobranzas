@@ -173,7 +173,9 @@ const CONFIG = {
 
   // ========== AUTH ==========
   AUTH: {
-    SESSION_TTL_SEC: 28800,
+    SESSION_TTL_SEC: 28800,                 // 8 hours total session lifetime
+    SESSION_SLIDING_EXPIRATION: true,       // Phase 1: renew on activity
+    SESSION_TTL_SEC_CLAMP: 21600,           // Phase 1: defensive clamp for cache.put (6h)
     PASSWORD_ITERATIONS: 100,
     BOOTSTRAP_USERS: [
       { user: 'cobranzas1', password: 'Transperuana1@2025#' },

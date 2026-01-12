@@ -18,7 +18,7 @@ const AuthService = {
     try {
       const props = PropertiesService.getScriptProperties();
       const existing = props.getProperty(this.PROPS_KEY);
-      
+
       if (existing) {
         Logger.info(context, 'Users already initialized');
         return { ok: true, message: 'Sistema ya inicializado' };
@@ -32,9 +32,9 @@ const AuthService = {
       const users = bootstrap.map(u => {
         const salt = this._generateSalt();
         const hash = this._strongHash(u.password, salt);
-        return { 
-          user: u.user.toLowerCase().trim(), 
-          salt, 
+        return {
+          user: u.user.toLowerCase().trim(),
+          salt,
           hash,
           createdAt: new Date().toISOString(),
           lastLogin: null,
@@ -44,7 +44,7 @@ const AuthService = {
 
       props.setProperty(this.PROPS_KEY, JSON.stringify(users));
       Logger.info(context, 'Users initialized', { count: users.length });
-      
+
       return { ok: true, message: `${users.length} usuarios inicializados` };
     } catch (error) {
       Logger.error(context, 'Initialization failed', error);
@@ -58,7 +58,7 @@ const AuthService = {
   login(username, password) {
     const context = 'AuthService.login';
     const startTime = Date.now();
-    
+
     try {
       // Sanitizar inputs
       if (!username || !password) {
@@ -78,9 +78,9 @@ const AuthService = {
       // Rate limiting por IP/usuario
       if (!this._checkRateLimit(cleanUsername)) {
         Logger.warn(context, 'Rate limit exceeded', { user: cleanUsername });
-        return { 
-          ok: false, 
-          error: 'Demasiados intentos fallidos. Intenta nuevamente en 15 minutos.' 
+        return {
+          ok: false,
+          error: 'Demasiados intentos fallidos. Intenta nuevamente en 15 minutos.'
         };
       }
 
@@ -91,7 +91,7 @@ const AuthService = {
       }
 
       const user = users.find(u => u.user === cleanUsername);
-      
+
       if (!user) {
         this._recordFailedAttempt(cleanUsername);
         Logger.warn(context, 'User not found', { user: cleanUsername });
@@ -103,15 +103,15 @@ const AuthService = {
       // Verificar si cuenta bloqueada
       if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
         Logger.warn(context, 'Account locked', { user: cleanUsername });
-        return { 
-          ok: false, 
-          error: 'Cuenta bloqueada temporalmente. Intenta más tarde.' 
+        return {
+          ok: false,
+          error: 'Cuenta bloqueada temporalmente. Intenta más tarde.'
         };
       }
 
       // Verificar contraseña
       const hash = this._strongHash(cleanPassword, user.salt);
-      
+
       if (hash !== user.hash) {
         this._recordFailedAttempt(cleanUsername);
         this._incrementUserLoginAttempts(cleanUsername);
@@ -126,12 +126,17 @@ const AuthService = {
 
       try {
         const cache = CacheService.getScriptCache();
+        const now = Date.now();
         const sessionData = JSON.stringify({
           user: user.user,
           loginAt: new Date().toISOString(),
+          lastActivity: now,  // Phase 1: track activity for sliding expiration
           ip: this._getClientIP()
         });
-        cache.put('sess:' + token, sessionData, ttl);
+        // Phase 1: use TTL clamp for defensive cache.put
+        const ttlClamp = getConfig('AUTH.SESSION_TTL_SEC_CLAMP', 21600);
+        const ttlPut = Math.min(ttl, ttlClamp);
+        cache.put('sess:' + token, sessionData, ttlPut);
       } catch (cacheError) {
         Logger.error(context, 'Cache write failed', cacheError);
         return { ok: false, error: 'Error al crear sesión. Intenta de nuevo.' };
@@ -142,33 +147,34 @@ const AuthService = {
       this._clearRateLimit(cleanUsername);
 
       const duration = Date.now() - startTime;
-      Logger.info(context, 'Login successful', { 
-        user: cleanUsername, 
-        durationMs: duration 
+      Logger.info(context, 'Login successful', {
+        user: cleanUsername,
+        durationMs: duration
       });
 
-      return { 
-        ok: true, 
-        token, 
+      return {
+        ok: true,
+        token,
         user: user.user,
-        expiresIn: ttl 
+        expiresIn: ttl
       };
 
     } catch (error) {
       Logger.error(context, 'Login failed', error);
-      return { 
-        ok: false, 
-        error: 'Error interno del servidor. Intenta nuevamente.' 
+      return {
+        ok: false,
+        error: 'Error interno del servidor. Intenta nuevamente.'
       };
     }
   },
 
   /**
    * Valida token y retorna usuario
+   * Phase 1: Added inactivity-based expiration with sliding renewal
    */
   validateSession(token) {
     const context = 'AuthService.validateSession';
-    
+
     if (!token || typeof token !== 'string') {
       Logger.warn(context, 'Invalid token format');
       throw new Error('Token inválido');
@@ -183,19 +189,44 @@ const AuthService = {
 
     try {
       const cache = CacheService.getScriptCache();
-      const sessionData = cache.get('sess:' + cleanToken);
-      
+      const sessKey = 'sess:' + cleanToken;
+      const sessionData = cache.get(sessKey);
+
       if (!sessionData) {
         Logger.warn(context, 'Session not found or expired');
         throw new Error('Sesión inválida o expirada');
       }
 
       const session = JSON.parse(sessionData);
+      const now = Date.now();
+
+      // Phase 1: Check inactivity expiration
+      const ttlMs = getConfig('AUTH.SESSION_TTL_SEC', 28800) * 1000;
+      const lastActivity = session.lastActivity || Date.parse(session.loginAt) || now;
+
+      if (now - lastActivity > ttlMs) {
+        // Session expired by inactivity
+        cache.remove(sessKey);
+        Logger.warn(context, 'Session expired by inactivity', {
+          user: session.user,
+          inactiveMs: now - lastActivity
+        });
+        throw new Error('Sesión expirada por inactividad');
+      }
+
+      // Phase 1: Sliding expiration - renew on activity
+      if (getConfig('AUTH.SESSION_SLIDING_EXPIRATION', true)) {
+        session.lastActivity = now;
+        const ttlClamp = getConfig('AUTH.SESSION_TTL_SEC_CLAMP', 21600);
+        const ttlPut = Math.min(getConfig('AUTH.SESSION_TTL_SEC', 28800), ttlClamp);
+        cache.put(sessKey, JSON.stringify(session), ttlPut);
+      }
+
       Logger.debug(context, 'Session validated', { user: session.user });
-      
       return session.user;
+
     } catch (error) {
-      if (error.message.includes('Sesión inválida')) {
+      if (error.message.includes('Sesión inválida') || error.message.includes('Sesión expirada')) {
         throw error;
       }
       Logger.error(context, 'Validation error', error);
@@ -208,7 +239,7 @@ const AuthService = {
    */
   logout(token) {
     const context = 'AuthService.logout';
-    
+
     if (!token) {
       return { ok: true };
     }
@@ -229,20 +260,20 @@ const AuthService = {
    */
   refreshSession(token) {
     const context = 'AuthService.refreshSession';
-    
+
     try {
       const username = this.validateSession(token);
       const ttl = getConfig('AUTH.SESSION_TTL_SEC', 28800);
-      
+
       const cache = CacheService.getScriptCache();
       const sessionData = cache.get('sess:' + token);
-      
+
       if (sessionData) {
         cache.put('sess:' + token, sessionData, ttl);
         Logger.info(context, 'Session refreshed', { user: username });
         return { ok: true, message: 'Sesión actualizada' };
       }
-      
+
       return { ok: false, error: 'Sesión no encontrada' };
     } catch (error) {
       Logger.error(context, 'Refresh failed', error);
@@ -255,7 +286,7 @@ const AuthService = {
    */
   changePassword(username, oldPassword, newPassword) {
     const context = 'AuthService.changePassword';
-    
+
     try {
       // Validaciones
       if (!username || !oldPassword || !newPassword) {
@@ -321,32 +352,32 @@ const AuthService = {
   cleanupExpiredSessions() {
     const context = 'AuthService.cleanupExpiredSessions';
     Logger.info(context, 'Starting cleanup');
-    
+
     try {
       // Las sesiones en Cache se eliminan automáticamente al expirar
       // Este método es para limpieza de datos relacionados
-      
+
       const props = PropertiesService.getScriptProperties();
       const rateLimitData = props.getProperty(this.RATE_LIMIT_KEY);
-      
+
       if (rateLimitData) {
         const limits = JSON.parse(rateLimitData);
         const now = Date.now();
         let cleaned = 0;
-        
+
         Object.keys(limits).forEach(key => {
           if (limits[key].resetAt < now) {
             delete limits[key];
             cleaned++;
           }
         });
-        
+
         if (cleaned > 0) {
           props.setProperty(this.RATE_LIMIT_KEY, JSON.stringify(limits));
           Logger.info(context, 'Cleanup completed', { cleaned });
         }
       }
-      
+
       return { ok: true, cleaned: cleaned || 0 };
     } catch (error) {
       Logger.error(context, 'Cleanup failed', error);
@@ -371,7 +402,7 @@ const AuthService = {
   _strongHash(password, salt) {
     const iterations = getConfig('AUTH.PASSWORD_ITERATIONS', 100);
     let hash = salt + '|' + password;
-    
+
     try {
       for (let i = 0; i < iterations; i++) {
         const bytes = Utilities.newBlob(hash).getBytes();
@@ -395,7 +426,7 @@ const AuthService = {
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2);
       const payload = `${username}|${timestamp}|${uuid}|${random}`;
-      
+
       const signature = this._strongHash(payload, getConfig('API.SECRET'));
       return Utilities.base64EncodeWebSafe(payload + '|' + signature);
     } catch (error) {
@@ -410,11 +441,11 @@ const AuthService = {
    */
   _loadUsers() {
     const context = 'AuthService._loadUsers';
-    
+
     try {
       const props = PropertiesService.getScriptProperties();
       const raw = props.getProperty(this.PROPS_KEY);
-      
+
       if (!raw) {
         Logger.warn(context, 'No users found');
         return [];
@@ -441,20 +472,20 @@ const AuthService = {
     try {
       const props = PropertiesService.getScriptProperties();
       const rateLimitData = props.getProperty(this.RATE_LIMIT_KEY);
-      
+
       if (!rateLimitData) {
         return true;
       }
 
       const limits = JSON.parse(rateLimitData);
       const userLimit = limits[username];
-      
+
       if (!userLimit) {
         return true;
       }
 
       const now = Date.now();
-      
+
       // Si el tiempo de bloqueo pasó
       if (userLimit.resetAt < now) {
         delete limits[username];
@@ -482,9 +513,9 @@ const AuthService = {
     try {
       const props = PropertiesService.getScriptProperties();
       const rateLimitData = props.getProperty(this.RATE_LIMIT_KEY);
-      
+
       const limits = rateLimitData ? JSON.parse(rateLimitData) : {};
-      
+
       if (!limits[username]) {
         limits[username] = {
           attempts: 0,
@@ -493,7 +524,7 @@ const AuthService = {
       }
 
       limits[username].attempts++;
-      
+
       // Si alcanza el límite, extender el bloqueo
       if (limits[username].attempts >= this.MAX_ATTEMPTS) {
         limits[username].resetAt = Date.now() + (this.LOCKOUT_DURATION * 1000);
@@ -514,7 +545,7 @@ const AuthService = {
     try {
       const props = PropertiesService.getScriptProperties();
       const rateLimitData = props.getProperty(this.RATE_LIMIT_KEY);
-      
+
       if (!rateLimitData) return;
 
       const limits = JSON.parse(rateLimitData);
@@ -533,7 +564,7 @@ const AuthService = {
     try {
       const users = this._loadUsers();
       const userIndex = users.findIndex(u => u.user === username);
-      
+
       if (userIndex === -1) return;
 
       users[userIndex].loginAttempts = (users[userIndex].loginAttempts || 0) + 1;
@@ -558,7 +589,7 @@ const AuthService = {
     try {
       const users = this._loadUsers();
       const userIndex = users.findIndex(u => u.user === username);
-      
+
       if (userIndex === -1) return;
 
       users[userIndex].lastLogin = new Date().toISOString();
@@ -594,9 +625,9 @@ const AuthService = {
     const complexityCount = [hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar].filter(Boolean).length;
 
     if (complexityCount < 3) {
-      return { 
-        ok: false, 
-        error: 'La contraseña debe contener al menos 3 de: mayúsculas, minúsculas, números, caracteres especiales' 
+      return {
+        ok: false,
+        error: 'La contraseña debe contener al menos 3 de: mayúsculas, minúsculas, números, caracteres especiales'
       };
     }
 
