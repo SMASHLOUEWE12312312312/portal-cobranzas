@@ -204,7 +204,7 @@ const CONFIG = {
     ENABLE_LOCK_SERVICE: true,           // LockService in sendEmailsNow
     ENABLE_CORRELATION_ID: true,         // CorrelationId in Logger
     BITACORA_CACHE_DURATION_MS: 30000,   // 30 seconds (was 3000)
-    ENABLE_LOGO_CACHE: true,             // Cache logo blob in DriveIO
+    ENABLE_LOGO_CACHE: false,            // Disabled: logo is embedded in EECC_Template
     LOGO_CACHE_TTL_SECONDS: 3600         // 1 hour cache for logo
   },
 
