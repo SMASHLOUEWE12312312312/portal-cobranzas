@@ -1084,6 +1084,24 @@ function sendEmailsNow(items, options, token) {
     // ================================================================
     AuthService.validateSession(token);
 
+    // Phase 1: Mail Queue check (only if enabled and not skipped)
+    if (getConfig('FEATURES.MAIL_QUEUE_MODE', false) && !options?.skipQueue) {
+      Logger.info(context, 'Mail Queue Mode enabled: Enqueuing items', { count: items.length });
+      const queueResult = MailQueueService.enqueue(items, options, token, correlationId);
+
+      return {
+        ok: queueResult.ok,
+        error: queueResult.error,
+        sent: queueResult.count || 0, // Count enqueued items as "sent" (to queue)
+        failed: queueResult.ok ? 0 : items.length,
+        errors: queueResult.error ? [{ error: queueResult.error }] : [],
+        details: (queueResult.queueIds || []).map(id => ({ status: 'queued', queueId: id })),
+        metrics: { totalMs: Date.now() - startTime },
+        correlationId,
+        queued: true // Frontend can use this to show "Scheduled" instead of "Sent"
+      };
+    }
+
     // ================================================================
     // PASO 2: LockService SEGUNDO (antes de idempotencia)
     // Si no consigue lock, retornar SIN tocar cache de idempotencia
