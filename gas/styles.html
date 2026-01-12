@@ -424,6 +424,12 @@
     padding: var(--tp-space-6);
     box-shadow: var(--tp-shadow-sm);
     transition: box-shadow var(--tp-duration-normal) var(--tp-ease-out);
+    position: relative;
+    /* FIX: Establecer contexto de apilamiento */
+    z-index: 100;
+    /* FIX: Prioridad sobre footer */
+    overflow: visible;
+    /* FIX: No cortar dropdowns */
   }
 
   .card:hover {

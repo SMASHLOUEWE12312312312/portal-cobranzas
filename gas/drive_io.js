@@ -140,27 +140,83 @@ const DriveIO = {
   },
 
   /**
-   * Obtiene logo como blob (con caché)
+   * Obtiene logo como blob (con caché - Phase 0)
+   * 
+   * v1.1 Phase 0:
+   * - Cachea logo en CacheService como base64
+   * - Size guard: no cachea si > 80KB
+   * - Graceful degradation: si falla cache, lee directo de Drive
+   * 
    * @return {GoogleAppsScript.Base.Blob|null} Blob del logo o null
    */
   getLogoCached() {
+    const context = 'DriveIO.getLogoCached';
     const logoId = getConfig('DRIVE.LOGO_FILE_ID');
     if (!logoId) return null;
 
-    // const cacheKey = 'logo:blob:' + logoId;
-    // const cache = CacheService.getScriptCache();
+    // Check if caching is enabled
+    const cacheEnabled = getConfig('FEATURES.ENABLE_LOGO_CACHE', true);
 
+    if (cacheEnabled) {
+      try {
+        const cache = CacheService.getScriptCache();
+        const cacheKey = 'EECC_LOGO_BLOB::' + logoId;
+
+        // Try to get from cache
+        const cached = cache.get(cacheKey);
+        if (cached) {
+          try {
+            // Decode base64 cached blob
+            const bytes = Utilities.base64Decode(cached);
+            const blob = Utilities.newBlob(bytes, 'image/png', 'logo.png');
+            Logger.debug(context, 'Logo served from cache');
+            return blob;
+          } catch (decodeError) {
+            // Cache corrupted, fall through to fetch fresh
+            Logger.warn(context, 'Failed to decode cached logo, fetching fresh', decodeError);
+          }
+        }
+
+        // Fetch from Drive
+        const file = DriveApp.getFileById(logoId);
+        const blob = file.getBlob();
+
+        // Cache the blob as base64 (with size guard)
+        try {
+          const bytes = blob.getBytes();
+          const sizeBytes = bytes.length;
+          const MAX_CACHE_SIZE = 80000; // 80KB - conservative limit for CacheService
+
+          if (sizeBytes <= MAX_CACHE_SIZE) {
+            const base64 = Utilities.base64Encode(bytes);
+            const ttl = getConfig('FEATURES.LOGO_CACHE_TTL_SECONDS', 3600);
+            cache.put(cacheKey, base64, ttl);
+            Logger.debug(context, 'Logo cached', { sizeBytes, ttl });
+          } else {
+            Logger.warn(context, 'Logo too large to cache, serving directly', { sizeBytes, maxSize: MAX_CACHE_SIZE });
+          }
+        } catch (cacheError) {
+          // Non-critical: continue with uncached blob
+          Logger.warn(context, 'Failed to cache logo (continuing without cache)', cacheError);
+        }
+
+        return blob;
+
+      } catch (error) {
+        // Graceful degradation: try direct read if caching logic fails
+        Logger.warn(context, 'Cache logic failed, trying direct read', error);
+      }
+    }
+
+    // Direct read (cache disabled or cache logic failed)
     try {
-      // Verificar si existe antes de intentar leer
-      // Nota: DriveApp.getFileById lanza error si no existe, así que usamos try/catch directo
       const file = DriveApp.getFileById(logoId);
       const blob = file.getBlob();
-
-      Logger.debug('DriveIO.getLogoCached', 'Logo loaded from Drive');
+      Logger.debug(context, 'Logo loaded from Drive (no cache)');
       return blob;
     } catch (error) {
-      // Fail-safe: Si falla el logo, retornamos null pero NO rompemos el proceso
-      Logger.warn('DriveIO.getLogoCached', 'Failed to load logo (continuing without logo)', { id: logoId, error: error.message });
+      // Fail-safe: If logo fails, return null but don't break the process
+      Logger.warn(context, 'Failed to load logo (continuing without logo)', { id: logoId, error: error.message });
       return null;
     }
   },

@@ -923,12 +923,18 @@ function listGrupos(token) {
 /**
  * Envía correos con EECC a un lote de asegurados
  * 
+ * v3.0 PHASE 0:
+ * - LockService para prevenir envíos concurrentes
+ * - CorrelationId para trazabilidad end-to-end
+ * - Orden correcto: validate → lock → idempotency
+ * 
  * v2.0 OPTIMIZADO:
  * - Sin Utilities.sleep() innecesarios (MailApp tiene rate limit nativo)
  * - Flush batch de Logger y Bitácora al final
  * - Telemetría de tiempos por fase
  * 
  * @param {Array} items - Lista de { aseguradoId }
+ * @param {Object} options - Opciones de envío
  * @param {string} token - Token de autenticación
  * @return {Object} { ok, sent, failed, errors, details, metrics }
  */
@@ -936,41 +942,106 @@ function sendEmailsNow(items, options, token) {
   const context = 'sendEmailsNow';
   const startTime = Date.now();
 
-  // FIX: Idempotencia - evitar duplicados por doble llamada
+  // Phase 0: Generate correlationId for this entire operation
+  const correlationId = Utilities.getUuid();
+  let correlationEnabled = false;
+  try {
+    correlationEnabled = getConfig('FEATURES.ENABLE_CORRELATION_ID', true);
+    if (correlationEnabled) {
+      Logger.setCorrelationId(correlationId);
+    }
+  } catch (corrError) {
+    // Non-critical: continue without correlationId
+  }
+
+  // Variables for cleanup in finally block
+  let lock = null;
+  let lockAcquired = false;
+  const cache = CacheService.getScriptCache();
   const requestId = options?.requestId || Utilities.getUuid();
   const cacheKey = 'MAIL_SEND::' + requestId;
-  const cache = CacheService.getScriptCache();
-
-  if (cache.get(cacheKey)) {
-    Logger.info(context, 'Duplicate request detected, skipping', { requestId });
-    return { ok: true, skipped: true, reason: 'duplicate_request', requestId };
-  }
-  cache.put(cacheKey, 'processing', 600); // 10 min TTL
+  let cacheKeySet = false;
 
   // Métricas internas
   const metrics = {
     loadContactsMs: 0,
     generateEECCMs: 0,
     sendEmailsMs: 0,
-    totalMs: 0
+    totalMs: 0,
+    correlationId: correlationId
   };
 
   try {
+    // ================================================================
+    // PASO 1: Validar sesión PRIMERO (rápido, sin side effects)
+    // ================================================================
     AuthService.validateSession(token);
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return { ok: false, error: 'No hay items para enviar' };
+    // ================================================================
+    // PASO 2: LockService SEGUNDO (antes de idempotencia)
+    // Si no consigue lock, retornar SIN tocar cache de idempotencia
+    // ================================================================
+    const lockEnabled = getConfig('FEATURES.ENABLE_LOCK_SERVICE', true);
+    if (lockEnabled) {
+      try {
+        lock = LockService.getScriptLock();
+        const lockTimeout = getConfig('LOCK.SEND_EMAIL_TIMEOUT_MS', 30000);
+
+        lockAcquired = lock.tryLock(lockTimeout);
+
+        if (!lockAcquired) {
+          Logger.warn(context, 'Could not acquire lock, another send in progress', {
+            correlationId,
+            lockTimeout
+          });
+          // Limpiar correlationId antes de retornar
+          if (correlationEnabled) {
+            Logger.clearCorrelationId();
+          }
+          Logger.flush();
+          return {
+            ok: false,
+            error: 'Otro proceso de envío está en curso. Intenta en unos momentos.',
+            code: 'LOCK_BUSY',
+            correlationId: correlationId
+          };
+        }
+
+        Logger.info(context, 'Lock acquired', { correlationId, lockTimeout });
+      } catch (lockError) {
+        // Graceful degradation: continue without lock if LockService fails
+        Logger.warn(context, 'LockService error (continuing without lock)', lockError, { correlationId });
+        lock = null;
+        lockAcquired = false;
+      }
     }
 
-    // Aumentado límite
+    // ================================================================
+    // PASO 3: Idempotencia TERCERO (solo después de lock adquirido)
+    // ================================================================
+    if (cache.get(cacheKey)) {
+      Logger.info(context, 'Duplicate request detected, skipping', { requestId, correlationId });
+      return { ok: true, skipped: true, reason: 'duplicate_request', requestId, correlationId };
+    }
+    cache.put(cacheKey, 'processing', 600); // 10 min TTL
+    cacheKeySet = true;
+
+    // ================================================================
+    // PASO 4: Validaciones de items
+    // ================================================================
+    if (!Array.isArray(items) || items.length === 0) {
+      return { ok: false, error: 'No hay items para enviar', correlationId };
+    }
+
     if (items.length > 50) {
       return {
         ok: false,
-        error: 'Máximo 50 correos por lote. Divide en tandas para evitar timeouts.'
+        error: 'Máximo 50 correos por lote. Divide en tandas para evitar timeouts.',
+        correlationId
       };
     }
 
-    Logger.info(context, 'Starting batch send', { count: items.length, options, requestId });
+    Logger.info(context, 'Starting batch send', { count: items.length, options, requestId, correlationId });
 
     const results = {
       sent: 0,
@@ -984,7 +1055,7 @@ function sendEmailsNow(items, options, token) {
     const allContacts = loadContactsFromSheet();
     metrics.loadContactsMs = Date.now() - phaseStart1;
 
-    Logger.info(context, 'Contacts loaded', { count: allContacts.length, ms: metrics.loadContactsMs });
+    Logger.info(context, 'Contacts loaded', { count: allContacts.length, ms: metrics.loadContactsMs, correlationId });
 
     // FASE 2: Procesamiento secuencial optimizado
     const phaseStart2 = Date.now();
@@ -994,7 +1065,7 @@ function sendEmailsNow(items, options, token) {
       const item = items[i];
 
       try {
-        Logger.info(context, `Processing ${i + 1}/${items.length}`, { aseguradoId: item.aseguradoId });
+        Logger.info(context, `Processing ${i + 1}/${items.length}`, { aseguradoId: item.aseguradoId, correlationId });
 
         const contact = allContacts.find(c => c.aseguradoId === item.aseguradoId);
 
@@ -1035,7 +1106,7 @@ function sendEmailsNow(items, options, token) {
             bodyHtml = rendered.bodyHtml;
             subject = rendered.subject;
           } catch (templateError) {
-            Logger.warn(context, 'Template render failed, using default', templateError);
+            Logger.warn(context, 'Template render failed, using default', templateError, { correlationId });
             bodyHtml = renderEmailBody({
               asegurado: contact.aseguradoNombre,
               saludo: contact.saludo,
@@ -1076,7 +1147,8 @@ function sendEmailsNow(items, options, token) {
         Logger.info(context, 'Email sent', {
           aseguradoId: item.aseguradoId,
           messageId: messageId,
-          to: contact.emailTo.join(', ')
+          to: contact.emailTo.join(', '),
+          correlationId
         });
 
         // ========== REGISTRAR ENVÍO EN BITÁCORA (bufferizado) ==========
@@ -1106,7 +1178,7 @@ function sendEmailsNow(items, options, token) {
             results.details[results.details.length - 1].idGestion = bitacoraResult.idGestion;
           }
         } catch (bitacoraError) {
-          Logger.error(context, 'Error al registrar en bitácora (no crítico)', bitacoraError);
+          Logger.error(context, 'Error al registrar en bitácora (no crítico)', bitacoraError, { correlationId });
         }
 
       } catch (error) {
@@ -1121,7 +1193,7 @@ function sendEmailsNow(items, options, token) {
           error: error.message
         });
 
-        Logger.error(context, 'Failed to send', error, { aseguradoId: item.aseguradoId });
+        Logger.error(context, 'Failed to send', error, { aseguradoId: item.aseguradoId, correlationId });
 
         // ========== REGISTRAR ERROR EN BITÁCORA ==========
         try {
@@ -1140,7 +1212,7 @@ function sendEmailsNow(items, options, token) {
             idGestionPadre: ''
           });
         } catch (bitacoraError) {
-          Logger.error(context, 'Error al registrar error en bitácora', bitacoraError);
+          Logger.error(context, 'Error al registrar error en bitácora', bitacoraError, { correlationId });
         }
       }
     }
@@ -1153,9 +1225,9 @@ function sendEmailsNow(items, options, token) {
     // Flush bitácora (escribe TODAS las gestiones en una operación)
     const bitacoraFlush = BitacoraService.flush();
     if (bitacoraFlush.ok) {
-      Logger.info(context, 'Bitácora flushed', { count: bitacoraFlush.count });
+      Logger.info(context, 'Bitácora flushed', { count: bitacoraFlush.count, correlationId });
     } else {
-      Logger.warn(context, 'Bitácora flush failed', { error: bitacoraFlush.error });
+      Logger.warn(context, 'Bitácora flush failed', { error: bitacoraFlush.error, correlationId });
     }
 
     // Flush logs (escribe TODOS los logs en una operación)
@@ -1173,7 +1245,8 @@ function sendEmailsNow(items, options, token) {
     Logger.info(context, 'Batch completed', {
       sent: results.sent,
       failed: results.failed,
-      metrics: metrics
+      metrics: metrics,
+      correlationId
     });
 
     // Último flush para el log de completado
@@ -1186,19 +1259,49 @@ function sendEmailsNow(items, options, token) {
       errors: results.errors,
       details: results.details,
       duration: metrics.totalMs,
-      metrics: metrics
+      metrics: metrics,
+      correlationId: correlationId
     };
 
   } catch (error) {
-    Logger.error(context, 'Batch send failed', error);
+    Logger.error(context, 'Batch send failed', error, { correlationId });
     Logger.flush(); // Flush incluso en error
 
     return {
       ok: false,
       error: error.message,
       sent: 0,
-      failed: 0
+      failed: 0,
+      correlationId: correlationId
     };
+
+  } finally {
+    // ================================================================
+    // CLEANUP: Liberar lock y limpiar correlationId
+    // ================================================================
+
+    // Liberar lock si fue adquirido
+    if (lock && lockAcquired) {
+      try {
+        lock.releaseLock();
+        Logger.info(context, 'Lock released', { correlationId });
+        Logger.flush(); // Flush para que se escriba el log de lock released
+      } catch (releaseError) {
+        // Non-critical: just log warning
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[sendEmailsNow] Error releasing lock:', releaseError.message);
+        }
+      }
+    }
+
+    // Limpiar correlationId
+    if (correlationEnabled) {
+      try {
+        Logger.clearCorrelationId();
+      } catch (clearError) {
+        // Non-critical: ignore
+      }
+    }
   }
 }
 

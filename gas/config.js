@@ -199,7 +199,18 @@ const CONFIG = {
     FAST_MODE: true,
     ENABLE_GROUP_CONSOLIDATED: true,
     REQUIRE_PREVIEW_APPROVAL: true,
-    ENABLE_TEST_SEND: true
+    ENABLE_TEST_SEND: true,
+    // Phase 0 Quick Wins (2026-01-12)
+    ENABLE_LOCK_SERVICE: true,           // LockService in sendEmailsNow
+    ENABLE_CORRELATION_ID: true,         // CorrelationId in Logger
+    BITACORA_CACHE_DURATION_MS: 30000,   // 30 seconds (was 3000)
+    ENABLE_LOGO_CACHE: true,             // Cache logo blob in DriveIO
+    LOGO_CACHE_TTL_SECONDS: 3600         // 1 hour cache for logo
+  },
+
+  // ========== LOCK ==========
+  LOCK: {
+    SEND_EMAIL_TIMEOUT_MS: 30000         // 30 second lock timeout for sendEmailsNow
   },
 
   // ========== API ==========

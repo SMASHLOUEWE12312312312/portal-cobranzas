@@ -53,9 +53,20 @@ var BitacoraService = BitacoraService || {
   _sheetCache: null,
   _dataCache: null,        // Caché de datos de gestiones
   _dataCacheTime: null,     // Timestamp del caché de datos
-  _dataCacheDuration: 3000, // Duración del caché: 3 segundos
+  _dataCacheDuration: null, // v3.1: Loaded from config via getter
   _maxBufferSize: 50,
   _flushScheduled: false,
+
+  /**
+   * Obtiene duración del caché desde config (Phase 0: 30s, antes era 3s)
+   * @private
+   */
+  _getDataCacheDuration() {
+    if (this._dataCacheDuration === null) {
+      this._dataCacheDuration = getConfig('FEATURES.BITACORA_CACHE_DURATION_MS', 30000);
+    }
+    return this._dataCacheDuration;
+  },
 
   // ========== HEADERS v3.0 ==========
 
@@ -419,9 +430,10 @@ var BitacoraService = BitacoraService || {
       let gestiones;
       const ahora = Date.now();
 
-      // ⚡ OPTIMIZACIÓN: Verificar caché de datos
-      if (this._dataCache && this._dataCacheTime && (ahora - this._dataCacheTime < this._dataCacheDuration)) {
-        Logger.debug(context, '⚡ Usando caché de datos (edad: ' + (ahora - this._dataCacheTime) + 'ms)');
+      // ⚡ OPTIMIZACIÓN: Verificar caché de datos (Phase 0: 30s cache)
+      const cacheDuration = this._getDataCacheDuration();
+      if (this._dataCache && this._dataCacheTime && (ahora - this._dataCacheTime < cacheDuration)) {
+        Logger.debug(context, '⚡ Usando caché de datos (edad: ' + (ahora - this._dataCacheTime) + 'ms, TTL: ' + cacheDuration + 'ms)');
         gestiones = this._dataCache;
       } else {
         // Leer del sheet
