@@ -5092,6 +5092,33 @@
             // Limpiar selección actual
             limpiarAutocompleteEmb();
 
+            // Actualizar placeholder según modo
+            const input = document.getElementById('gestionAseguradoEmb');
+            if (input) {
+                input.placeholder = BITACORA_MODE === 'grupo'
+                    ? 'Buscar grupo económico...'
+                    : 'Escribe o selecciona un cliente...';
+            }
+
+            // Actualizar estilo de los toggles para reflejar selección activa
+            const radios = document.querySelectorAll('input[name="bitacoraModeEmb"]');
+            radios.forEach(radio => {
+                const toggleInner = radio.nextElementSibling;
+                if (toggleInner && toggleInner.classList.contains('mode-toggle-inner')) {
+                    if (radio.checked) {
+                        toggleInner.style.background = 'var(--tp-primary)';
+                        toggleInner.style.color = 'white';
+                        toggleInner.style.padding = '0.375rem 0.625rem';
+                        toggleInner.style.borderRadius = '5px';
+                    } else {
+                        toggleInner.style.background = 'transparent';
+                        toggleInner.style.color = 'var(--tp-text-secondary)';
+                        toggleInner.style.padding = '0';
+                        toggleInner.style.borderRadius = '0';
+                    }
+                }
+            });
+
             // Recargar opciones según el modo
             loadClientesAutocompleteEmb();
         }
@@ -5196,21 +5223,57 @@
          * Cargar opciones de clientes para el autocomplete embebido
          */
         function loadClientesAutocompleteEmb() {
-            console.log('[loadClientesAutocompleteEmb] Cargando clientes...');
+            console.log('[loadClientesAutocompleteEmb] Cargando opciones para modo:', BITACORA_MODE);
 
-            // Usar los datos de BITACORA_DATA que ya están cargados
+            // MODO GRUPO ECONÓMICO: Usar ALL_GRUPOS
+            if (BITACORA_MODE === 'grupo') {
+                if (ALL_GRUPOS && ALL_GRUPOS.length > 0) {
+                    AUTOCOMPLETE_EMB_OPTIONS = [...ALL_GRUPOS].sort();
+                    console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' grupos cargados desde ALL_GRUPOS');
+                } else {
+                    console.warn('[loadClientesAutocompleteEmb] ALL_GRUPOS vacío, intentando cargar desde backend...');
+                    // Cargar grupos desde backend si no están disponibles
+                    google.script.run
+                        .withSuccessHandler(function (response) {
+                            if (response && response.ok && response.data) {
+                                ALL_GRUPOS = response.data;
+                                AUTOCOMPLETE_EMB_OPTIONS = [...ALL_GRUPOS].sort();
+                                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' grupos cargados desde backend');
+                            } else {
+                                console.error('[loadClientesAutocompleteEmb] Error al cargar grupos:', response?.error);
+                                AUTOCOMPLETE_EMB_OPTIONS = [];
+                            }
+                        })
+                        .withFailureHandler(function (err) {
+                            console.error('[loadClientesAutocompleteEmb] Error al cargar grupos:', err);
+                            AUTOCOMPLETE_EMB_OPTIONS = [];
+                        })
+                        .getGrupos_API(TOKEN);
+                }
+                return;
+            }
+
+            // MODO INDIVIDUAL (asegurado): Usar BITACORA_DATA o ALL_CLIENTES
             if (BITACORA_DATA && BITACORA_DATA.length > 0) {
                 AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
                 console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde BITACORA_DATA');
                 return;
             }
 
+            // Fallback: usar ALL_CLIENTES si está disponible
+            if (ALL_CLIENTES && ALL_CLIENTES.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...ALL_CLIENTES].sort();
+                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde ALL_CLIENTES');
+                return;
+            }
+
             // Si no hay datos, cargar desde el backend
+            console.log('[loadClientesAutocompleteEmb] Sin datos locales, cargando desde backend...');
             google.script.run
                 .withSuccessHandler(function (result) {
                     if (result && result.ok && result.data) {
                         AUTOCOMPLETE_EMB_OPTIONS = [...new Set(result.data.map(g => g.asegurado))].filter(Boolean).sort();
-                        console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados');
+                        console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde backend');
                     }
                 })
                 .withFailureHandler(function (err) {
