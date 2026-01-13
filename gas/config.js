@@ -206,16 +206,42 @@ const CONFIG = {
     ENABLE_LOCK_SERVICE: true,           // LockService in sendEmailsNow
     ENABLE_CORRELATION_ID: true,         // CorrelationId in Logger
     BITACORA_CACHE_DURATION_MS: 30000,   // 30 seconds (was 3000)
-    ENABLE_LOGO_CACHE: false,            // Disabled: logo is embedded in EECC_Template
+    ENABLE_LOGO_CACHE: true,             // Phase 4: Cache logo blob in CacheService
     LOGO_CACHE_TTL_SECONDS: 3600,        // 1 hour cache for logo
     // Phase 1 Enterprise Foundations (2026-01-12)
-    PIPELINE_ENABLED: false,             // EECC Pipeline with persisted states
-    MAIL_QUEUE_MODE: false               // Persistent mail queue (vs direct send)
+    PIPELINE_ENABLED: true,              // EECC Pipeline with persisted states
+    MAIL_QUEUE_MODE: true,               // Persistent mail queue (vs direct send)
+    // Phase 3 Monitoring & Alerts (2026-01-12)
+    DASHBOARD_STATS: true,               // Dashboard analytics widget
+    QUEUE_HEALTH_PANEL: true,            // Queue health status panel
+    // Phase 4 Quick Wins (2026-01-12)
+    ENABLE_UPLOAD_BACKUP: true,          // Backup BD sheet before overwrite
+    // Phase 5 UX Top Mundial (2026-01-12)
+    NOTIFICATIONS_CENTER_V2: true,       // Dual-tab notification center
+    QUICK_ACTIONS_ENABLED: true,         // Quick actions for bitácora
+    TIMELINE_VIEW_ENABLED: true,         // Timeline visual for gestiones
+    GLOBAL_SEARCH_ENABLED: true,         // Ctrl+K global search
+    LUCIDE_ICONS_ENABLED: false          // Professional Lucide icons (deferred)
   },
 
   // ========== LOCK ==========
   LOCK: {
     SEND_EMAIL_TIMEOUT_MS: 30000         // 30 second lock timeout for sendEmailsNow
+  },
+
+  // ========== MONITORING (Phase 3) ==========
+  MONITORING: {
+    QUEUE_STALE_MINUTES: 15,             // WARN if oldest pending > this
+    QUEUE_STUCK_MINUTES: 30,             // ERROR if processing > this
+    PROCESSING_STUCK_THRESHOLD: 3        // ERROR if this many items stuck in processing
+  },
+
+  // ========== ALERTS (Phase 3, Optional) ==========
+  ALERTS: {
+    ENABLED: false,                      // OFF by default
+    ADMIN_EMAILS: [],                    // List of admin emails for alerts
+    DEBOUNCE_MINUTES: 60,                // Max 1 alert per hour per type
+    QUEUE_STUCK_ALERT_MINUTES: 30        // Trigger alert if stuck > this
   },
 
   // ========== MAIL QUEUE (Phase 1) ==========
@@ -346,7 +372,44 @@ const CONFIG = {
     RETENCION: {
       DIAS_MINIMOS: 365,  // No eliminar registros menores a 1 año
       ARCHIVAR_DESPUES_DIAS: 730  // Archivar después de 2 años
-    }
+    },
+
+    /**
+     * Phase 5: Quick Actions (preset templates)
+     * Only active if FEATURES.QUICK_ACTIONS_ENABLED = true
+     */
+    QUICK_ACTIONS: [
+      {
+        id: 'llamada_sin_resp',
+        label: '📞 Llamada sin respuesta',
+        icon: '📞',
+        preset: { tipoGestion: 'LLAMADA', estadoGestion: 'SIN_RESPUESTA' }
+      },
+      {
+        id: 'whatsapp_enviado',
+        label: '💬 WhatsApp enviado',
+        icon: '💬',
+        preset: { tipoGestion: 'WHATSAPP', estadoGestion: 'EN_SEGUIMIENTO' }
+      },
+      {
+        id: 'correo_leido',
+        label: '📧 Correo leído',
+        icon: '📧',
+        preset: { tipoGestion: 'CORREO_INDIVIDUAL', estadoGestion: 'EN_SEGUIMIENTO' }
+      },
+      {
+        id: 'compromiso_pago',
+        label: '✅ Compromiso de pago',
+        icon: '✅',
+        preset: { tipoGestion: 'LLAMADA', estadoGestion: 'COMPROMISO_PAGO' }
+      },
+      {
+        id: 'no_contactable',
+        label: '❌ No contactable',
+        icon: '❌',
+        preset: { tipoGestion: 'LLAMADA', estadoGestion: 'NO_CONTACTABLE' }
+      }
+    ]
   }
 };
 

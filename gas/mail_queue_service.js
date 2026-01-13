@@ -285,25 +285,25 @@ function jobProcesarCorreos_() {
 /**
  * Install persistent trigger (Manual)
  */
-function installMailQueueTrigger_() {
+function installMailQueueTriggers() {
     const fnName = MailQueueService.TRIGGER_FUNCTION;
 
     // Remove existing
-    removeMailQueueTrigger_();
+    removeMailQueueTriggers();
 
     ScriptApp.newTrigger(fnName)
         .timeBased()
         .everyMinutes(5)
         .create();
 
-    Logger.info('installMailQueueTrigger_', 'Trigger installed (every 5 min)');
+    Logger.info('installMailQueueTriggers', 'Trigger installed (every 5 min)');
     return '✅ Trigger de cola de correo instalado (5 min)';
 }
 
 /**
  * Remove persistent trigger (Manual)
  */
-function removeMailQueueTrigger_() {
+function removeMailQueueTriggers() {
     const fnName = MailQueueService.TRIGGER_FUNCTION;
     const triggers = ScriptApp.getProjectTriggers();
     let count = 0;
@@ -315,6 +315,6 @@ function removeMailQueueTrigger_() {
         }
     });
 
-    Logger.info('removeMailQueueTrigger_', 'Triggers removed', { count });
+    Logger.info('removeMailQueueTriggers', 'Triggers removed', { count });
     return `✅ Triggers eliminados: ${count}`;
 }

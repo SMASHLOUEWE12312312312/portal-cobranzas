@@ -140,6 +140,82 @@
                         </div>
                     </section>
 
+                    <!-- PHASE 3: DASHBOARD STATS WIDGET -->
+                    <section id="dashboardStatsSection" class="card" style="margin-bottom: 1rem; margin-top: 1rem;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="margin: 0; font-size: 1rem; color: var(--tp-text-primary);">📊 Métricas del
+                                Sistema</h3>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span id="statsLastUpdated"
+                                    style="font-size: 0.75rem; color: var(--tp-text-muted);">Cargando...</span>
+                                <button onclick="refreshDashboardStats()" class="btn btn-sm"
+                                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">🔄</button>
+                            </div>
+                        </div>
+                        <div id="statsGrid"
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: var(--tp-primary);"
+                                    id="statEeccToday">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">EECC Hoy</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: var(--tp-primary);"
+                                    id="statEeccWeek">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">EECC Semana</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #2e7d32;" id="statMailSent">-
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Enviados 24h</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #EF6C00;" id="statMailQueued">-
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">En Cola</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #C62828;" id="statErrors">-
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Errores 24h</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- PHASE 3: QUEUE HEALTH PANEL -->
+                    <section id="queueHealthSection" class="card" style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
+                            onclick="toggleQueueHealthPanel()">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span id="queueHealthIndicator" style="font-size: 1.25rem;">⏳</span>
+                                <h3 style="margin: 0; font-size: 1rem; color: var(--tp-text-primary);">Estado de Cola de
+                                    Correos</h3>
+                                <span id="queueHealthBadge" class="badge"
+                                    style="font-size: 0.7rem; padding: 2px 8px;">Cargando...</span>
+                            </div>
+                            <span id="queueHealthToggleIcon"
+                                style="font-size: 0.8rem; color: var(--tp-text-muted);">▼</span>
+                        </div>
+                        <div id="queueHealthDetails"
+                            style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--tp-border-light);">
+                            <div
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+                                <div><strong>Pendientes:</strong> <span id="qhPending">-</span></div>
+                                <div><strong>Procesando:</strong> <span id="qhProcessing">-</span></div>
+                                <div><strong>Fallidos 24h:</strong> <span id="qhFailed">-</span></div>
+                                <div><strong>Más antiguo:</strong> <span id="qhOldest">-</span></div>
+                                <div><strong>Último procesado:</strong> <span id="qhLastProcessed">-</span></div>
+                            </div>
+                            <div id="qhReasons" style="margin-top: 0.75rem; color: #C62828; font-size: 0.8rem;"></div>
+                        </div>
+                    </section>
+
                     <!-- SHORTCUTS (Original Cards, but smaller or grid) -->
                     <h2 class="section-title" style="margin-top: 2rem;">Accesos Directos</h2>
                     <div class="grid">
@@ -358,6 +434,29 @@
                             style="padding: 0.75rem 1.5rem; background: none; border: none; cursor: pointer; font-weight: 500; color: var(--tp-text-secondary);">
                             ✍️ Registrar Gestión
                         </button>
+                    </div>
+
+                    <!-- PHASE 5: QUICK ACTIONS BAR (only if QUICK_ACTIONS_ENABLED) -->
+                    <div id="quickActionsBar" class="quick-actions-bar"
+                        style="display: none; margin-bottom: 1rem; padding: 0.75rem; background: linear-gradient(135deg, #FFF3E0 0%, #FFECB3 100%); border-radius: 8px; border: 1px solid #FFE0B2;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <span style="font-weight: 600; color: #E65100; font-size: 0.875rem;">⚡ Acciones
+                                rápidas:</span>
+                            <button class="btn btn-sm quick-action-btn" onclick="executeQuickAction('llamada_sin_resp')"
+                                style="background: white; border: 1px solid #FFB74D; color: #E65100;">📞 Sin
+                                respuesta</button>
+                            <button class="btn btn-sm quick-action-btn" onclick="executeQuickAction('whatsapp_enviado')"
+                                style="background: white; border: 1px solid #FFB74D; color: #E65100;">💬
+                                WhatsApp</button>
+                            <button class="btn btn-sm quick-action-btn" onclick="executeQuickAction('correo_leido')"
+                                style="background: white; border: 1px solid #FFB74D; color: #E65100;">📧 Correo</button>
+                            <button class="btn btn-sm quick-action-btn" onclick="executeQuickAction('compromiso_pago')"
+                                style="background: white; border: 1px solid #FFB74D; color: #E65100;">✅
+                                Compromiso</button>
+                            <button class="btn btn-sm quick-action-btn" onclick="executeQuickAction('no_contactable')"
+                                style="background: white; border: 1px solid #FFB74D; color: #E65100;">❌ No
+                                contactable</button>
+                        </div>
                     </div>
 
                     <!-- TAB 1: ESTADO ACTUAL -->
@@ -1072,11 +1171,22 @@
         let CURRENT_USER = null;
         let INCLUDE_OBS = false;
         let PREVIEW_DATA = null;
-        let ALL_CLIENTES = [];
+        let ALL_CLIENTES = []; // DEPRECATED Phase 2: Will contain only partial list or fallback
         let ALL_GRUPOS = []; // GRUPO_ECONOMICO
         let EECC_MODE = 'asegurado'; // asegurado | grupo
         let BITACORA_MODE = 'asegurado'; // asegurado | grupo
         let MAIL_STATE = { previews: [], currentTab: 'seleccionar', allClientes: [] };
+
+        // Phase 2: Pagination Data Source
+        let ASEGURADOS_DS = {
+            items: [],
+            nextCursor: null,
+            hasMore: true,
+            loading: false,
+            search: ''
+        };
+        let SEARCH_TIMEOUT = null;
+
         const PBI_URL = 'https://app.powerbi.com/view?r=eyJrIjoiNTJmNjA0ZmQtOGU4Yi00Nzk2LWIzOWMtM2NmMTM4N2Y5ZDEzIiwidCI6IjMyMDliNTBiLWI3OWItNDNkYy05ZmM0LThkNDJjNDA2ZGQ2MSIsImMiOjR9';
 
         // ============================================================
@@ -1519,86 +1629,716 @@
 
             // Inicializar notificaciones
             inicializarNotificaciones();
+
+            // Phase 3: Load Dashboard Stats
+            refreshDashboardStats();
+            loadQueueHealth();
+            startDashboardAutoRefresh();
+
+            // Phase 5: UX Enhancements
+            initQuickActions();
+            initGlobalSearch();
+        }
+
+        // ============================================================
+        // PHASE 3: DASHBOARD STATS & QUEUE HEALTH
+        // ============================================================
+        let dashboardStatsInterval = null;
+
+        function refreshDashboardStats() {
+            const statsSection = document.getElementById('dashboardStatsSection');
+            if (!statsSection) return;
+
+            document.getElementById('statsLastUpdated').textContent = 'Actualizando...';
+
+            google.script.run
+                .withSuccessHandler(result => {
+                    if (result && result.ok) {
+                        document.getElementById('statEeccToday').textContent = result.eecc?.today ?? '-';
+                        document.getElementById('statEeccWeek').textContent = result.eecc?.week ?? '-';
+                        document.getElementById('statMailSent').textContent = result.mail?.sent24h ?? '-';
+                        document.getElementById('statMailQueued').textContent = result.mail?.queuedNow ?? '-';
+                        const errors = (result.eecc?.errors24h ?? 0) + (result.mail?.failed24h ?? 0) + (result.system?.errors24h ?? 0);
+                        document.getElementById('statErrors').textContent = errors;
+
+                        const now = new Date();
+                        document.getElementById('statsLastUpdated').textContent = 'Actualizado: ' + now.toLocaleTimeString('es-PE');
+                        console.log('[Phase3] Dashboard stats loaded', result);
+                    } else {
+                        document.getElementById('statsLastUpdated').textContent = 'Error al cargar';
+                    }
+                })
+                .withFailureHandler(err => {
+                    console.warn('[Phase3] Dashboard stats failed', err);
+                    document.getElementById('statsLastUpdated').textContent = 'No disponible';
+                })
+                .getDashboardStats(TOKEN);
+        }
+
+        function loadQueueHealth() {
+            const section = document.getElementById('queueHealthSection');
+            if (!section) return;
+
+            google.script.run
+                .withSuccessHandler(result => {
+                    const indicator = document.getElementById('queueHealthIndicator');
+                    const badge = document.getElementById('queueHealthBadge');
+
+                    if (!result || !result.ok || !result.available) {
+                        indicator.textContent = '❓';
+                        badge.textContent = 'No disponible';
+                        badge.style.background = 'var(--tp-bg-muted)';
+                        return;
+                    }
+
+                    // Status indicators
+                    if (result.status === 'OK') {
+                        indicator.textContent = '🟢';
+                        badge.textContent = 'Cola saludable';
+                        badge.style.background = '#E8F5E9';
+                        badge.style.color = '#2e7d32';
+                    } else if (result.status === 'WARN') {
+                        indicator.textContent = '🟡';
+                        badge.textContent = 'Retraso detectado';
+                        badge.style.background = '#FFF3E0';
+                        badge.style.color = '#EF6C00';
+                    } else {
+                        indicator.textContent = '🔴';
+                        badge.textContent = 'Cola atascada';
+                        badge.style.background = '#FFEBEE';
+                        badge.style.color = '#C62828';
+                    }
+
+                    // Details
+                    document.getElementById('qhPending').textContent = result.pendingCount ?? '-';
+                    document.getElementById('qhProcessing').textContent = result.processingCount ?? '-';
+                    document.getElementById('qhFailed').textContent = result.failedCount24h ?? '-';
+                    document.getElementById('qhOldest').textContent = result.oldestPendingAgeMinutes ? result.oldestPendingAgeMinutes + ' min' : '-';
+                    document.getElementById('qhLastProcessed').textContent = result.lastProcessedAt
+                        ? new Date(result.lastProcessedAt).toLocaleString('es-PE')
+                        : 'Nunca';
+
+                    // Reasons
+                    const reasonsEl = document.getElementById('qhReasons');
+                    if (result.reasons && result.reasons.length > 0) {
+                        reasonsEl.innerHTML = result.reasons.map(r => '⚠️ ' + r).join('<br>');
+                    } else {
+                        reasonsEl.innerHTML = '';
+                    }
+
+                    console.log('[Phase3] Queue health loaded', result);
+                })
+                .withFailureHandler(err => {
+                    console.warn('[Phase3] Queue health failed', err);
+                    document.getElementById('queueHealthIndicator').textContent = '❓';
+                    document.getElementById('queueHealthBadge').textContent = 'Error';
+                })
+                .getMailQueueHealth(TOKEN);
+        }
+
+        function toggleQueueHealthPanel() {
+            const details = document.getElementById('queueHealthDetails');
+            const icon = document.getElementById('queueHealthToggleIcon');
+            if (details.style.display === 'none') {
+                details.style.display = 'block';
+                icon.textContent = '▲';
+            } else {
+                details.style.display = 'none';
+                icon.textContent = '▼';
+            }
+        }
+
+        function startDashboardAutoRefresh() {
+            // Only auto-refresh when Dashboard view is active
+            if (dashboardStatsInterval) clearInterval(dashboardStatsInterval);
+            dashboardStatsInterval = setInterval(() => {
+                const dashboardView = document.getElementById('view-dashboard');
+                if (dashboardView && dashboardView.classList.contains('active')) {
+                    refreshDashboardStats();
+                    loadQueueHealth();
+                }
+            }, 60000); // 60 seconds
+        }
+
+        // ============================================================
+        // PHASE 4: SKELETON & EMPTY STATE HELPERS
+        // ============================================================
+
+        /**
+         * Renders skeleton loading rows in a table tbody
+         * @param {HTMLElement} tbody - The tbody element
+         * @param {number} rows - Number of skeleton rows (default 5)
+         * @param {number} cols - Number of columns (default 6)
+         */
+        function renderSkeletonTable(tbody, rows = 5, cols = 6) {
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            for (let i = 0; i < rows; i++) {
+                const tr = document.createElement('tr');
+                tr.classList.add('tp-skeleton-loading-row');
+                for (let j = 0; j < cols; j++) {
+                    const td = document.createElement('td');
+                    td.innerHTML = '<div class="tp-skeleton tp-skeleton-row"></div>';
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+        }
+
+        /**
+         * Renders an empty state with CTA in a table tbody
+         * @param {HTMLElement} tbody - The tbody element
+         * @param {Object} config - { icon, title, message, ctaLabel, ctaOnClick }
+         */
+        function renderEmptyState(tbody, config = {}) {
+            if (!tbody) return;
+            const {
+                icon = '📋',
+                title = 'No hay datos',
+                message = '',
+                ctaLabel = '',
+                ctaOnClick = null,
+                colspan = 9
+            } = config;
+
+            let html = `
+                <tr>
+                    <td colspan="${colspan}">
+                        <div class="tp-empty-state">
+                            <div class="tp-empty-state-icon">${icon}</div>
+                            <div class="tp-empty-state-title">${title}</div>
+                            ${message ? `<div class="tp-empty-state-message">${message}</div>` : ''}
+                            ${ctaLabel ? `<button class="btn btn-primary" id="emptyStateCta">${ctaLabel}</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML = html;
+
+            if (ctaLabel && ctaOnClick) {
+                const btn = document.getElementById('emptyStateCta');
+                if (btn) btn.onclick = ctaOnClick;
+            }
+        }
+
+        // ============================================================
+        // PHASE 5: QUICK ACTIONS (preset templates for bitácora)
+        // ============================================================
+
+        // Quick action presets (matching config.js QUICK_ACTIONS)
+        const QUICK_ACTION_PRESETS = {
+            'llamada_sin_resp': { tipoGestion: 'LLAMADA', estadoGestion: 'SIN_RESPUESTA' },
+            'whatsapp_enviado': { tipoGestion: 'WHATSAPP', estadoGestion: 'EN_SEGUIMIENTO' },
+            'correo_leido': { tipoGestion: 'CORREO_INDIVIDUAL', estadoGestion: 'EN_SEGUIMIENTO' },
+            'compromiso_pago': { tipoGestion: 'LLAMADA', estadoGestion: 'COMPROMISO_PAGO' },
+            'no_contactable': { tipoGestion: 'LLAMADA', estadoGestion: 'NO_CONTACTABLE' }
+        };
+
+        /**
+         * Initialize Quick Actions bar if feature enabled
+         */
+        function initQuickActions() {
+            const bar = document.getElementById('quickActionsBar');
+            if (!bar) return;
+
+            // Check flag via server config or assume false by default
+            // Bar hidden by default, show if enabled
+            google.script.run
+                .withSuccessHandler(function (enabled) {
+                    if (enabled) {
+                        bar.style.display = 'block';
+                        console.log('[QuickActions] ✅ Quick Actions bar enabled');
+                    }
+                })
+                .withFailureHandler(function () {
+                    // Keep hidden on error
+                    console.log('[QuickActions] Flag check failed, keeping hidden');
+                })
+                .getFeatureFlag('QUICK_ACTIONS_ENABLED');
+        }
+
+        /**
+         * Execute a quick action: opens registrar modal pre-filled
+         * @param {string} actionId - One of the QUICK_ACTION_PRESETS keys
+         */
+        function executeQuickAction(actionId) {
+            console.log('[QuickActions] Executing:', actionId);
+
+            const preset = QUICK_ACTION_PRESETS[actionId];
+            if (!preset) {
+                console.error('[QuickActions] Unknown action:', actionId);
+                return;
+            }
+
+            // Switch to "Registrar Gestión" tab
+            if (typeof switchBitacoraTabEmbedded === 'function') {
+                switchBitacoraTabEmbedded('registrar');
+            }
+
+            // Pre-fill the form fields
+            setTimeout(() => {
+                // Tipo de gestión
+                const tipoSelect = document.getElementById('tipoGestionEmb');
+                if (tipoSelect && preset.tipoGestion) {
+                    tipoSelect.value = preset.tipoGestion;
+                    // Trigger change event for any listeners
+                    tipoSelect.dispatchEvent(new Event('change'));
+                }
+
+                // Estado de gestión
+                const estadoSelect = document.getElementById('estadoGestionEmb');
+                if (estadoSelect && preset.estadoGestion) {
+                    estadoSelect.value = preset.estadoGestion;
+                    estadoSelect.dispatchEvent(new Event('change'));
+                }
+
+                // Focus on asegurado field for user to complete
+                const aseguradoInput = document.getElementById('aseguradoGestionEmb');
+                if (aseguradoInput) {
+                    aseguradoInput.focus();
+                }
+
+                console.log('[QuickActions] Form pre-filled with:', preset);
+            }, 100);
+        }
+
+        // ============================================================
+        // PHASE 5: TIMELINE VISUAL (gestiones history)
+        // ============================================================
+
+        const GESTION_ICONS = {
+            'ENVIO_EECC': '📧',
+            'LLAMADA': '📞',
+            'WHATSAPP': '💬',
+            'CORREO_INDIVIDUAL': '📧',
+            'REUNION': '👥',
+            'OTRO': '📋'
+        };
+
+        const ESTADO_COLORS = {
+            'SIN_RESPUESTA': { bg: '#FFF3E0', text: '#E65100' },
+            'EN_SEGUIMIENTO': { bg: '#E3F2FD', text: '#1565C0' },
+            'COMPROMISO_PAGO': { bg: '#E8F5E9', text: '#2E7D32' },
+            'REPROGRAMADO': { bg: '#FFF3E0', text: '#F57C00' },
+            'CERRADO_PAGADO': { bg: '#E8F5E9', text: '#1B5E20' },
+            'NO_CONTACTABLE': { bg: '#FFEBEE', text: '#C62828' }
+        };
+
+        /**
+         * Open timeline modal for a ciclo
+         * @param {string} idCiclo - Ciclo ID
+         * @param {string} asegurado - Asegurado name (for display)
+         */
+        function openTimelineModal(idCiclo, asegurado) {
+            console.log('[Timeline] Opening for:', idCiclo, asegurado);
+
+            // Check feature flag first
+            google.script.run
+                .withSuccessHandler(function (enabled) {
+                    if (!enabled) {
+                        console.log('[Timeline] Feature disabled');
+                        alert('Función Timeline no habilitada');
+                        return;
+                    }
+                    loadTimelineData(idCiclo, asegurado);
+                })
+                .withFailureHandler(function () {
+                    // Fallback: try anyway
+                    loadTimelineData(idCiclo, asegurado);
+                })
+                .getFeatureFlag('TIMELINE_VIEW_ENABLED');
+        }
+
+        function loadTimelineData(idCiclo, asegurado) {
+            // Create modal if doesn't exist
+            let modal = document.getElementById('timelineModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'timelineModal';
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content" style="max-width: 600px; max-height: 80vh;">
+                        <div class="modal-header">
+                            <h3 id="timelineModalTitle">📋 Timeline de Gestiones</h3>
+                            <button class="btn-close" onclick="closeTimelineModal()">×</button>
+                        </div>
+                        <div class="modal-body tp-timeline-modal" id="timelineModalBody">
+                            <div class="notification-loading">
+                                <div class="loader-spinner"></div>
+                                <p>Cargando historial...</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            // Show modal with loading
+            modal.style.display = 'flex';
+            document.getElementById('timelineModalTitle').textContent = `📋 Timeline: ${asegurado}`;
+            document.getElementById('timelineModalBody').innerHTML = `
+                <div class="notification-loading">
+                    <div class="loader-spinner"></div>
+                    <p>Cargando historial...</p>
+                </div>
+            `;
+
+            // Fetch data using existing endpoint
+            google.script.run
+                .withSuccessHandler(function (result) {
+                    if (result && result.ok && result.gestiones) {
+                        renderTimelineContent(result.gestiones, asegurado);
+                    } else {
+                        document.getElementById('timelineModalBody').innerHTML = `
+                            <div class="tp-empty-state">
+                                <div class="tp-empty-state-icon">📋</div>
+                                <div class="tp-empty-state-title">Sin gestiones</div>
+                                <div class="tp-empty-state-message">No hay gestiones registradas para este ciclo</div>
+                            </div>
+                        `;
+                    }
+                })
+                .withFailureHandler(function (error) {
+                    document.getElementById('timelineModalBody').innerHTML = `
+                        <div class="tp-empty-state">
+                            <div class="tp-empty-state-icon">❌</div>
+                            <div class="tp-empty-state-title">Error</div>
+                            <div class="tp-empty-state-message">${error.message || 'Error al cargar historial'}</div>
+                        </div>
+                    `;
+                })
+                .bitacoraGetGestionesPorCiclo(idCiclo, TOKEN);
+        }
+
+        function renderTimelineContent(gestiones, asegurado) {
+            const body = document.getElementById('timelineModalBody');
+            if (!gestiones || gestiones.length === 0) {
+                body.innerHTML = `
+                    <div class="tp-empty-state">
+                        <div class="tp-empty-state-icon">📋</div>
+                        <div class="tp-empty-state-title">Sin gestiones</div>
+                        <div class="tp-empty-state-message">No hay gestiones registradas</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by date (newest first)
+            gestiones.sort((a, b) => new Date(b.fechaRegistro) - new Date(a.fechaRegistro));
+
+            let html = '<div class="tp-timeline">';
+            gestiones.forEach(g => {
+                const icon = GESTION_ICONS[g.tipoGestion] || '📋';
+                const colors = ESTADO_COLORS[g.estadoGestion] || { bg: '#F5F5F5', text: '#666' };
+                const fecha = g.fechaRegistro ? new Date(g.fechaRegistro).toLocaleString('es-PE') : '-';
+                const obs = g.observaciones || '';
+
+                html += `
+                    <div class="tp-timeline-item">
+                        <div class="tp-timeline-icon">${icon}</div>
+                        <div class="tp-timeline-date">${fecha}</div>
+                        <div class="tp-timeline-title">
+                            <span class="tp-timeline-badge" style="background: ${colors.bg}; color: ${colors.text};">
+                                ${(g.estadoGestion || '').replace(/_/g, ' ')}
+                            </span>
+                            ${(g.tipoGestion || '').replace(/_/g, ' ')}
+                        </div>
+                        ${obs ? `<div class="tp-timeline-body">${obs}</div>` : ''}
+                        <div style="font-size: 0.75rem; color: #999; margin-top: 0.5rem;">
+                            Por: ${g.usuario || 'Sistema'}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            body.innerHTML = html;
+        }
+
+        function closeTimelineModal() {
+            const modal = document.getElementById('timelineModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // ============================================================
+        // PHASE 5: GLOBAL SEARCH (Ctrl+K command palette)
+        // ============================================================
+
+        let COMMAND_PALETTE_OPEN = false;
+        let COMMAND_PALETTE_ITEMS = [];
+        let COMMAND_SELECTED_INDEX = 0;
+
+        const COMMAND_ACTIONS = [
+            { id: 'nav_dashboard', icon: '📊', title: 'Dashboard', subtitle: 'Ir al dashboard principal', action: () => showView('dashboard') },
+            { id: 'nav_eecc', icon: '📧', title: 'Generar EECC', subtitle: 'Estados de cuenta', action: () => showView('eecc') },
+            { id: 'nav_correos', icon: '✉️', title: 'Enviar Correos', subtitle: 'Módulo de envío de correos', action: () => showView('correos') },
+            { id: 'nav_bitacora', icon: '📝', title: 'Bitácora', subtitle: 'Gestiones de cobranza', action: () => showView('bitacora') },
+            { id: 'action_nueva_gestion', icon: '➕', title: 'Nueva Gestión', subtitle: 'Registrar gestión en bitácora', action: () => { showView('bitacora'); setTimeout(() => switchBitacoraTabEmbedded && switchBitacoraTabEmbedded('registrar'), 100); } },
+            { id: 'action_upload', icon: '📤', title: 'Actualizar Base', subtitle: 'Subir archivo de base de datos', action: () => showView('actualizar') }
+        ];
+
+        /**
+         * Initialize global search keyboard shortcut
+         */
+        function initGlobalSearch() {
+            document.addEventListener('keydown', function (e) {
+                // Ctrl+K or Cmd+K
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    toggleCommandPalette();
+                }
+                // Escape to close
+                if (e.key === 'Escape' && COMMAND_PALETTE_OPEN) {
+                    closeCommandPalette();
+                }
+                // Arrow navigation
+                if (COMMAND_PALETTE_OPEN) {
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        COMMAND_SELECTED_INDEX = Math.min(COMMAND_SELECTED_INDEX + 1, COMMAND_PALETTE_ITEMS.length - 1);
+                        updateCommandSelection();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        COMMAND_SELECTED_INDEX = Math.max(COMMAND_SELECTED_INDEX - 1, 0);
+                        updateCommandSelection();
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        executeSelectedCommand();
+                    }
+                }
+            });
+        }
+
+        function toggleCommandPalette() {
+            if (COMMAND_PALETTE_OPEN) {
+                closeCommandPalette();
+            } else {
+                openCommandPalette();
+            }
+        }
+
+        function openCommandPalette() {
+            // Check feature flag
+            google.script.run
+                .withSuccessHandler(function (enabled) {
+                    if (!enabled) {
+                        console.log('[GlobalSearch] Feature disabled');
+                        return;
+                    }
+                    showCommandPalette();
+                })
+                .withFailureHandler(function () {
+                    showCommandPalette(); // Fallback: show anyway
+                })
+                .getFeatureFlag('GLOBAL_SEARCH_ENABLED');
+        }
+
+        function showCommandPalette() {
+            let overlay = document.getElementById('commandPaletteOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'commandPaletteOverlay';
+                overlay.className = 'tp-command-overlay';
+                overlay.onclick = function (e) { if (e.target === overlay) closeCommandPalette(); };
+                overlay.innerHTML = `
+                    <div class="tp-command-palette">
+                        <div class="tp-command-input-wrapper">
+                            <span style="font-size: 18px;">🔍</span>
+                            <input type="text" id="commandInput" class="tp-command-input" placeholder="Buscar asegurados, acciones..." autocomplete="off" oninput="filterCommands()">
+                            <span class="tp-command-shortcut">Esc para cerrar</span>
+                        </div>
+                        <div class="tp-command-results" id="commandResults"></div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+            }
+
+            overlay.style.display = 'flex';
+            COMMAND_PALETTE_OPEN = true;
+            COMMAND_SELECTED_INDEX = 0;
+
+            // Focus input
+            setTimeout(() => {
+                const input = document.getElementById('commandInput');
+                if (input) {
+                    input.value = '';
+                    input.focus();
+                }
+                filterCommands();
+            }, 50);
+        }
+
+        function closeCommandPalette() {
+            const overlay = document.getElementById('commandPaletteOverlay');
+            if (overlay) overlay.style.display = 'none';
+            COMMAND_PALETTE_OPEN = false;
+        }
+
+        function filterCommands() {
+            const input = document.getElementById('commandInput');
+            const query = (input?.value || '').toLowerCase().trim();
+            const results = document.getElementById('commandResults');
+            if (!results) return;
+
+            // Build results: Actions + Asegurados (from cache)
+            COMMAND_PALETTE_ITEMS = [];
+            let html = '';
+
+            // Filter actions
+            const matchingActions = COMMAND_ACTIONS.filter(a =>
+                a.title.toLowerCase().includes(query) ||
+                a.subtitle.toLowerCase().includes(query)
+            );
+
+            if (matchingActions.length > 0) {
+                html += '<div class="tp-command-group"><div class="tp-command-group-label">Acciones</div>';
+                matchingActions.forEach((a, idx) => {
+                    COMMAND_PALETTE_ITEMS.push({ type: 'action', data: a });
+                    html += `
+                        <div class="tp-command-item ${idx === 0 ? 'selected' : ''}" data-index="${COMMAND_PALETTE_ITEMS.length - 1}" onclick="executeCommand(${COMMAND_PALETTE_ITEMS.length - 1})">
+                            <div class="tp-command-icon">${a.icon}</div>
+                            <div class="tp-command-text">
+                                <div class="tp-command-title">${a.title}</div>
+                                <div class="tp-command-subtitle">${a.subtitle}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            // Filter asegurados from cache (if available)
+            if (query.length >= 2 && window.ASEGURADOS_DS && ASEGURADOS_DS.items) {
+                const matchingAseg = ASEGURADOS_DS.items.filter(item =>
+                    item.label.toLowerCase().includes(query)
+                ).slice(0, 5);
+
+                if (matchingAseg.length > 0) {
+                    html += '<div class="tp-command-group"><div class="tp-command-group-label">Asegurados</div>';
+                    matchingAseg.forEach(a => {
+                        COMMAND_PALETTE_ITEMS.push({ type: 'asegurado', data: a });
+                        html += `
+                            <div class="tp-command-item" data-index="${COMMAND_PALETTE_ITEMS.length - 1}" onclick="executeCommand(${COMMAND_PALETTE_ITEMS.length - 1})">
+                                <div class="tp-command-icon">🏢</div>
+                                <div class="tp-command-text">
+                                    <div class="tp-command-title">${a.label}</div>
+                                    <div class="tp-command-subtitle">Ver EECC</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+            }
+
+            if (COMMAND_PALETTE_ITEMS.length === 0) {
+                html = '<div class="tp-command-empty">No se encontraron resultados</div>';
+            }
+
+            results.innerHTML = html;
+            COMMAND_SELECTED_INDEX = 0;
+        }
+
+        function updateCommandSelection() {
+            const items = document.querySelectorAll('.tp-command-item');
+            items.forEach((el, idx) => {
+                el.classList.toggle('selected', idx === COMMAND_SELECTED_INDEX);
+            });
+        }
+
+        function executeSelectedCommand() {
+            if (COMMAND_PALETTE_ITEMS[COMMAND_SELECTED_INDEX]) {
+                executeCommand(COMMAND_SELECTED_INDEX);
+            }
+        }
+
+        function executeCommand(index) {
+            const item = COMMAND_PALETTE_ITEMS[index];
+            if (!item) return;
+
+            closeCommandPalette();
+
+            if (item.type === 'action' && item.data.action) {
+                item.data.action();
+            } else if (item.type === 'asegurado') {
+                // Navigate to EECC view with this asegurado selected
+                showView('eecc');
+                setTimeout(() => {
+                    const select = document.getElementById('eeccAsegurado');
+                    if (select) {
+                        select.value = item.data.label;
+                        select.dispatchEvent(new Event('change'));
+                    }
+                }, 100);
+            }
+        }
+
+        // Phase 2: Fetch Paged Data
+        function fetchAseguradosPaged(search = '', cursor = null, reset = false) {
+            if (ASEGURADOS_DS.loading) return;
+
+            ASEGURADOS_DS.loading = true;
+            if (reset) {
+                ASEGURADOS_DS.items = [];
+                ASEGURADOS_DS.nextCursor = null;
+                ASEGURADOS_DS.hasMore = true;
+                ASEGURADOS_DS.search = search;
+            }
+
+            console.log(`[fetchPage] search="${search}" cursor=${cursor} reset=${reset}`);
+
+            google.script.run
+                .withSuccessHandler(res => {
+                    ASEGURADOS_DS.loading = false;
+                    if (!res.ok) {
+                        console.warn('[fetchPage] Server error:', res.error);
+                        // Fallback only on initial load error
+                        if (reset) fallbackLoadSafe();
+                        return;
+                    }
+
+                    if (reset) ASEGURADOS_DS.items = res.items || [];
+                    else ASEGURADOS_DS.items = [...ASEGURADOS_DS.items, ...(res.items || [])];
+
+                    ASEGURADOS_DS.nextCursor = res.nextCursor;
+                    ASEGURADOS_DS.hasMore = res.hasMore;
+
+                    // Compatibilidad legacy (partial list)
+                    ALL_CLIENTES = ASEGURADOS_DS.items;
+
+                    // Update UI
+                    renderAutocompleteOptionsEECC();
+                    log(`${ASEGURADOS_DS.items.length} asegurados cargados (Paginado)`, 'success');
+                })
+                .withFailureHandler(err => {
+                    ASEGURADOS_DS.loading = false;
+                    console.error('[fetchPage] Fatal:', err);
+                    if (reset) fallbackLoadSafe();
+                })
+                .getAseguradosPaged(TOKEN, { limit: 50, cursor: cursor, search: search });
+        }
+
+        function fallbackLoadSafe() {
+            console.log('[Fallback] Reverting to getAseguradosSafe...');
+            google.script.run
+                .withSuccessHandler(res => {
+                    if (res.ok) {
+                        ALL_CLIENTES = res.list || [];
+                        ASEGURADOS_DS.items = ALL_CLIENTES;
+                        ASEGURADOS_DS.hasMore = false;
+                        renderAutocompleteOptionsEECC();
+                        log(`Fallback exitoso: ${ALL_CLIENTES.length} clientes`, 'warning');
+                    } else {
+                        alert('Error crítico cargando asegurados: ' + res.error);
+                    }
+                })
+                .getAseguradosSafe(TOKEN);
         }
 
         function loadAsegurados() {
-            console.log('[loadAsegurados] Iniciando carga de asegurados...');
-            log('Cargando asegurados...');
-            const mailSelect = document.getElementById('mailClientesSelect');
-
-            google.script.run
-                .withSuccessHandler(response => {
-                    console.log('[loadAsegurados] Respuesta recibida:', response);
-                    console.log('[loadAsegurados] response.ok:', response.ok);
-                    console.log('[loadAsegurados] response.list:', response.list);
-                    console.log('[loadAsegurados] response.list.length:', response.list ? response.list.length : 'undefined');
-
-                    if (!response || !response.ok || !response.list) {
-                        console.error('[loadAsegurados] Error en respuesta:', response);
-                        log('Error cargando asegurados', 'error');
-
-                        // CRÍTICO: Habilitar botones aunque haya error
-                        const generateBtn = document.getElementById('generateBtn');
-                        const previewBtn = document.getElementById('previewBtn');
-                        if (generateBtn) generateBtn.disabled = false;
-                        if (previewBtn) previewBtn.disabled = false;
-
-                        // Mostrar mensaje útil al usuario
-                        alert('⚠️ Error al cargar asegurados: ' + (response ? response.error : 'Sin respuesta del servidor'));
-
-                        return;
-                    }
-
-                    // Verificar si la lista está vacía
-                    if (response.list.length === 0) {
-                        console.warn('[loadAsegurados] ⚠️ Lista de asegurados está vacía');
-                        log('⚠️ No hay asegurados en la base de datos', 'error');
-
-                        // Habilitar botones de todos modos
-                        const generateBtn = document.getElementById('generateBtn');
-                        const previewBtn = document.getElementById('previewBtn');
-                        if (generateBtn) generateBtn.disabled = false;
-                        if (previewBtn) previewBtn.disabled = false;
-
-                        // Mostrar alerta útil
-                        alert('⚠️ ADVERTENCIA: La hoja "BD" está vacía.\n\nPor favor:\n1. Verifica que la hoja "BD" tenga datos\n2. Actualiza la base de datos usando "Actualizar Base de Datos"\n3. Recarga esta página');
-
-                        return;
-                    }
-
-                    ALL_CLIENTES = response.list;
-                    MAIL_STATE.allClientes = response.list;
-
-                    // Cargar opciones en el autocomplete de EECC
-                    AUTOCOMPLETE_EECC_OPTIONS = [...response.list];
-                    AUTOCOMPLETE_EECC_FILTERED = [...response.list];
-
-                    // Cargar en select de email si existe
-                    if (mailSelect) {
-                        const html = response.list.map(a => `<option value="${a}">${a}</option>`).join('');
-                        mailSelect.innerHTML = html;
-                    }
-
-                    // Habilitar botones
-                    const generateBtn = document.getElementById('generateBtn');
-                    const previewBtn = document.getElementById('previewBtn');
-                    if (generateBtn) generateBtn.disabled = false;
-                    if (previewBtn) previewBtn.disabled = false;
-
-                    console.log(`[loadAsegurados] ✅ ${response.list.length} asegurados cargados`);
-                    log(`${response.list.length} asegurados cargados`, 'success');
-                })
-                .withFailureHandler(error => {
-                    console.error('[loadAsegurados] ERROR FATAL:', error);
-                    log('Error: ' + error.message, 'error');
-
-                    // CRÍTICO: Habilitar botones aunque haya error
-                    const generateBtn = document.getElementById('generateBtn');
-                    const previewBtn = document.getElementById('previewBtn');
-                    if (generateBtn) generateBtn.disabled = false;
-                    if (previewBtn) previewBtn.disabled = false;
-                })
-                .getAseguradosSafe(TOKEN);
+            log('Cargando asegurados (v2)...');
+            // Initial load: Page 1, no search
+            fetchAseguradosPaged('', null, true);
         }
 
         function loadGrupos() {
@@ -1680,7 +2420,18 @@
         let AUTOCOMPLETE_EECC_FILTERED = [];
         let AUTOCOMPLETE_EECC_SELECTED_INDEX = -1;
 
+        // NEW: Validation helper for Generate button
+        function toggleGenerarBtnState() {
+            const input = document.getElementById('aseguradoSelect');
+            const btn = document.getElementById('generateBtn');
+            if (input && btn) {
+                // Enable if input has text (simple validation for paged data)
+                btn.disabled = !input.value || input.value.trim() === '';
+            }
+        }
+
         function filtrarAutocompleteEECC() {
+            toggleGenerarBtnState();  // Enable/Disable on typing
             const input = document.getElementById('aseguradoSelect');
             const dropdown = document.getElementById('autocompleteDropdownEECC');
             const optionsContainer = document.getElementById('autocompleteOptionsEECC');
@@ -1689,75 +2440,92 @@
 
             if (!input || !dropdown || !optionsContainer) return;
 
-            const searchText = normalizeText(input.value);
-
+            const searchText = input.value;
             clearBtn.style.display = searchText ? 'flex' : 'none';
 
-            if (!searchText) {
-                AUTOCOMPLETE_EECC_FILTERED = [...AUTOCOMPLETE_EECC_OPTIONS];
-                counter.style.display = 'none';
-            } else {
-                // Filtrar opciones que contienen el texto buscado (Accent-insensitive)
-                AUTOCOMPLETE_EECC_FILTERED = AUTOCOMPLETE_EECC_OPTIONS.filter(option =>
-                    normalizeText(option).includes(searchText)
-                );
-
-                if (AUTOCOMPLETE_EECC_FILTERED.length === 0) {
-                    counter.textContent = '❌ No se encontraron clientes';
-                    counter.style.color = '#D32F2F';
-                } else if (AUTOCOMPLETE_EECC_FILTERED.length === 1) {
-                    counter.textContent = '✅ 1 cliente encontrado';
-                    counter.style.color = '#10b981';
+            // MODE: Grupo (Client Side)
+            if (EECC_MODE === 'grupo') {
+                const normalized = normalizeText(searchText);
+                if (!searchText) {
+                    AUTOCOMPLETE_EECC_FILTERED = [...ALL_GRUPOS];
                 } else {
-                    counter.textContent = '✅ ' + AUTOCOMPLETE_EECC_FILTERED.length + ' clientes encontrados';
-                    counter.style.color = '#10b981';
+                    AUTOCOMPLETE_EECC_FILTERED = ALL_GRUPOS.filter(o => normalizeText(o).includes(normalized));
                 }
-                counter.style.display = 'block';
+                renderAutocompleteOptionsEECC();
+                if (searchText) dropdown.style.display = 'block';
+                return;
             }
 
-            renderAutocompleteOptionsEECC();
+            // MODE: Asegurado (Server Side Paged - Debounced)
+            if (SEARCH_TIMEOUT) clearTimeout(SEARCH_TIMEOUT);
 
-            if (searchText) {
+            SEARCH_TIMEOUT = setTimeout(() => {
+                // If search changed, fetch new
+                if (searchText !== ASEGURADOS_DS.search) {
+                    fetchAseguradosPaged(searchText, null, true);
+                }
                 dropdown.style.display = 'block';
-            }
-
-            console.log('[filtrarAutocompleteEECC] "' + searchText + '" → ' + AUTOCOMPLETE_EECC_FILTERED.length + ' resultados');
+            }, 300);
         }
 
         function renderAutocompleteOptionsEECC() {
             const optionsContainer = document.getElementById('autocompleteOptionsEECC');
             if (!optionsContainer) return;
 
-            if (AUTOCOMPLETE_EECC_FILTERED.length === 0) {
-                optionsContainer.innerHTML = '<div class="autocomplete-option autocomplete-option-empty">No se encontraron clientes</div>';
+            optionsContainer.innerHTML = '';
+
+            // Loading Indicator
+            if (EECC_MODE === 'asegurado' && ASEGURADOS_DS.loading && ASEGURADOS_DS.items.length === 0) {
+                optionsContainer.innerHTML = '<div class="autocomplete-option disabled">⏳ Cargando...</div>';
                 return;
             }
 
-            const input = document.getElementById('aseguradoSelect');
-            const searchText = input ? input.value.toLowerCase().trim() : '';
+            let list = [];
+            if (EECC_MODE === 'grupo') {
+                list = AUTOCOMPLETE_EECC_FILTERED;
+            } else {
+                list = ASEGURADOS_DS.items;
+            }
 
-            let html = '';
-
-            AUTOCOMPLETE_EECC_FILTERED.forEach((option, index) => {
-                let displayText = option;
-                if (searchText) {
-                    const regex = new RegExp(`(${searchText})`, 'gi');
-                    displayText = option.replace(regex, '<strong>$1</strong>');
+            if (list.length === 0) {
+                if (EECC_MODE === 'asegurado' && ASEGURADOS_DS.loading) {
+                    // Loading more...
+                } else {
+                    optionsContainer.innerHTML = '<div class="autocomplete-option disabled">❌ Sin resultados</div>';
+                    return;
                 }
+            }
 
-                html += `
-                    <div 
-                        class="autocomplete-option" 
-                        data-index="${index}"
-                        onclick="seleccionarOpcionAutocompleteEECC('${option.replace(/'/g, "\\'")}')"
-                        onmouseenter="AUTOCOMPLETE_EECC_SELECTED_INDEX = ${index}; highlightAutocompleteOptionEECC(${index})"
-                    >
-                        ${displayText}
-                    </div>
-                `;
+            list.forEach(opt => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-option';
+                div.textContent = opt;
+                div.onclick = () => seleccionarOpcionAutocompleteEECC(opt);
+                optionsContainer.appendChild(div);
             });
 
-            optionsContainer.innerHTML = html;
+            // Load More Button
+            if (EECC_MODE === 'asegurado' && ASEGURADOS_DS.hasMore) {
+                const loadMore = document.createElement('div');
+                loadMore.className = 'autocomplete-option load-more';
+                loadMore.style.textAlign = 'center';
+                loadMore.style.color = 'var(--tp-primary)';
+                loadMore.style.fontWeight = 'bold';
+                loadMore.style.borderTop = '1px solid var(--tp-border-light)';
+
+                if (ASEGURADOS_DS.loading) {
+                    loadMore.textContent = '⏳ Cargando más...';
+                } else {
+                    loadMore.textContent = '⬇️ Cargar más...';
+                    loadMore.onclick = (e) => {
+                        e.stopPropagation();
+                        // input value might have changed without debounce firing
+                        const input = document.getElementById('aseguradoSelect');
+                        fetchAseguradosPaged(input.value, ASEGURADOS_DS.nextCursor, false);
+                    };
+                }
+                optionsContainer.appendChild(loadMore);
+            }
         }
 
         function seleccionarOpcionAutocompleteEECC(value) {
@@ -1783,6 +2551,7 @@
             }
 
             console.log('[seleccionarOpcionAutocompleteEECC] Seleccionado:', value);
+            toggleGenerarBtnState(); // Enable button on selection
         }
 
         function mostrarDropdownAutocompleteEECC() {
@@ -1791,9 +2560,16 @@
 
             if (!dropdown || !input) return;
 
-            if (!input.value.trim()) {
-                AUTOCOMPLETE_EECC_FILTERED = [...AUTOCOMPLETE_EECC_OPTIONS];
-                renderAutocompleteOptionsEECC();
+            // Phase 2: Ensure initial data
+            if (EECC_MODE === 'asegurado') {
+                if (ASEGURADOS_DS.items.length === 0 && !ASEGURADOS_DS.loading) {
+                    fetchAseguradosPaged('', null, true);
+                }
+            } else if (EECC_MODE === 'grupo') {
+                if (!input.value.trim()) {
+                    AUTOCOMPLETE_EECC_FILTERED = [...ALL_GRUPOS];
+                    renderAutocompleteOptionsEECC();
+                }
             }
 
             dropdown.style.display = 'block';
@@ -1827,6 +2603,7 @@
             if (input) {
                 input.value = '';
                 input.focus();
+                toggleGenerarBtnState(); // Disable button
             }
 
             if (dropdown) {
@@ -3742,7 +4519,15 @@
                 console.log('[renderBitacoraTable] BITACORA_FILTERED:', BITACORA_FILTERED ? BITACORA_FILTERED.length : 'undefined');
 
                 if (!BITACORA_FILTERED || BITACORA_FILTERED.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;">No hay gestiones que mostrar</td></tr>';
+                    // Phase 4: Use empty state helper with CTA
+                    renderEmptyState(tbody, {
+                        icon: '📋',
+                        title: 'No hay gestiones registradas',
+                        message: 'Comienza registrando tu primera gestión de cobranza',
+                        ctaLabel: '+ Nueva Gestión',
+                        ctaOnClick: () => { if (typeof mostrarRegistrarGestion === 'function') mostrarRegistrarGestion(); },
+                        colspan: 9
+                    });
                     count.textContent = '0';
                     console.log('[renderBitacoraTable] Sin datos para mostrar');
                     return;

@@ -356,6 +356,75 @@ function healthCheck(token) {
   }
 }
 
+// ========== PHASE 3: MONITORING ENDPOINTS ==========
+
+/**
+ * Get dashboard statistics (cached, soft-fail)
+ * @param {string} token - Session token
+ * @return {Object} Dashboard stats
+ */
+function getDashboardStats(token) {
+  const context = 'getDashboardStats';
+  try {
+    AuthService.validateSession(token);
+    return MonitoringService.getDashboardStats();
+  } catch (error) {
+    Logger.error(context, 'Failed to get dashboard stats', error);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
+ * Get mail queue health status (cached, soft-fail)
+ * @param {string} token - Session token
+ * @return {Object} Queue health status
+ */
+function getMailQueueHealth(token) {
+  const context = 'getMailQueueHealth';
+  try {
+    AuthService.validateSession(token);
+    return MonitoringService.getMailQueueHealth();
+  } catch (error) {
+    Logger.error(context, 'Failed to get queue health', error);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
+ * Phase 5: Get all notifications for dual-tab center
+ * @param {string} token - Session token
+ * @return {Object} { ok, compromisos, pipeline, counts }
+ */
+function getNotificationsComplete(token) {
+  const context = 'getNotificationsComplete';
+  try {
+    AuthService.validateSession(token);
+
+    // Check feature flag
+    if (!getConfig('FEATURES.NOTIFICATIONS_CENTER_V2', false)) {
+      return { ok: false, error: 'Feature disabled', compromisos: [], pipeline: [], counts: { total: 0 } };
+    }
+
+    return NotificationService.getAllNotifications(token);
+  } catch (error) {
+    Logger.error(context, 'Failed to get notifications', error);
+    return { ok: false, error: error.message, compromisos: [], pipeline: [], counts: { total: 0 } };
+  }
+}
+
+/**
+ * Phase 5: Get a feature flag value (for client-side feature toggling)
+ * @param {string} flagName - Name of the flag (e.g., 'QUICK_ACTIONS_ENABLED')
+ * @return {boolean} Flag value (default false)
+ */
+function getFeatureFlag(flagName) {
+  try {
+    return getConfig('FEATURES.' + flagName, false);
+  } catch (error) {
+    return false;
+  }
+}
+
 // ========== GET ASEGURADOS ==========
 function getAseguradosSafe(token) {
   const context = 'getAseguradosSafe';

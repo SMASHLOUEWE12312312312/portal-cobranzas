@@ -166,6 +166,20 @@ const SheetsIO = {
         sheet = ss.insertSheet(sheetName);
       }
 
+      // Phase 4: Best-effort backup before overwrite (never blocks upload)
+      if (getConfig('FEATURES.ENABLE_UPLOAD_BACKUP', false)) {
+        try {
+          const timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
+          const backupName = `${sheetName}_backup_${timestamp}`;
+          const backupSheet = sheet.copyTo(ss);
+          backupSheet.setName(backupName);
+          Logger.info(context, 'Backup created', { backupName });
+        } catch (backupError) {
+          // Best-effort: log warning and continue with upload
+          Logger.warn(context, 'Backup failed (non-blocking)', backupError);
+        }
+      }
+
       // Limpiar hoja completa
       sheet.clear({ contentsOnly: true });
 

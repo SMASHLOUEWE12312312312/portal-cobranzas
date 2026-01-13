@@ -3263,4 +3263,296 @@
   .generated-files-table tr:last-child td {
     border-bottom: none;
   }
+
+  /* ============================================================================
+   PHASE 4: SKELETON LOADERS (Quick Win)
+   ============================================================================ */
+
+  /* Shimmer animation */
+  @keyframes tp-shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  /* Base skeleton element */
+  .tp-skeleton {
+    background: linear-gradient(90deg,
+        var(--tp-surface-overlay) 25%,
+        var(--tp-border-light) 50%,
+        var(--tp-surface-overlay) 75%);
+    background-size: 200% 100%;
+    animation: tp-shimmer 1.5s infinite;
+    border-radius: var(--tp-radius-sm);
+  }
+
+  /* Skeleton row for tables */
+  .tp-skeleton-row {
+    height: 40px;
+    margin-bottom: var(--tp-space-2);
+  }
+
+  /* Skeleton text line */
+  .tp-skeleton-text {
+    height: 14px;
+    margin-bottom: var(--tp-space-2);
+  }
+
+  .tp-skeleton-text.short {
+    width: 40%;
+  }
+
+  .tp-skeleton-text.medium {
+    width: 70%;
+  }
+
+  .tp-skeleton-text.full {
+    width: 100%;
+  }
+
+  /* Skeleton table cell */
+  .tp-skeleton-cell {
+    height: 100%;
+    min-height: 32px;
+  }
+
+  /* Empty state styling */
+  .tp-empty-state {
+    text-align: center;
+    padding: var(--tp-space-8) var(--tp-space-4);
+  }
+
+  .tp-empty-state-icon {
+    font-size: 48px;
+    margin-bottom: var(--tp-space-4);
+    opacity: 0.6;
+  }
+
+  .tp-empty-state-title {
+    font-size: var(--tp-text-lg);
+    font-weight: var(--tp-font-semibold);
+    color: var(--tp-text-primary);
+    margin-bottom: var(--tp-space-2);
+  }
+
+  .tp-empty-state-message {
+    font-size: var(--tp-text-base);
+    color: var(--tp-text-secondary);
+    margin-bottom: var(--tp-space-4);
+  }
+
+  /* ============================================================================
+   PHASE 5: TIMELINE VISUAL (gestiones history)
+   ============================================================================ */
+
+  .tp-timeline {
+    position: relative;
+    padding-left: 2rem;
+    margin: 1rem 0;
+  }
+
+  .tp-timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--tp-primary) 0%, var(--tp-primary-light) 100%);
+    border-radius: 2px;
+  }
+
+  .tp-timeline-item {
+    position: relative;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: var(--tp-surface);
+    border: 1px solid var(--tp-border-light);
+    border-radius: 8px;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .tp-timeline-item:hover {
+    box-shadow: var(--tp-shadow-md);
+  }
+
+  .tp-timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.75rem;
+    top: 1.25rem;
+    width: 12px;
+    height: 12px;
+    background: var(--tp-primary);
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .tp-timeline-icon {
+    position: absolute;
+    left: -2rem;
+    top: 1rem;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+    text-align: center;
+    z-index: 1;
+  }
+
+  .tp-timeline-date {
+    font-size: var(--tp-text-xs);
+    color: var(--tp-text-tertiary);
+    margin-bottom: 0.25rem;
+  }
+
+  .tp-timeline-title {
+    font-weight: var(--tp-font-semibold);
+    color: var(--tp-text-primary);
+    margin-bottom: 0.25rem;
+  }
+
+  .tp-timeline-body {
+    font-size: var(--tp-text-sm);
+    color: var(--tp-text-secondary);
+    line-height: 1.5;
+  }
+
+  .tp-timeline-badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    font-size: var(--tp-text-xs);
+    font-weight: var(--tp-font-semibold);
+    border-radius: 999px;
+    margin-right: 0.5rem;
+  }
+
+  /* Timeline modal */
+  .tp-timeline-modal {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  /* ============================================================================
+   PHASE 5: COMMAND PALETTE (global search Ctrl+K)
+   ============================================================================ */
+
+  .tp-command-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 15vh;
+    z-index: 9999;
+    backdrop-filter: blur(2px);
+  }
+
+  .tp-command-palette {
+    width: 100%;
+    max-width: 580px;
+    background: var(--tp-surface);
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+  .tp-command-input-wrapper {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--tp-border-light);
+  }
+
+  .tp-command-input-wrapper svg {
+    width: 20px;
+    height: 20px;
+    color: var(--tp-text-tertiary);
+    margin-right: 0.75rem;
+  }
+
+  .tp-command-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    background: transparent;
+    color: var(--tp-text-primary);
+  }
+
+  .tp-command-shortcut {
+    font-size: 0.75rem;
+    color: var(--tp-text-tertiary);
+    background: var(--tp-surface-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .tp-command-results {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .tp-command-group {
+    padding: 0.5rem 0;
+  }
+
+  .tp-command-group-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tp-text-tertiary);
+    padding: 0.5rem 1.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tp-command-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .tp-command-item:hover,
+  .tp-command-item.selected {
+    background: var(--tp-primary-light);
+  }
+
+  .tp-command-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-right: 0.75rem;
+    background: var(--tp-surface-secondary);
+    border-radius: 8px;
+  }
+
+  .tp-command-text {
+    flex: 1;
+  }
+
+  .tp-command-title {
+    font-weight: 500;
+    color: var(--tp-text-primary);
+  }
+
+  .tp-command-subtitle {
+    font-size: 0.75rem;
+    color: var(--tp-text-tertiary);
+  }
+
+  .tp-command-empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--tp-text-tertiary);
+  }
 </style>

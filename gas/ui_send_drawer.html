@@ -1342,93 +1342,139 @@
                 // ========== ESTADO ==========
                 let STATE = {
                     token: null,
-                    clientes: [], // Lista completa de strings (empresas)
-                    grupos: [],   // Lista completa de strings (grupos)
-                    items: [],    // Lista unificada { id, label, type, selected, visible }
+                    clientes: [], // DEPRECATED for perEmpresa
+                    grupos: [],
+                    items: [],
                     previews: [],
-                    currentStep: 1, // Wizard Step: 1, 2, 3
-                    sendMode: 'perEmpresa', // 'perEmpresa' | 'consolidado'
-                    sending: false // FIX: Guard anti-doble click
+                    currentStep: 1,
+                    sendMode: 'perEmpresa',
+                    sending: false,
+                    // Phase 2
+                    pagination: { items: [], nextCursor: null, hasMore: true, loading: false, search: '' },
+                    selectedMap: new Map(), // Persist selection across pages { id: item }
+                    searchTimeout: null
                 };
 
                 // ... (INIT y getToken se mantienen igual) ...
 
+                // Phase 2: Fetch Paged Data
+                function fetchMailPaged(search = '', cursor = null, reset = false) {
+                    if (STATE.pagination.loading) return;
+                    STATE.pagination.loading = true;
+
+                    if (reset) {
+                        STATE.pagination.items = [];
+                        STATE.pagination.nextCursor = null;
+                        STATE.pagination.hasMore = true;
+                        STATE.pagination.search = search;
+                        if (STATE.sendMode === 'perEmpresa') {
+                            STATE.items = [];
+                            renderList();
+                        }
+                    }
+
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            STATE.pagination.loading = false;
+                            if (!res.ok) {
+                                if (reset) fallbackMailLoadSafe();
+                                return;
+                            }
+
+                            const newItems = (res.items || []).map(label => ({
+                                id: label,
+                                label: label,
+                                type: 'cliente',
+                                selected: STATE.selectedMap.has(label),
+                                visible: true
+                            }));
+
+                            if (reset) STATE.pagination.items = newItems;
+                            else STATE.pagination.items = [...STATE.pagination.items, ...newItems];
+
+                            STATE.pagination.nextCursor = res.nextCursor;
+                            STATE.pagination.hasMore = res.hasMore;
+
+                            if (STATE.sendMode === 'perEmpresa') {
+                                STATE.items = STATE.pagination.items;
+                                renderList();
+                            }
+                            updateSummary();
+                        })
+                        .withFailureHandler(err => {
+                            STATE.pagination.loading = false;
+                            console.error(err);
+                            if (reset) fallbackMailLoadSafe();
+                        })
+                        .getAseguradosPaged(STATE.token, { limit: 50, cursor, search });
+                }
+
+                function fallbackMailLoadSafe() {
+                    google.script.run
+                        .withSuccessHandler(data => {
+                            if (data.ok) {
+                                // Simulate paged result
+                                const list = data.list || [];
+                                const newItems = list.map(label => ({
+                                    id: label, label, type: 'cliente', selected: STATE.selectedMap.has(label), visible: true
+                                }));
+                                STATE.pagination.items = newItems;
+                                STATE.pagination.hasMore = false;
+                                if (STATE.sendMode === 'perEmpresa') {
+                                    STATE.items = newItems;
+                                    renderList();
+                                }
+                                showToast('Modo compatibilidad activado', 'warning');
+                            }
+                        })
+                        .getAseguradosSafe(STATE.token);
+                }
+
                 function loadData() {
                     logDebug('📊 Cargando datos...', null, 'info');
-                    showLoading(true, 'Cargando datos y plantillas...');
+                    // 1. Initial Page Load (Clients)
+                    fetchMailPaged('', null, true);
 
-                    // Cargar asegurados y grupos en paralelo (simulado)
-                    const p1 = new Promise((resolve, reject) => {
-                        google.script.run
-                            .withSuccessHandler(data => resolve({ type: 'clientes', data }))
-                            .withFailureHandler(error => reject(error))
-                            .getAseguradosSafe(STATE.token);
-                    });
-
-                    const p2 = new Promise((resolve, reject) => {
+                    // 2. Load Grupos + Templates
+                    const pGrupos = new Promise((resolve, reject) => {
                         google.script.run
                             .withSuccessHandler(data => resolve({ type: 'grupos', data }))
                             .withFailureHandler(error => reject(error))
                             .getGrupos_API(STATE.token);
                     });
 
-                    // Cargar plantillas
-                    const p3 = new Promise((resolve, reject) => {
+                    const pTemplates = new Promise((resolve, reject) => {
                         google.script.run
                             .withSuccessHandler(response => resolve({ type: 'templates', response }))
                             .withFailureHandler(error => reject(error))
                             .getTemplates_API(STATE.token);
                     });
 
-                    Promise.all([p1, p2, p3])
+                    Promise.all([pGrupos, pTemplates])
                         .then(results => {
-                            const clientesData = results.find(r => r.type === 'clientes').data;
                             const gruposData = results.find(r => r.type === 'grupos').data;
                             const templatesRes = results.find(r => r.type === 'templates')?.response;
 
-                            // Process Clientes & Grupos
-                            if (clientesData && clientesData.ok) STATE.clientes = clientesData.list || [];
                             if (gruposData && gruposData.ok) STATE.grupos = gruposData.data || [];
 
-                            // Process Templates
                             const select = document.getElementById('templateSelect');
                             if (templatesRes && templatesRes.ok && templatesRes.data && templatesRes.data.length > 0) {
                                 select.innerHTML = templatesRes.data.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-                                logDebug('✅ Plantillas cargadas', { count: templatesRes.data.length }, 'success');
                             } else {
                                 select.innerHTML = '<option value="REGULAR">Regular (Default)</option>';
                             }
 
-                            logDebug('✅ Datos cargados', { clientes: STATE.clientes.length, grupos: STATE.grupos.length }, 'success');
-
-                            // FIX CRÍTICO: Filtrar items según sendMode
-                            const currentMode = STATE.sendMode || 'perEmpresa';
-                            const items = [];
-
-                            if (currentMode === 'perEmpresa') {
-                                STATE.clientes.forEach(c => items.push({ id: c, label: c, type: 'cliente', selected: false, approved: false, visible: true }));
-                            } else {
-                                STATE.grupos.forEach(g => items.push({ id: g, label: g, type: 'grupo', selected: false, approved: false, visible: true }));
-                            }
-
-                            STATE.items = items;
-                            renderList();
                             updateWizardUI();
                             showLoading(false);
-                            showToast('Datos cargados correctamente', 'success');
                         })
                         .catch(error => {
-                            logDebug('❌ Error cargando datos', error, 'error');
-                            document.getElementById('itemsList').innerHTML = `<div class="empty-state-small error">Error: ${error.message}</div>`;
+                            logDebug('❌ Error cargando datos aux', error, 'error');
                             showLoading(false);
-                            showToast('Error cargando datos: ' + error.message, 'error');
                         });
 
-                    // Fecha por defecto
+                    // Fecha
                     const fechaInput = document.getElementById('fechaCorte');
-                    if (fechaInput) {
-                        fechaInput.valueAsDate = new Date();
-                    }
+                    if (fechaInput) fechaInput.valueAsDate = new Date();
                 }
 
                 // [MEJORA ENVIAR_EECC_CORREO] Actualizar preview si cambia plantilla
@@ -1461,34 +1507,67 @@
                     const visibleItems = STATE.items.filter(i => i.visible);
 
                     if (visibleItems.length === 0) {
-                        container.innerHTML = '<div class="empty-state-small">No se encontraron resultados</div>';
+                        if (STATE.pagination.loading && STATE.sendMode === 'perEmpresa') {
+                            container.innerHTML = '<div class="empty-state-small">⏳ Cargando...</div>';
+                        } else {
+                            container.innerHTML = '<div class="empty-state-small">No se encontraron resultados</div>';
+                        }
                         return;
                     }
 
-                    // Optimización: Renderizar solo los primeros 100 si son muchos (lazy render básico)
-                    // Para este caso simple, renderizamos todo pero con HTML string builder eficiente
                     const html = visibleItems.map(item => `
-                <div class="list-item ${item.selected ? 'selected' : ''}" onclick="toggleItem('${item.id.replace(/'/g, "\\'")}')">
-                    <input type="checkbox" ${item.selected ? 'checked' : ''} readonly>
+                <div class="list-item ${STATE.selectedMap.has(item.id) ? 'selected' : ''}" onclick="toggleItem('${item.id.replace(/'/g, "\\'")}')">
+                    <input type="checkbox" ${STATE.selectedMap.has(item.id) ? 'checked' : ''} readonly>
                     <span class="item-label" title="${item.label}">${item.label}</span>
                     <span class="item-type ${item.type}">${item.type === 'grupo' ? 'GRUPO' : 'EMP'}</span>
                 </div>
             `).join('');
 
                     container.innerHTML = html;
+
+                    // Load More Button
+                    if (STATE.sendMode === 'perEmpresa' && STATE.pagination.hasMore) {
+                        const btnDiv = document.createElement('div');
+                        btnDiv.className = 'list-item load-more-btn';
+                        btnDiv.style.justifyContent = 'center';
+                        btnDiv.style.color = 'var(--tp-primary)';
+                        btnDiv.style.fontWeight = 'bold';
+                        btnDiv.style.cursor = 'pointer';
+                        btnDiv.textContent = STATE.pagination.loading ? '⏳ Cargando más...' : '⬇️ Cargar más...';
+
+                        if (!STATE.pagination.loading) {
+                            btnDiv.onclick = (e) => {
+                                e.stopPropagation();
+                                fetchMailPaged(STATE.pagination.search, STATE.pagination.nextCursor, false);
+                            };
+                        }
+                        container.appendChild(btnDiv);
+                    }
+
                     updateSummary();
                 }
 
                 // [MEJORA ENVIAR_EECC_CORREO] Filtrar lista
+                // [MEJORA ENVIAR_EECC_CORREO] Filtrar lista
                 function filterList() {
                     const term = normalizeText(document.getElementById('searchInput').value);
 
-                    STATE.items.forEach(item => {
-                        const label = normalizeText(item.label);
-                        item.visible = label.includes(term);
-                    });
-
-                    renderList();
+                    if (STATE.sendMode === 'perEmpresa') {
+                        // Server Side (Debounced)
+                        if (STATE.searchTimeout) clearTimeout(STATE.searchTimeout);
+                        STATE.searchTimeout = setTimeout(() => {
+                            if (term !== STATE.pagination.search) {
+                                fetchMailPaged(term, null, true);
+                            }
+                        }, 300);
+                    } else {
+                        // Client Side (Grupos)
+                        STATE.items.forEach(item => {
+                            const label = normalizeText(item.label);
+                            item.visible = label.includes(term);
+                        });
+                        renderList();
+                    }
                 }
 
                 function clearSearch() {
@@ -1498,32 +1577,26 @@
 
                 // [MEJORA ENVIAR_EECC_CORREO] Toggle selección individual
                 function toggleItem(id) {
-                    const item = STATE.items.find(i => i.id === id);
-                    if (item) {
-                        item.selected = !item.selected;
-                        renderList(); // Re-render para actualizar clases y checkboxes
+                    if (STATE.selectedMap.has(id)) {
+                        STATE.selectedMap.delete(id);
+                    } else {
+                        const item = STATE.items.find(i => i.id === id);
+                        if (item) STATE.selectedMap.set(id, item);
                     }
+                    renderList();
                 }
 
                 // [MEJORA ENVIAR_EECC_CORREO] Toggle seleccionar todo
                 function toggleSelectAll() {
                     const checkbox = document.getElementById('selectAll');
-                    if (!checkbox) {
-                        logDebug('❌ Checkbox selectAll no encontrado', null, 'error');
-                        return;
-                    }
+                    if (!checkbox) return;
                     const checked = checkbox.checked;
 
-                    // Solo afectar a los visibles y filtrados por modo
-                    const currentMode = STATE.sendMode || 'perEmpresa';
+                    // Afectar solo a la página actual / visibles
                     STATE.items.forEach(item => {
                         if (item.visible) {
-                            // Aplicar filtro de modo
-                            const matchesMode = (currentMode === 'perEmpresa' && item.type === 'cliente') ||
-                                (currentMode === 'consolidado' && item.type === 'grupo');
-                            if (matchesMode) {
-                                item.selected = checked;
-                            }
+                            if (checked) STATE.selectedMap.set(item.id, item);
+                            else STATE.selectedMap.delete(item.id);
                         }
                     });
 
@@ -1531,9 +1604,9 @@
                 }
 
                 function updateSummary() {
-                    const selectedCount = STATE.items.filter(i => i.selected).length;
+                    const selectedCount = STATE.selectedMap.size;
 
-                    // Actualizar contador (usar ID correcto)
+                    // Actualizar contador
                     const countEl = document.getElementById('selectedCount');
                     if (countEl) {
                         countEl.textContent = `${selectedCount} seleccionados`;
@@ -1544,58 +1617,45 @@
 
                     if (summary && text) {
                         if (selectedCount > 0) {
-                            const grupos = STATE.items.filter(i => i.selected && i.type === 'grupo').length;
-                            const empresas = selectedCount - grupos;
+                            let grupos = 0;
+                            let empresas = 0;
+                            STATE.selectedMap.forEach(v => {
+                                if (v.type === 'grupo') grupos++;
+                                else empresas++;
+                            });
                             text.textContent = `Seleccionados: ${empresas} empresa(s), ${grupos} grupo(s) económico(s)`;
                             summary.classList.remove('hidden');
                         } else {
                             summary.classList.add('hidden');
                         }
                     }
-
-                    // Update wizard state if needed
-                    if (window.updateWizardUI && STATE.currentStep === 1) {
-                        // Solo actualizar si estamos en paso 1
-                    }
                 }
 
                 // [CRÍTICO] Recargar lista cuando cambia el modo
                 window.reloadListByMode = function () {
                     const selectedMode = document.querySelector('input[name="sendMode"]:checked').value;
-                    logDebug('🔄 Cambiando modo', { mode: selectedMode }, 'info');
-
                     STATE.sendMode = selectedMode;
 
-                    // Recargar items filtrados
-                    const items = [];
                     if (selectedMode === 'perEmpresa') {
-                        STATE.clientes.forEach(c => {
-                            items.push({
-                                id: c,
-                                label: c,
-                                type: 'cliente',
-                                selected: false,
-                                approved: false,
-                                visible: true
-                            });
-                        });
-                        logDebug('📋 Lista recargada: Per-empresa', { count: items.length }, 'success');
+                        if (STATE.pagination.items.length === 0 && !STATE.pagination.loading) {
+                            fetchMailPaged('', null, true);
+                        } else {
+                            STATE.items = STATE.pagination.items;
+                            renderList();
+                        }
                     } else {
+                        // Consolidado (Grupos) - Client Side
+                        const items = [];
                         STATE.grupos.forEach(g => {
                             items.push({
-                                id: g,
-                                label: g,
-                                type: 'grupo',
-                                selected: false,
-                                approved: false,
+                                id: g, label: g, type: 'grupo',
+                                selected: STATE.selectedMap.has(g),
                                 visible: true
                             });
                         });
-                        logDebug('📋 Lista recargada: Consolidado', { count: items.length }, 'success');
+                        STATE.items = items;
+                        renderList();
                     }
-
-                    STATE.items = items;
-                    renderList();
                     updateSummary();
                 };
 
@@ -1624,8 +1684,8 @@
                 }
 
                 function loadPreview() {
-                    // Obtener seleccionados del STATE.items
-                    const selectedItems = STATE.items.filter(i => i.selected);
+                    // Obtener seleccionados del Map
+                    const selectedItems = Array.from(STATE.selectedMap.values());
 
                     logDebug('👁️ Cargando preview', { count: selectedItems.length }, 'info');
 
@@ -1852,10 +1912,24 @@
                     if (STATE.currentStep < 3) {
                         // Validaciones antes de avanzar
                         if (STATE.currentStep === 1) {
-                            const selected = STATE.items.filter(i => i.selected).length;
-                            if (selected === 0) {
-                                alert('Por favor selecciona al menos un destinatario.');
-                                return;
+                            const mode = STATE.sendMode || 'perEmpresa';
+                            // Use selectedMap (source of truth for selection)
+                            const selectedItems = Array.from(STATE.selectedMap.values());
+
+                            if (mode === 'perEmpresa') {
+                                // Solo validar empresas seleccionadas
+                                const empresasSelected = selectedItems.filter(i => i.type === 'cliente').length;
+                                if (empresasSelected === 0) {
+                                    alert('Selecciona al menos 1 empresa para continuar.');
+                                    return;
+                                }
+                            } else if (mode === 'consolidado') {
+                                // Solo validar grupos seleccionados
+                                const gruposSelected = selectedItems.filter(i => i.type === 'grupo').length;
+                                if (gruposSelected === 0) {
+                                    alert('Selecciona al menos 1 grupo económico para continuar.');
+                                    return;
+                                }
                             }
                         }
 
@@ -2163,10 +2237,18 @@
                                     processed++;
                                     if (res && res.ok) {
                                         if (badge) {
-                                            badge.textContent = '✅ Enviado';
-                                            badge.className = 'status-badge status-approved';
+                                            if (res.queued) {
+                                                badge.textContent = '⏳ En Cola';
+                                                badge.className = 'status-badge status-pending';
+                                                badge.style.backgroundColor = '#FFF3E0';
+                                                badge.style.color = '#EF6C00';
+                                                badge.style.border = '1px solid #FFE0B2';
+                                            } else {
+                                                badge.textContent = '✅ Enviado';
+                                                badge.className = 'status-badge status-approved';
+                                            }
                                         }
-                                        logDebug(`✅ Correo enviado`, { destinatario: item.id }, 'success');
+                                        logDebug(res.queued ? '📨 Encolado' : '✅ Correo enviado', { destinatario: item.id }, 'success');
                                     } else {
                                         errors++;
                                         if (badge) {
