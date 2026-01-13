@@ -1,4 +1,33 @@
 <!DOCTYPE html>
+<!--
+================================================================================
+  PORTAL COBRANZAS - TRANSPERUANA
+  Versión: 2.1.0 PRO
+  Fecha: 2026-01-13
+  
+  CAMBIOS v2.1.0:
+  
+  REQUERIMIENTO 1 - CARGA COMPLETA DE ASEGURADOS:
+  ✅ fetchAseguradosPaged() ahora auto-carga TODAS las páginas hasta hasMore=false
+  ✅ Límite aumentado de 50 a 500 por página (máximo del backend)
+  ✅ Indicador de progreso durante la carga (%)
+  ✅ Todos los módulos usan la misma fuente global completa
+  
+  REQUERIMIENTO 2 - OPTIMIZACIÓN FORMULARIO REGISTRAR GESTIÓN:
+  ✅ Campo "Fecha de esta Gestión" ahora es SIEMPRE automático (fecha/hora actual)
+     - Eliminado selector Hoy/Manual
+     - Campo de solo lectura con indicador "🤖 Automático"
+  ✅ Campo "Canal de Contacto" ELIMINADO (redundante con Tipo de Gestión)
+     - Se deriva automáticamente del Tipo de Gestión seleccionado
+     - Mapeo: LLAMADA→LLAMADA, WHATSAPP→WHATSAPP, CORREO_INDIVIDUAL→EMAIL,
+              REUNION→REUNION, OTRO→OTRO
+  ✅ Validaciones estrictas en todos los campos obligatorios
+  ✅ UX limpia y consistente (formulario embebido y modal)
+  
+  ARCHIVOS MODIFICADOS:
+  - gas/index.html (este archivo)
+================================================================================
+-->
 <html lang="es">
 
 <head>
@@ -728,31 +757,16 @@
                                                 <div class="fecha-field-header">
                                                     <label class="form-label" style="margin: 0;">
                                                         📅 Fecha de esta Gestión
+                                                        <span style="background: #E8F5E9; color: #2E7D32; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">
+                                                            🤖 Automático
+                                                        </span>
                                                     </label>
-
-                                                    <!-- Selector Hoy / Manual -->
-                                                    <div class="radio-toggle-group">
-                                                        <input type="radio" id="fechaGestionHoyEmb" name="fechaGestionModeEmb"
-                                                            value="auto" checked class="radio-toggle-input"
-                                                            onchange="toggleFechaGestionModeEmb()">
-                                                        <label for="fechaGestionHoyEmb" class="radio-toggle-label">
-                                                            <span class="radio-toggle-icon">🤖</span>
-                                                            <span>Hoy</span>
-                                                        </label>
-
-                                                        <input type="radio" id="fechaGestionManualEmb" name="fechaGestionModeEmb"
-                                                            value="manual" class="radio-toggle-input"
-                                                            onchange="toggleFechaGestionModeEmb()">
-                                                        <label for="fechaGestionManualEmb" class="radio-toggle-label">
-                                                            <span class="radio-toggle-icon">✍️</span>
-                                                            <span>Manual</span>
-                                                        </label>
-                                                    </div>
                                                 </div>
 
-                                                <input type="datetime-local" id="gestionFechaGestionEmb" readonly>
+                                                <input type="datetime-local" id="gestionFechaGestionEmb" readonly
+                                                    style="background-color: var(--tp-surface-overlay); cursor: not-allowed; opacity: 0.85;">
                                                 <small class="form-help">
-                                                    <span id="fechaGestionHelpEmb">Por defecto se usa la fecha y hora actual</span>
+                                                    <span id="fechaGestionHelpEmb">✅ Se registra automáticamente con fecha/hora actual al guardar</span>
                                                 </small>
                                             </div>
                                         </div>
@@ -804,19 +818,8 @@
                                             </select>
                                         </div>
 
-                                        <div class="form-group">
-                                            <label class="form-label" for="gestionCanalEmb">
-                                                📡 Canal de Contacto <span style="color: #D32F2F;">*</span>
-                                            </label>
-                                            <select id="gestionCanalEmb" required>
-                                                <option value="">¿Por qué medio se realizó?</option>
-                                                <option value="EMAIL">📧 Correo electrónico</option>
-                                                <option value="LLAMADA">📞 Llamada telefónica</option>
-                                                <option value="WHATSAPP">💬 WhatsApp</option>
-                                                <option value="REUNION">🤝 Reunión</option>
-                                                <option value="OTRO">📝 Otro canal</option>
-                                            </select>
-                                        </div>
+                                        <!-- Campo Canal de Contacto ELIMINADO - se deriva automáticamente de Tipo de Gestión -->
+                                        <input type="hidden" id="gestionCanalEmb" value="">
 
                                         <div class="form-group hidden" id="grupoFechaCompromisoEmb">
                                             <label class="form-label" for="gestionFechaCompromisoEmb">
@@ -1245,31 +1248,16 @@
                                         <div class="fecha-field-header">
                                             <label class="form-label" style="margin: 0;">
                                                 📅 Fecha de esta Gestión
+                                                <span style="background: #E8F5E9; color: #2E7D32; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">
+                                                    🤖 Automático
+                                                </span>
                                             </label>
-
-                                            <!-- Selector Hoy / Manual con diseño profesional -->
-                                            <div class="radio-toggle-group">
-                                                <input type="radio" id="fechaGestionHoy" name="fechaGestionMode"
-                                                    value="auto" checked class="radio-toggle-input"
-                                                    onchange="toggleFechaGestionMode()">
-                                                <label for="fechaGestionHoy" class="radio-toggle-label">
-                                                    <span class="radio-toggle-icon">🤖</span>
-                                                    <span>Hoy</span>
-                                                </label>
-
-                                                <input type="radio" id="fechaGestionManual" name="fechaGestionMode"
-                                                    value="manual" class="radio-toggle-input"
-                                                    onchange="toggleFechaGestionMode()">
-                                                <label for="fechaGestionManual" class="radio-toggle-label">
-                                                    <span class="radio-toggle-icon">✍️</span>
-                                                    <span>Manual</span>
-                                                </label>
-                                            </div>
                                         </div>
 
-                                        <input type="datetime-local" id="gestionFechaGestion" readonly>
+                                        <input type="datetime-local" id="gestionFechaGestion" readonly
+                                            style="background-color: var(--tp-surface-overlay); cursor: not-allowed; opacity: 0.85;">
                                         <small class="form-help">
-                                            <span id="fechaGestionHelp">Por defecto se usa la fecha y hora actual</span>
+                                            <span id="fechaGestionHelp">✅ Se registra automáticamente con fecha/hora actual al guardar</span>
                                         </small>
                                     </div>
                                 </div>
@@ -1323,19 +1311,8 @@
                                     </select>
                                 </div>
 
-                                <div class="form-group">
-                                    <label class="form-label" for="gestionCanal">
-                                        📡 Canal de Contacto <span style="color: #D32F2F;">*</span>
-                                    </label>
-                                    <select id="gestionCanal" required>
-                                        <option value="">¿Por qué medio se realizó?</option>
-                                        <option value="EMAIL">📧 Correo electrónico</option>
-                                        <option value="LLAMADA">📞 Llamada telefónica</option>
-                                        <option value="WHATSAPP">💬 WhatsApp</option>
-                                        <option value="REUNION">🤝 Reunión</option>
-                                        <option value="OTRO">📝 Otro canal</option>
-                                    </select>
-                                </div>
+                                <!-- Campo Canal de Contacto ELIMINADO - se deriva automáticamente de Tipo de Gestión -->
+                                <input type="hidden" id="gestionCanal" value="">
 
                                 <div class="form-group hidden" id="grupoFechaCompromiso">
                                     <label class="form-label" for="gestionFechaCompromiso">
@@ -1440,13 +1417,14 @@
         let BITACORA_MODE = 'asegurado'; // asegurado | grupo
         let MAIL_STATE = { previews: [], currentTab: 'seleccionar', allClientes: [] };
 
-        // Phase 2: Pagination Data Source
+        // Phase 2: Pagination Data Source - CARGA COMPLETA v2.1
         let ASEGURADOS_DS = {
             items: [],
             nextCursor: null,
             hasMore: true,
             loading: false,
-            search: ''
+            search: '',
+            totalExpected: 0  // Total esperado para calcular progreso
         };
         let SEARCH_TIMEOUT = null;
 
@@ -2146,23 +2124,23 @@
 
             // Pre-fill the form fields
             setTimeout(() => {
-                // Tipo de gestión
-                const tipoSelect = document.getElementById('tipoGestionEmb');
+                // Tipo de gestión (ID correcto: gestionTipoEmb)
+                const tipoSelect = document.getElementById('gestionTipoEmb');
                 if (tipoSelect && preset.tipoGestion) {
                     tipoSelect.value = preset.tipoGestion;
                     // Trigger change event for any listeners
                     tipoSelect.dispatchEvent(new Event('change'));
                 }
 
-                // Estado de gestión
-                const estadoSelect = document.getElementById('estadoGestionEmb');
+                // Estado de gestión (ID correcto: gestionEstadoEmb)
+                const estadoSelect = document.getElementById('gestionEstadoEmb');
                 if (estadoSelect && preset.estadoGestion) {
                     estadoSelect.value = preset.estadoGestion;
                     estadoSelect.dispatchEvent(new Event('change'));
                 }
 
                 // Focus on asegurado field for user to complete
-                const aseguradoInput = document.getElementById('aseguradoGestionEmb');
+                const aseguradoInput = document.getElementById('aseguradoSelectorEmb');
                 if (aseguradoInput) {
                     aseguradoInput.focus();
                 }
@@ -2720,7 +2698,8 @@
             }
         }
 
-        // Phase 2: Fetch Paged Data
+        // Phase 2: Fetch Paged Data - AUTO-CARGA COMPLETA (v2.1)
+        // Carga automáticamente TODAS las páginas hasta hasMore=false
         function fetchAseguradosPaged(search = '', cursor = null, reset = false) {
             if (ASEGURADOS_DS.loading) return;
 
@@ -2730,39 +2709,56 @@
                 ASEGURADOS_DS.nextCursor = null;
                 ASEGURADOS_DS.hasMore = true;
                 ASEGURADOS_DS.search = search;
+                ASEGURADOS_DS.totalExpected = 0;
             }
 
             console.log(`[fetchPage] search="${search}" cursor=${cursor} reset=${reset}`);
 
             google.script.run
                 .withSuccessHandler(res => {
-                    ASEGURADOS_DS.loading = false;
                     if (!res.ok) {
+                        ASEGURADOS_DS.loading = false;
                         console.warn('[fetchPage] Server error:', res.error);
-                        // Fallback only on initial load error
                         if (reset) fallbackLoadSafe();
                         return;
                     }
 
+                    // Acumular items
                     if (reset) ASEGURADOS_DS.items = res.items || [];
                     else ASEGURADOS_DS.items = [...ASEGURADOS_DS.items, ...(res.items || [])];
 
                     ASEGURADOS_DS.nextCursor = res.nextCursor;
                     ASEGURADOS_DS.hasMore = res.hasMore;
+                    ASEGURADOS_DS.totalExpected = res.total || ASEGURADOS_DS.items.length;
 
-                    // Compatibilidad legacy (partial list)
+                    // Compatibilidad legacy
                     ALL_CLIENTES = ASEGURADOS_DS.items;
 
-                    // Update UI
-                    renderAutocompleteOptionsEECC();
-                    log(`${ASEGURADOS_DS.items.length} asegurados cargados (Paginado)`, 'success');
+                    // Log de progreso
+                    const progress = ASEGURADOS_DS.totalExpected > 0 
+                        ? Math.round((ASEGURADOS_DS.items.length / ASEGURADOS_DS.totalExpected) * 100)
+                        : 100;
+                    
+                    // AUTO-CARGA: Si hay más páginas, cargar automáticamente la siguiente
+                    if (res.hasMore && res.nextCursor) {
+                        log(`⏳ Cargando asegurados... ${ASEGURADOS_DS.items.length}/${ASEGURADOS_DS.totalExpected} (${progress}%)`, 'info');
+                        // Cargar siguiente página automáticamente (sin reset)
+                        ASEGURADOS_DS.loading = false; // Reset flag para permitir siguiente llamada
+                        fetchAseguradosPaged(search, res.nextCursor, false);
+                    } else {
+                        // CARGA COMPLETA - Finalizar
+                        ASEGURADOS_DS.loading = false;
+                        renderAutocompleteOptionsEECC();
+                        log(`✅ ${ASEGURADOS_DS.items.length} asegurados cargados (100% completo)`, 'success');
+                        console.log(`[fetchPage] ✅ Carga completa: ${ASEGURADOS_DS.items.length} asegurados`);
+                    }
                 })
                 .withFailureHandler(err => {
                     ASEGURADOS_DS.loading = false;
                     console.error('[fetchPage] Fatal:', err);
                     if (reset) fallbackLoadSafe();
                 })
-                .getAseguradosPaged(TOKEN, { limit: 50, cursor: cursor, search: search });
+                .getAseguradosPaged(TOKEN, { limit: 500, cursor: cursor, search: search });
         }
 
         function fallbackLoadSafe() {
@@ -2951,7 +2947,7 @@
                 optionsContainer.appendChild(div);
             });
 
-            // Load More Button
+            // Load More Indicator (Carga automática - v2.1)
             if (EECC_MODE === 'asegurado' && ASEGURADOS_DS.hasMore) {
                 const loadMore = document.createElement('div');
                 loadMore.className = 'autocomplete-option load-more';
@@ -2959,18 +2955,14 @@
                 loadMore.style.color = 'var(--tp-primary)';
                 loadMore.style.fontWeight = 'bold';
                 loadMore.style.borderTop = '1px solid var(--tp-border-light)';
+                loadMore.style.cursor = 'default';
 
-                if (ASEGURADOS_DS.loading) {
-                    loadMore.textContent = '⏳ Cargando más...';
-                } else {
-                    loadMore.textContent = '⬇️ Cargar más...';
-                    loadMore.onclick = (e) => {
-                        e.stopPropagation();
-                        // input value might have changed without debounce firing
-                        const input = document.getElementById('aseguradoSelect');
-                        fetchAseguradosPaged(input.value, ASEGURADOS_DS.nextCursor, false);
-                    };
-                }
+                // Siempre mostrar estado de carga (carga automática)
+                const progress = ASEGURADOS_DS.totalExpected > 0 
+                    ? Math.round((ASEGURADOS_DS.items.length / ASEGURADOS_DS.totalExpected) * 100)
+                    : 0;
+                loadMore.textContent = `⏳ Cargando asegurados... ${progress}%`;
+                
                 optionsContainer.appendChild(loadMore);
             }
         }
@@ -4522,26 +4514,40 @@
          * Registra una gestión desde el formulario embebido
          */
         /**
-         * REGISTRAR GESTIÓN EMBEBIDO - VERSIÓN UNIFICADA
-         * Esta función maneja el formulario completo unificado del módulo Bitácora
+         * REGISTRAR GESTIÓN EMBEBIDO - VERSIÓN UNIFICADA v2.1 PRO
+         * - Canal de Contacto se deriva automáticamente de Tipo de Gestión
+         * - Fecha de Gestión se genera automáticamente (siempre actual)
          */
         function registrarGestionEmbedded(event) {
             if (event) event.preventDefault();
+
+            // Mapeo Tipo de Gestión → Canal de Contacto (automático)
+            const TIPO_A_CANAL = {
+                'LLAMADA': 'LLAMADA',
+                'WHATSAPP': 'WHATSAPP',
+                'CORREO_INDIVIDUAL': 'EMAIL',
+                'REUNION': 'REUNION',
+                'OTRO': 'OTRO'
+            };
 
             // Obtener todos los valores del formulario unificado
             const asegurado = document.getElementById('gestionAseguradoEmb')?.value || 
                              document.getElementById('gestionAseguradoValueEmb')?.value;
             const fechaEnvioEECC = document.getElementById('gestionFechaEnvioEECCEmb')?.value;
-            const fechaGestion = document.getElementById('gestionFechaGestionEmb')?.value;
             const tipoGestion = document.getElementById('gestionTipoEmb')?.value;
             const estadoGestion = document.getElementById('gestionEstadoEmb')?.value;
-            const canalContacto = document.getElementById('gestionCanalEmb')?.value;
             const fechaCompromiso = document.getElementById('gestionFechaCompromisoEmb')?.value;
             const proximaAccion = document.getElementById('gestionProximaAccionEmb')?.value?.trim();
             const observaciones = document.getElementById('gestionObservacionesEmb')?.value?.trim();
+            
+            // AUTOMÁTICO: Derivar Canal de Contacto del Tipo de Gestión
+            const canalContacto = TIPO_A_CANAL[tipoGestion] || tipoGestion || 'OTRO';
+            
+            // AUTOMÁTICO: Generar Fecha de Gestión como fecha/hora actual
+            const fechaGestion = new Date().toISOString().slice(0, 16);
 
-            // Validación de campos obligatorios
-            if (!asegurado || !tipoGestion || !estadoGestion || !canalContacto || !proximaAccion) {
+            // Validación de campos obligatorios (sin canalContacto ya que es derivado)
+            if (!asegurado || !tipoGestion || !estadoGestion || !proximaAccion) {
                 showGestionStatusEmb('error', 'Por favor completa todos los campos obligatorios');
                 return false;
             }
@@ -4555,12 +4561,6 @@
             // Validar que sea una fecha válida
             if (isNaN(new Date(fechaEnvioEECC).getTime())) {
                 showGestionStatusEmb('error', 'La Fecha de Envío EECC no es válida');
-                return false;
-            }
-
-            // Validar Fecha Gestión
-            if (!fechaGestion) {
-                showGestionStatusEmb('error', 'Por favor ingresa la Fecha de esta Gestión');
                 return false;
             }
 
@@ -6302,21 +6302,39 @@
 
         // ========== REGISTRAR GESTIÓN ==========
 
+        /**
+         * REGISTRAR GESTIÓN MODAL - VERSIÓN PRO v2.1
+         * - Canal de Contacto se deriva automáticamente de Tipo de Gestión
+         * - Fecha de Gestión se genera automáticamente (siempre actual)
+         */
         function registrarGestionManual(event) {
             event.preventDefault();
 
+            // Mapeo Tipo de Gestión → Canal de Contacto (automático)
+            const TIPO_A_CANAL = {
+                'LLAMADA': 'LLAMADA',
+                'WHATSAPP': 'WHATSAPP',
+                'CORREO_INDIVIDUAL': 'EMAIL',
+                'REUNION': 'REUNION',
+                'OTRO': 'OTRO'
+            };
+
             const asegurado = document.getElementById('gestionAsegurado').value;
             const fechaEnvioEECC = document.getElementById('gestionFechaEnvioEECC').value;
-            const fechaGestion = document.getElementById('gestionFechaGestion').value;
             const tipoGestion = document.getElementById('gestionTipo').value;
             const estadoGestion = document.getElementById('gestionEstado').value;
-            const canalContacto = document.getElementById('gestionCanal').value;
             const fechaCompromiso = document.getElementById('gestionFechaCompromiso').value;
             const proximaAccion = document.getElementById('gestionProximaAccion').value.trim();
             const observaciones = document.getElementById('gestionObservaciones').value.trim();
 
-            // Validación
-            if (!asegurado || !tipoGestion || !estadoGestion || !canalContacto || !proximaAccion) {
+            // AUTOMÁTICO: Derivar Canal de Contacto del Tipo de Gestión
+            const canalContacto = TIPO_A_CANAL[tipoGestion] || tipoGestion || 'OTRO';
+            
+            // AUTOMÁTICO: Generar Fecha de Gestión como fecha/hora actual
+            const fechaGestion = new Date().toISOString().slice(0, 16);
+
+            // Validación (sin canalContacto ya que es derivado)
+            if (!asegurado || !tipoGestion || !estadoGestion || !proximaAccion) {
                 showGestionStatus('error', 'Por favor completa todos los campos obligatorios');
                 return false;
             }
@@ -6330,18 +6348,6 @@
             // Validar que sea una fecha válida
             if (isNaN(new Date(fechaEnvioEECC).getTime())) {
                 showGestionStatus('error', 'La Fecha de Envío EECC no es válida');
-                return false;
-            }
-
-            // Validar Fecha Gestión
-            if (!fechaGestion) {
-                showGestionStatus('error', 'Por favor ingresa la Fecha de esta Gestión');
-                return false;
-            }
-
-            // Validar que sea una fecha válida
-            if (isNaN(new Date(fechaGestion).getTime())) {
-                showGestionStatus('error', 'La Fecha de Gestión no es válida');
                 return false;
             }
 
@@ -6375,10 +6381,10 @@
             const payload = {
                 asegurado: asegurado,
                 fechaEnvioEECC: fechaEnvioEECC,  // Fecha del inicio del ciclo
-                fechaGestion: fechaGestion,      // Fecha de esta gestión específica
+                fechaGestion: fechaGestion,      // Fecha de esta gestión específica (AUTOMÁTICA)
                 tipoGestion: tipoGestion,
                 estadoGestion: estadoGestion,
-                canalContacto: canalContacto,
+                canalContacto: canalContacto,    // DERIVADO automáticamente
                 fechaCompromiso: fechaCompromiso || null,
                 proximaAccion: proximaAccion,
                 observaciones: observaciones
