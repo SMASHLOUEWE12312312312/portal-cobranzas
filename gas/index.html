@@ -113,6 +113,12 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Phase 6: Dark Mode Toggle (only visible if flag enabled) -->
+                    <button class="btn-notification" id="btnDarkMode" onclick="toggleDarkMode()"
+                        title="Alternar modo oscuro" style="display: none; margin-left: 0.5rem;">
+                        <span id="darkModeIcon">🌙</span>
+                    </button>
                 </div>
             </header>
 
@@ -1638,6 +1644,10 @@
             // Phase 5: UX Enhancements
             initQuickActions();
             initGlobalSearch();
+
+            // Phase 6: Excelencia Operacional
+            initDarkMode();
+            initKeyboardShortcuts();
         }
 
         // ============================================================
@@ -2076,6 +2086,184 @@
             { id: 'action_nueva_gestion', icon: '➕', title: 'Nueva Gestión', subtitle: 'Registrar gestión en bitácora', action: () => { showView('bitacora'); setTimeout(() => switchBitacoraTabEmbedded && switchBitacoraTabEmbedded('registrar'), 100); } },
             { id: 'action_upload', icon: '📤', title: 'Actualizar Base', subtitle: 'Subir archivo de base de datos', action: () => showView('actualizar') }
         ];
+
+        // ============================================================
+        // PHASE 6: DARK MODE
+        // ============================================================
+
+        /**
+         * Initialize dark mode (check flag + localStorage)
+         */
+        function initDarkMode() {
+            const btn = document.getElementById('btnDarkMode');
+            if (!btn) return;
+
+            // Check if feature is enabled
+            google.script.run
+                .withSuccessHandler(function (enabled) {
+                    if (enabled) {
+                        btn.style.display = 'inline-flex';
+
+                        // Check localStorage preference
+                        const savedPref = localStorage.getItem('tp.darkMode');
+                        if (savedPref === '1') {
+                            applyDarkMode(true);
+                        }
+                        console.log('[DarkMode] ✅ Initialized, preference:', savedPref);
+                    }
+                })
+                .withFailureHandler(function () {
+                    // Keep hidden on error
+                })
+                .getFeatureFlag('DARK_MODE_ENABLED');
+        }
+
+        /**
+         * Toggle dark mode on/off
+         */
+        function toggleDarkMode() {
+            const isDark = document.body.classList.contains('dark-mode');
+            applyDarkMode(!isDark);
+            localStorage.setItem('tp.darkMode', isDark ? '0' : '1');
+            console.log('[DarkMode] Toggled to:', isDark ? 'light' : 'dark');
+        }
+
+        /**
+         * Apply dark mode class and update icon
+         */
+        function applyDarkMode(enable) {
+            const icon = document.getElementById('darkModeIcon');
+            if (enable) {
+                document.body.classList.add('dark-mode');
+                if (icon) icon.textContent = '☀️';
+            } else {
+                document.body.classList.remove('dark-mode');
+                if (icon) icon.textContent = '🌙';
+            }
+        }
+
+        // ============================================================
+        // PHASE 6: KEYBOARD SHORTCUTS
+        // ============================================================
+
+        let KB_SHORTCUTS_ENABLED = false;
+        let KB_PENDING_KEY = null;
+        let KB_TIMEOUT_ID = null;
+
+        const KB_SHORTCUTS = {
+            'g+d': { action: () => showView('dashboard'), desc: 'Dashboard' },
+            'g+e': { action: () => showView('eecc'), desc: 'Generar EECC' },
+            'g+c': { action: () => showView('correos'), desc: 'Enviar Correos' },
+            'g+b': { action: () => showView('bitacora'), desc: 'Bitácora' },
+            'n': {
+                action: () => {
+                    showView('bitacora');
+                    setTimeout(() => switchBitacoraTabEmbedded && switchBitacoraTabEmbedded('registrar'), 100);
+                },
+                desc: 'Nueva Gestión'
+            },
+            '?': { action: () => showShortcutsHelp(), desc: 'Ayuda' }
+        };
+
+        /**
+         * Initialize keyboard shortcuts (if flag enabled)
+         */
+        function initKeyboardShortcuts() {
+            google.script.run
+                .withSuccessHandler(function (enabled) {
+                    if (enabled) {
+                        KB_SHORTCUTS_ENABLED = true;
+                        document.addEventListener('keydown', handleKeyboardShortcut);
+                        console.log('[KeyboardShortcuts] ✅ Initialized');
+                    }
+                })
+                .withFailureHandler(function () { })
+                .getFeatureFlag('KEYBOARD_SHORTCUTS_ENABLED');
+        }
+
+        /**
+         * Handle keyboard shortcut key press
+         */
+        function handleKeyboardShortcut(e) {
+            if (!KB_SHORTCUTS_ENABLED) return;
+
+            // Skip if focus is in input/textarea/select
+            const tag = document.activeElement?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+            // Skip if modifier keys pressed (except for Ctrl+K which is global search)
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+            const key = e.key.toLowerCase();
+
+            // Handle ? for help
+            if (key === '?' || (e.shiftKey && key === '/')) {
+                e.preventDefault();
+                showShortcutsHelp();
+                return;
+            }
+
+            // Handle N for new gestion
+            if (key === 'n' && !KB_PENDING_KEY) {
+                e.preventDefault();
+                KB_SHORTCUTS['n'].action();
+                return;
+            }
+
+            // Handle G + key sequence
+            if (key === 'g') {
+                KB_PENDING_KEY = 'g';
+                clearTimeout(KB_TIMEOUT_ID);
+                KB_TIMEOUT_ID = setTimeout(() => { KB_PENDING_KEY = null; }, 800);
+                return;
+            }
+
+            // Check for pending G + key
+            if (KB_PENDING_KEY === 'g') {
+                const combo = 'g+' + key;
+                if (KB_SHORTCUTS[combo]) {
+                    e.preventDefault();
+                    KB_SHORTCUTS[combo].action();
+                }
+                KB_PENDING_KEY = null;
+                clearTimeout(KB_TIMEOUT_ID);
+            }
+        }
+
+        /**
+         * Show shortcuts help modal
+         */
+        function showShortcutsHelp() {
+            let modal = document.getElementById('shortcutsHelpModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'shortcutsHelpModal';
+                modal.className = 'modal-overlay';
+                modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+                modal.innerHTML = `
+                    <div class="modal-content" style="max-width: 400px;">
+                        <div class="modal-header">
+                            <h3>⌨️ Atajos de Teclado</h3>
+                            <button class="btn-close" onclick="document.getElementById('shortcutsHelpModal').style.display='none'">×</button>
+                        </div>
+                        <div class="modal-body" style="padding: 1.5rem;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr><th style="text-align: left; padding: 0.5rem 0; border-bottom: 1px solid var(--tp-border-light);">Atajo</th><th style="text-align: left; padding: 0.5rem 0; border-bottom: 1px solid var(--tp-border-light);">Acción</th></tr>
+                                <tr><td style="padding: 0.5rem 0;"><kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">Ctrl+K</kbd></td><td>Búsqueda rápida</td></tr>
+                                <tr><td style="padding: 0.5rem 0;"><kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">G</kbd> <kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">D</kbd></td><td>Dashboard</td></tr>
+                                <tr><td style="padding: 0.5rem 0;"><kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">G</kbd> <kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">E</kbd></td><td>Generar EECC</td></tr>
+                                <tr><td style="padding: 0.5rem 0;"><kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">G</kbd> <kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">C</kbd></td><td>Enviar Correos</td></tr>
+                                <tr><td style="padding: 0.5rem 0;"><kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">G</kbd> <kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">B</kbd></td><td>Bitácora</td></tr>
+                                <tr><td style="padding: 0.5rem 0;"><kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">N</kbd></td><td>Nueva Gestión</td></tr>
+                                <tr><td style="padding: 0.5rem 0;"><kbd style="background: var(--tp-surface-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">?</kbd></td><td>Esta ayuda</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            modal.style.display = 'flex';
+        }
 
         /**
          * Initialize global search keyboard shortcut

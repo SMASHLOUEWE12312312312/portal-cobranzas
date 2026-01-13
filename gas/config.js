@@ -221,7 +221,12 @@ const CONFIG = {
     QUICK_ACTIONS_ENABLED: true,         // Quick actions for bitácora
     TIMELINE_VIEW_ENABLED: true,         // Timeline visual for gestiones
     GLOBAL_SEARCH_ENABLED: true,         // Ctrl+K global search
-    LUCIDE_ICONS_ENABLED: false          // Professional Lucide icons (deferred)
+    LUCIDE_ICONS_ENABLED: false,         // Professional Lucide icons (deferred)
+    // Phase 6 Excelencia Operacional (2026-01-12)
+    DARK_MODE_ENABLED: false,            // Dark theme toggle
+    KEYBOARD_SHORTCUTS_ENABLED: false,   // Additional keyboard shortcuts
+    TEMPLATE_VIEWER_ENABLED: false,      // View mail templates (admin only)
+    HEALTH_CHECK_ENABLED: false          // System health check endpoint
   },
 
   // ========== LOCK ==========

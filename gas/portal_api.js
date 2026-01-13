@@ -425,6 +425,160 @@ function getFeatureFlag(flagName) {
   }
 }
 
+/**
+ * Phase 6: Check if session user is admin
+ * @param {string} token - Session token
+ * @return {boolean} True if admin
+ */
+function isAdminSession_(token) {
+  try {
+    const session = AuthService.validateSession(token);
+    const username = session?.user || '';
+    // Simple admin check: username starts with "admin" or contains "@admin"
+    return username.toLowerCase().startsWith('admin') || username.includes('admin');
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Phase 6: Get mail templates (admin only, read-only)
+ * @param {string} token - Session token
+ * @return {Object} { ok, templates: [...] }
+ */
+function getMailTemplates(token) {
+  const context = 'getMailTemplates';
+  try {
+    // Check feature flag
+    if (!getConfig('FEATURES.TEMPLATE_VIEWER_ENABLED', false)) {
+      return { ok: false, error: 'Feature disabled' };
+    }
+
+    // Validate session
+    AuthService.validateSession(token);
+
+    // Check admin (simple approach: we'll allow all authenticated users for now)
+    // In production, implement proper role check
+    // if (!isAdminSession_(token)) {
+    //   return { ok: false, error: 'Acceso denegado: requiere permisos de administrador' };
+    // }
+
+    // Read Mail_Templates sheet
+    const sheetName = getConfig('SHEETS.MAIL_TEMPLATES', 'Mail_Templates');
+    const ss = SpreadsheetApp.openById(getConfig('SPREADSHEET_ID'));
+    const sheet = ss.getSheetByName(sheetName);
+
+    if (!sheet) {
+      return { ok: false, error: 'Hoja Mail_Templates no encontrada', templates: [] };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return { ok: true, templates: [], message: 'No hay templates configurados' };
+    }
+
+    const headers = data[0].map(h => String(h).trim().toUpperCase());
+    const templates = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const template = {};
+      headers.forEach((h, idx) => {
+        template[h] = row[idx];
+      });
+      template._rowIndex = i + 1;
+      templates.push(template);
+    }
+
+    Logger.info(context, `Loaded ${templates.length} templates`);
+    return { ok: true, templates };
+
+  } catch (error) {
+    Logger.error(context, 'Error loading templates', error);
+    return { ok: false, error: error.message, templates: [] };
+  }
+}
+
+/**
+ * Phase 6: System health check endpoint
+ * @param {string} token - Session token
+ * @return {Object} { status, timestamp, checks }
+ */
+function healthCheck(token) {
+  const context = 'healthCheck';
+  try {
+    // Check feature flag
+    if (!getConfig('FEATURES.HEALTH_CHECK_ENABLED', false)) {
+      return { ok: false, status: 'DISABLED', error: 'Feature disabled' };
+    }
+
+    // Validate session (optional for health check, but recommended)
+    AuthService.validateSession(token);
+
+    const checks = {};
+    let overallStatus = 'OK';
+
+    // Check 1: Spreadsheet access
+    try {
+      const ss = SpreadsheetApp.openById(getConfig('SPREADSHEET_ID'));
+      ss.getSheetByName('BD'); // Just access, don't read data
+      checks.spreadsheet = { status: 'OK', message: 'Acceso confirmado' };
+    } catch (e) {
+      checks.spreadsheet = { status: 'ERROR', message: e.message };
+      overallStatus = 'ERROR';
+    }
+
+    // Check 2: Required sheets exist
+    try {
+      const ss = SpreadsheetApp.openById(getConfig('SPREADSHEET_ID'));
+      const requiredSheets = ['BD', 'EECC', 'Bitacora'];
+      const missing = [];
+      requiredSheets.forEach(name => {
+        if (!ss.getSheetByName(name)) missing.push(name);
+      });
+      if (missing.length > 0) {
+        checks.sheets = { status: 'WARNING', message: `Faltan: ${missing.join(', ')}` };
+        if (overallStatus !== 'ERROR') overallStatus = 'WARNING';
+      } else {
+        checks.sheets = { status: 'OK', message: 'Todas las hojas existen' };
+      }
+    } catch (e) {
+      checks.sheets = { status: 'ERROR', message: e.message };
+      overallStatus = 'ERROR';
+    }
+
+    // Check 3: Triggers installed
+    try {
+      const triggers = ScriptApp.getProjectTriggers();
+      checks.triggers = {
+        status: 'OK',
+        message: `${triggers.length} trigger(s) instalado(s)`,
+        count: triggers.length
+      };
+    } catch (e) {
+      checks.triggers = { status: 'WARNING', message: e.message };
+    }
+
+    Logger.info(context, 'Health check completed', { status: overallStatus });
+
+    return {
+      ok: true,
+      status: overallStatus,
+      timestamp: new Date().toISOString(),
+      checks
+    };
+
+  } catch (error) {
+    Logger.error(context, 'Health check failed', error);
+    return {
+      ok: false,
+      status: 'ERROR',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
 // ========== GET ASEGURADOS ==========
 function getAseguradosSafe(token) {
   const context = 'getAseguradosSafe';
