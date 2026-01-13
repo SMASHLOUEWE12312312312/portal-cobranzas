@@ -467,9 +467,58 @@
 
                     <!-- TAB 1: ESTADO ACTUAL -->
                     <div id="bitacora-embedded-estado" class="bitacora-pane">
+                        <!-- KPIs Panel -->
+                        <div id="bitacoraKPIsPanel" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
+                            <div class="kpi-card" onclick="filtrarPorKPI('hoy')" style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #1976D2;">
+                                <div style="font-size: 0.7rem; color: #1565C0; font-weight: 600; text-transform: uppercase;">📅 HOY</div>
+                                <div id="kpiHoy" style="font-size: 1.5rem; font-weight: 700; color: #1976D2;">0</div>
+                                <div style="font-size: 0.65rem; color: #1976D2;">Compromisos</div>
+                            </div>
+                            <div class="kpi-card" onclick="filtrarPorKPI('1-3dias')" style="background: linear-gradient(135deg, #E8F5E9, #C8E6C9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #388E3C;">
+                                <div style="font-size: 0.7rem; color: #2E7D32; font-weight: 600; text-transform: uppercase;">📆 1-3 días</div>
+                                <div id="kpi1a3" style="font-size: 1.5rem; font-weight: 700; color: #388E3C;">0</div>
+                                <div style="font-size: 0.65rem; color: #388E3C;">Próximos</div>
+                            </div>
+                            <div class="kpi-card" onclick="filtrarPorKPI('4-7dias')" style="background: linear-gradient(135deg, #FFF3E0, #FFE0B2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #F57C00;">
+                                <div style="font-size: 0.7rem; color: #E65100; font-weight: 600; text-transform: uppercase;">📅 4-7 días</div>
+                                <div id="kpi4a7" style="font-size: 1.5rem; font-weight: 700; color: #F57C00;">0</div>
+                                <div style="font-size: 0.65rem; color: #F57C00;">Semana</div>
+                            </div>
+                            <div class="kpi-card" onclick="filtrarPorKPI('vencidos')" style="background: linear-gradient(135deg, #FFEBEE, #FFCDD2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #D32F2F;">
+                                <div style="font-size: 0.7rem; color: #C62828; font-weight: 600; text-transform: uppercase;">🔴 Vencidos</div>
+                                <div id="kpiVencidos" style="font-size: 1.5rem; font-weight: 700; color: #D32F2F;">0</div>
+                                <div style="font-size: 0.65rem; color: #D32F2F;">Crítico</div>
+                            </div>
+                            <div class="kpi-card" onclick="filtrarPorKPI('aging60')" style="background: linear-gradient(135deg, #FCE4EC, #F8BBD9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #C2185B;">
+                                <div style="font-size: 0.7rem; color: #AD1457; font-weight: 600; text-transform: uppercase;">⚠️ +60 días</div>
+                                <div id="kpiAging60" style="font-size: 1.5rem; font-weight: 700; color: #C2185B;">0</div>
+                                <div style="font-size: 0.65rem; color: #C2185B;">Aging</div>
+                            </div>
+                        </div>
+
+                        <!-- Búsqueda Global + Quick Actions -->
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 250px; position: relative;">
+                                <input type="text" id="busquedaGlobalBitacora" 
+                                       placeholder="🔍 Buscar en toda la bitácora... (Atajo: /)" 
+                                       oninput="busquedaGlobalBitacora()"
+                                       style="width: 100%; padding: 0.6rem 1rem; border-radius: 8px; border: 1px solid var(--tp-border-light); font-size: 0.875rem;">
+                            </div>
+                            <div id="quickActionsContainer" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="btn-quick-action" onclick="applyQuickAction('llamada_sin_resp')" title="Llamada sin respuesta" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">📞</button>
+                                <button class="btn-quick-action" onclick="applyQuickAction('whatsapp_enviado')" title="WhatsApp enviado" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">💬</button>
+                                <button class="btn-quick-action" onclick="applyQuickAction('correo_leido')" title="Correo leído" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">📧</button>
+                                <button class="btn-quick-action" onclick="applyQuickAction('compromiso_pago')" title="Compromiso de pago" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">✅</button>
+                                <button class="btn-quick-action" onclick="applyQuickAction('no_contactable')" title="No contactable" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">❌</button>
+                            </div>
+                            <button onclick="exportarBitacoraCSV()" class="btn btn-outline-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" title="Exportar CSV">
+                                📥 CSV
+                            </button>
+                        </div>
+
                         <!-- Filtros -->
                         <div
-                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--tp-surface-secondary); border-radius: 8px;">
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--tp-surface-secondary); border-radius: 8px;">
                             <div class="form-group mb-0">
                                 <label class="form-label" for="filtroAseguradoEmb">🏢 Asegurado / Cliente</label>
                                 <select id="filtroAseguradoEmb" onchange="filtrarBitacoraEmbedded()"
@@ -484,6 +533,10 @@
                                     <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
                                     <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
                                     <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
+                                    <option value="REPROGRAMADO">🔄 Reprogramado</option>
+                                    <option value="DERIVADO_COMERCIAL">📤 Derivado Comercial</option>
+                                    <option value="NO_CONTACTABLE">📵 No contactable</option>
+                                    <option value="NO_COBRABLE">🚫 No cobrable</option>
                                     <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
                                 </select>
                             </div>
@@ -504,6 +557,25 @@
                                     <option value="61-">⚠️ Crítico (+60 días)</option>
                                 </select>
                             </div>
+                            <div class="form-group mb-0">
+                                <label class="form-label" for="filtroCompromisoEmb">🤝 Compromisos</label>
+                                <select id="filtroCompromisoEmb" onchange="filtrarBitacoraEmbedded()" style="width: 100%;">
+                                    <option value="">Todos</option>
+                                    <option value="con">✅ Con compromiso</option>
+                                    <option value="sin">➖ Sin compromiso</option>
+                                    <option value="vencidos">🔴 Vencidos</option>
+                                </select>
+                            </div>
+                            <div class="form-group mb-0" style="display: flex; align-items: flex-end;">
+                                <button onclick="limpiarFiltrosBitacora()" class="btn btn-outline-secondary" style="width: 100%; padding: 0.5rem;">
+                                    🧹 Limpiar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Indicador de filtros activos -->
+                        <div id="indicadorFiltrosActivos" style="display: none; margin-bottom: 1rem; padding: 0.5rem 1rem; background: #E3F2FD; border-radius: 6px; font-size: 0.8rem; color: #1565C0;">
+                            <span id="filtrosActivosTexto"></span>
                         </div>
 
                         <!-- Tabla -->
@@ -513,17 +585,16 @@
                                 <thead
                                     style="background: #E5E7EB; color: #374151; position: sticky; top: 0; z-index: 5;">
                                     <tr>
-                                        <th
-                                            style="padding: 8px 10px; text-align: left; font-weight: 600; font-size: 0.7rem; white-space: nowrap;">
-                                            ASEGURADO</th>
-                                        <th style="padding: 8px 6px; text-align: center; font-size: 0.7rem;">ESTADO</th>
-                                        <th style="padding: 8px 6px; text-align: left; font-size: 0.7rem;">RESP.</th>
-                                        <th style="padding: 8px 6px; text-align: center; font-size: 0.7rem;">F. EECC
+                                        <th onclick="ordenarBitacora('asegurado')" style="padding: 8px 10px; text-align: left; font-weight: 600; font-size: 0.7rem; white-space: nowrap; cursor: pointer; user-select: none;">
+                                            ASEGURADO <span id="sortIndicatorAsegurado"></span></th>
+                                        <th onclick="ordenarBitacora('estadoGestion')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">ESTADO <span id="sortIndicatorEstadoGestion"></span></th>
+                                        <th onclick="ordenarBitacora('responsable')" style="padding: 8px 6px; text-align: left; font-size: 0.7rem; cursor: pointer; user-select: none;">RESP. <span id="sortIndicatorResponsable"></span></th>
+                                        <th onclick="ordenarBitacora('fechaEnvioEECC')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">F. EECC <span id="sortIndicatorFechaEnvioEECC"></span>
                                         </th>
-                                        <th style="padding: 8px 6px; text-align: center; font-size: 0.7rem;">F. GESTIÓN
+                                        <th onclick="ordenarBitacora('fechaGestion')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">F. GESTIÓN <span id="sortIndicatorFechaGestion"></span>
                                         </th>
-                                        <th style="padding: 8px 6px; text-align: center; font-size: 0.7rem;">DÍAS</th>
-                                        <th style="padding: 8px 6px; text-align: center; font-size: 0.7rem;">COMPROM.
+                                        <th onclick="ordenarBitacora('diasDesde')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">DÍAS <span id="sortIndicatorDiasDesde"></span></th>
+                                        <th onclick="ordenarBitacora('fechaCompromiso')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">COMPROM. <span id="sortIndicatorFechaCompromiso"></span>
                                         </th>
                                         <th style="padding: 8px 6px; text-align: left; font-size: 0.7rem;">PRÓX. ACCIÓN
                                         </th>
@@ -4113,6 +4184,7 @@
                         BITACORA_EMB_LOADED = true;
                         renderBitacoraTableEmb();
                         populateFiltrosEmb();
+                        actualizarKPIsCompromisosPanel(); // Actualizar nuevo panel KPIs
                     } else {
                         showBitacoraEmbError('No hay datos disponibles');
                     }
@@ -4245,10 +4317,36 @@
                 return;
             }
 
+            // Validar fechaCompromiso si el estado lo requiere
+            const estadoConfig = CONFIG_ESTADOS[estado];
+            if (estadoConfig && estadoConfig.requiereFechaCompromiso && !fechaCompromiso) {
+                toast('Este estado requiere una fecha de compromiso', 'error');
+                return;
+            }
+
+            // Obtener fechaEnvioEECC del ciclo más reciente del asegurado
+            let fechaEnvioEECC = new Date().toISOString().split('T')[0];
+            const cicloAsegurado = BITACORA_DATA.find(g => g.asegurado === asegurado);
+            if (cicloAsegurado && cicloAsegurado.fechaEnvioEECC) {
+                fechaEnvioEECC = cicloAsegurado.fechaEnvioEECC;
+            }
+
+            // Mapear tipo a canalContacto
+            const mapeoTipoCanal = {
+                'LLAMADA': 'LLAMADA',
+                'WHATSAPP': 'WHATSAPP',
+                'EMAIL': 'EMAIL',
+                'REUNION': 'REUNION',
+                'VISITA': 'REUNION'
+            };
+
             const payload = {
                 asegurado: asegurado,
                 tipoGestion: tipo,
                 estadoGestion: estado,
+                canalContacto: mapeoTipoCanal[tipo] || 'OTRO',
+                fechaEnvioEECC: fechaEnvioEECC,
+                fechaGestion: new Date().toISOString().split('T')[0],
                 fechaCompromiso: fechaCompromiso || null,
                 proximaAccion: proximaAccion,
                 observaciones: observaciones || ''
@@ -4269,16 +4367,13 @@
                     if (result && result.ok) {
                         toast('✅ Gestión registrada correctamente', 'success');
                         // Limpiar formulario
-                        document.getElementById('gestionAseguradoEmb').value = '';
-                        document.getElementById('gestionTipoEmb').value = '';
-                        document.getElementById('gestionEstadoEmb').value = '';
-                        document.getElementById('gestionFechaCompromisoEmb').value = '';
-                        document.getElementById('gestionProximaAccionEmb').value = '';
-                        document.getElementById('gestionObservacionesEmb').value = '';
-                        // Recargar datos
+                        limpiarFormularioGestion();
+                        // Invalidar cache
                         BITACORA_EMB_LOADED = false;
-                        switchBitacoraTabEmbedded('estado');
+                        TIMELINE_CACHE = {};
+                        // Recargar datos
                         loadBitacoraEmbeddedData();
+                        switchBitacoraTabEmbedded('estado');
                     } else {
                         toast('❌ Error: ' + (result?.message || 'Error desconocido'), 'error');
                     }
@@ -4297,6 +4392,30 @@
                 })
                 .registrarGestionManualBitacora(payload, TOKEN);
         }
+
+        // Función para limpiar formulario de gestión
+        function limpiarFormularioGestion() {
+            const campos = ['gestionAseguradoEmb', 'gestionTipoEmb', 'gestionEstadoEmb', 
+                           'gestionFechaCompromisoEmb', 'gestionProximaAccionEmb', 'gestionObservacionesEmb'];
+            campos.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+        }
+
+        // Configuración de estados para validación
+        const CONFIG_ESTADOS = {
+            SIN_RESPUESTA: { requiereObservacion: false, requiereFechaCompromiso: false },
+            EN_SEGUIMIENTO: { requiereObservacion: false, requiereFechaCompromiso: false },
+            COMPROMISO_PAGO: { requiereObservacion: false, requiereFechaCompromiso: true },
+            REPROGRAMADO: { requiereObservacion: true, requiereFechaCompromiso: true },
+            DERIVADO_COMERCIAL: { requiereObservacion: true, requiereFechaCompromiso: false },
+            DERIVADO_RRHH: { requiereObservacion: true, requiereFechaCompromiso: false },
+            DERIVADO_RIESGOS_GENERALES: { requiereObservacion: true, requiereFechaCompromiso: false },
+            NO_CONTACTABLE: { requiereObservacion: true, requiereFechaCompromiso: false },
+            NO_COBRABLE: { requiereObservacion: true, requiereFechaCompromiso: false },
+            CERRADO_PAGADO: { requiereObservacion: false, requiereFechaCompromiso: false }
+        };
 
         function filtrarBitacoraEmbedded() {
             const aseg = document.getElementById('filtroAseguradoEmb')?.value || '';
@@ -5179,6 +5298,298 @@
             kpiSeguimiento.textContent = seguimiento;
             kpiCerrados.textContent = cerrados;
         }
+
+        // ========== KPIs COMPROMISOS (NUEVO PANEL) ==========
+        
+        function actualizarKPIsCompromisosPanel() {
+            if (!BITACORA_DATA || !Array.isArray(BITACORA_DATA)) {
+                console.warn('[actualizarKPIsCompromisosPanel] BITACORA_DATA no inicializado');
+                return;
+            }
+            
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            let kpiHoy = 0;
+            let kpi1a3 = 0;
+            let kpi4a7 = 0;
+            let kpiVencidos = 0;
+            let kpiAging60 = 0;
+            
+            BITACORA_DATA.forEach(item => {
+                // KPIs de Compromisos (basados en fechaCompromiso)
+                if (item.fechaCompromiso) {
+                    const fechaComp = new Date(item.fechaCompromiso);
+                    fechaComp.setHours(0, 0, 0, 0);
+                    const diffDias = Math.floor((fechaComp - hoy) / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDias < 0) {
+                        kpiVencidos++;
+                    } else if (diffDias === 0) {
+                        kpiHoy++;
+                    } else if (diffDias >= 1 && diffDias <= 3) {
+                        kpi1a3++;
+                    } else if (diffDias >= 4 && diffDias <= 7) {
+                        kpi4a7++;
+                    }
+                }
+                
+                // Aging +60 días (basado en diasPendientes)
+                if (item.diasPendientes && parseInt(item.diasPendientes) > 60) {
+                    kpiAging60++;
+                }
+            });
+            
+            // Actualizar DOM con animación
+            const updateWithAnimation = (elementId, value) => {
+                const el = document.getElementById(elementId);
+                if (el) {
+                    const oldValue = parseInt(el.textContent) || 0;
+                    if (oldValue !== value) {
+                        el.style.transform = 'scale(1.1)';
+                        el.textContent = value;
+                        setTimeout(() => { el.style.transform = 'scale(1)'; }, 200);
+                    }
+                }
+            };
+            
+            updateWithAnimation('kpiHoy', kpiHoy);
+            updateWithAnimation('kpi1a3', kpi1a3);
+            updateWithAnimation('kpi4a7', kpi4a7);
+            updateWithAnimation('kpiVencidos', kpiVencidos);
+            updateWithAnimation('kpiAging60', kpiAging60);
+        }
+        
+        // Variable para rastrear filtro KPI activo
+        let KPI_FILTRO_ACTIVO = null;
+        
+        function filtrarPorKPI(tipo) {
+            // Toggle: si ya está activo el mismo filtro, desactivar
+            if (KPI_FILTRO_ACTIVO === tipo) {
+                KPI_FILTRO_ACTIVO = null;
+                // Limpiar estilos de KPIs
+                document.querySelectorAll('.kpi-card').forEach(c => c.style.boxShadow = 'none');
+                filtrarBitacoraEmbedded();
+                return;
+            }
+            
+            KPI_FILTRO_ACTIVO = tipo;
+            
+            // Resaltar KPI seleccionado
+            document.querySelectorAll('.kpi-card').forEach(c => c.style.boxShadow = 'none');
+            event.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            BITACORA_FILTERED = BITACORA_DATA.filter(item => {
+                switch(tipo) {
+                    case 'hoy':
+                        if (!item.fechaCompromiso) return false;
+                        const fHoy = new Date(item.fechaCompromiso);
+                        fHoy.setHours(0, 0, 0, 0);
+                        return fHoy.getTime() === hoy.getTime();
+                    case '1-3dias':
+                        if (!item.fechaCompromiso) return false;
+                        const f13 = new Date(item.fechaCompromiso);
+                        f13.setHours(0, 0, 0, 0);
+                        const diff13 = Math.floor((f13 - hoy) / (1000 * 60 * 60 * 24));
+                        return diff13 >= 1 && diff13 <= 3;
+                    case '4-7dias':
+                        if (!item.fechaCompromiso) return false;
+                        const f47 = new Date(item.fechaCompromiso);
+                        f47.setHours(0, 0, 0, 0);
+                        const diff47 = Math.floor((f47 - hoy) / (1000 * 60 * 60 * 24));
+                        return diff47 >= 4 && diff47 <= 7;
+                    case 'vencidos':
+                        if (!item.fechaCompromiso) return false;
+                        const fVenc = new Date(item.fechaCompromiso);
+                        fVenc.setHours(0, 0, 0, 0);
+                        return fVenc < hoy;
+                    case 'aging60':
+                        return item.diasPendientes && parseInt(item.diasPendientes) > 60;
+                    default:
+                        return true;
+                }
+            });
+            
+            renderBitacoraTable();
+            showToast(`Filtrado por: ${tipo}`, 'info');
+        }
+        
+        // ========== BÚSQUEDA GLOBAL ==========
+        
+        function busquedaGlobalBitacora() {
+            const input = document.getElementById('busquedaGlobalBitacora');
+            const query = (input?.value || '').toLowerCase().trim();
+            
+            if (!query) {
+                // Si vacío, restaurar filtros normales
+                KPI_FILTRO_ACTIVO = null;
+                document.querySelectorAll('.kpi-card').forEach(c => c.style.boxShadow = 'none');
+                filtrarBitacoraEmbedded();
+                return;
+            }
+            
+            BITACORA_FILTERED = BITACORA_DATA.filter(item => {
+                const campos = [
+                    item.asegurado,
+                    item.responsable,
+                    item.observaciones,
+                    item.proximaAccion,
+                    item.estadoGestion,
+                    item.tipoGestion,
+                    item.canalContacto
+                ];
+                return campos.some(c => (c || '').toLowerCase().includes(query));
+            });
+            
+            renderBitacoraTable();
+        }
+        
+        // ========== QUICK ACTIONS ==========
+        
+        function applyQuickAction(actionId) {
+            // Configuración de Quick Actions
+            const QUICK_ACTIONS_CONFIG = {
+                llamada_sin_resp: {
+                    tipoGestion: 'LLAMADA',
+                    estadoGestion: 'SIN_RESPUESTA',
+                    proximaAccion: 'Reintentar llamada en 24h'
+                },
+                whatsapp_enviado: {
+                    tipoGestion: 'WHATSAPP',
+                    estadoGestion: 'EN_SEGUIMIENTO',
+                    proximaAccion: 'Esperar respuesta WhatsApp 48h'
+                },
+                correo_leido: {
+                    tipoGestion: 'CORREO',
+                    estadoGestion: 'EN_SEGUIMIENTO',
+                    proximaAccion: 'Confirmar lectura y respuesta'
+                },
+                compromiso_pago: {
+                    tipoGestion: 'LLAMADA',
+                    estadoGestion: 'COMPROMISO_PAGO',
+                    proximaAccion: 'Verificar pago en fecha comprometida'
+                },
+                no_contactable: {
+                    tipoGestion: 'LLAMADA',
+                    estadoGestion: 'NO_CONTACTABLE',
+                    proximaAccion: 'Buscar contacto alternativo'
+                }
+            };
+            
+            const config = QUICK_ACTIONS_CONFIG[actionId];
+            if (!config) {
+                console.warn('[applyQuickAction] Acción no encontrada:', actionId);
+                return;
+            }
+            
+            // Pre-llenar formulario embebido
+            const tipoSelect = document.getElementById('tipoGestionEmb');
+            const estadoSelect = document.getElementById('estadoGestionEmb');
+            const proxAccionInput = document.getElementById('proximaAccionEmb');
+            
+            if (tipoSelect) tipoSelect.value = config.tipoGestion;
+            if (estadoSelect) {
+                estadoSelect.value = config.estadoGestion;
+                // Trigger change event para validaciones dinámicas
+                estadoSelect.dispatchEvent(new Event('change'));
+            }
+            if (proxAccionInput) proxAccionInput.value = config.proximaAccion;
+            
+            // Scroll al formulario
+            const form = document.getElementById('formRegistroGestionEmb');
+            if (form) {
+                form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            showToast('Quick Action aplicada: ' + actionId.replace(/_/g, ' '), 'success');
+        }
+        
+        // ========== EXPORT CSV ==========
+        
+        function exportarBitacoraCSV() {
+            if (!BITACORA_FILTERED || BITACORA_FILTERED.length === 0) {
+                showToast('No hay datos para exportar', 'warning');
+                return;
+            }
+            
+            // Definir columnas
+            const headers = ['Asegurado', 'Estado', 'Tipo', 'Canal', 'Responsable', 'Fecha Gestión', 'Días', 'Fecha Compromiso', 'Próxima Acción', 'Observaciones'];
+            
+            // Construir filas
+            const rows = BITACORA_FILTERED.map(item => [
+                item.asegurado || '',
+                item.estadoGestion || '',
+                item.tipoGestion || '',
+                item.canalContacto || '',
+                item.responsable || '',
+                item.fechaGestion || '',
+                item.diasPendientes || '',
+                item.fechaCompromiso || '',
+                item.proximaAccion || '',
+                (item.observaciones || '').replace(/"/g, '""') // Escapar comillas
+            ]);
+            
+            // Construir CSV con BOM para Excel
+            const BOM = '\uFEFF';
+            let csv = BOM + headers.join(',') + '\n';
+            rows.forEach(row => {
+                csv += row.map(cell => `"${cell}"`).join(',') + '\n';
+            });
+            
+            // Crear blob y descargar
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            
+            // Nombre con fecha
+            const fecha = new Date().toISOString().split('T')[0];
+            link.setAttribute('download', `bitacora_cobranzas_${fecha}.csv`);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showToast(`Exportado: ${BITACORA_FILTERED.length} registros`, 'success');
+        }
+        
+        // ========== KEYBOARD SHORTCUTS ==========
+        
+        document.addEventListener('keydown', function(e) {
+            // Solo si no está en un input/textarea
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+                // Esc en búsqueda: limpiar
+                if (e.key === 'Escape' && e.target.id === 'busquedaGlobalBitacora') {
+                    e.target.value = '';
+                    busquedaGlobalBitacora();
+                }
+                return;
+            }
+            
+            // / = Focus en búsqueda
+            if (e.key === '/') {
+                e.preventDefault();
+                const searchInput = document.getElementById('busquedaGlobalBitacora');
+                if (searchInput) searchInput.focus();
+            }
+            
+            // N = Nuevo registro (scroll al form)
+            if (e.key === 'n' || e.key === 'N') {
+                const form = document.getElementById('formRegistroGestionEmb');
+                if (form) {
+                    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Focus en primer campo
+                    setTimeout(() => {
+                        const firstInput = document.getElementById('aseguradoSelectorEmb');
+                        if (firstInput) firstInput.focus();
+                    }, 300);
+                }
+            }
+        });
 
         // ========== REGISTRAR GESTIÓN ==========
 

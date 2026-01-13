@@ -247,6 +247,106 @@ var BitacoraService = BitacoraService || {
   },
 
   /**
+   * ADAPTER: Método de compatibilidad para código legacy
+   * Mapea los campos antiguos al formato v3.0 y delega a registrarGestionManual
+   * 
+   * @param {Object} datos - Datos en formato legacy o v3
+   * @return {Object} { ok, idGestion }
+   */
+  registrarGestion(datos) {
+    const context = 'BitacoraService.registrarGestion (adapter)';
+    
+    try {
+      Logger.info(context, 'Adaptando llamada legacy', { 
+        tieneIdCiclo: !!datos.idCiclo,
+        tieneTipoGestion: !!datos.tipoGestion,
+        tieneCanal: !!datos.canal
+      });
+      
+      // Mapear campos legacy a v3.0
+      const datosV3 = {
+        idCiclo: datos.idCiclo || null,
+        asegurado: datos.asegurado,
+        ruc: datos.ruc || '',
+        fechaEnvioEECC: datos.fechaEnvioEECC || new Date(),
+        fechaGestion: datos.fechaGestion || new Date(),
+        tipoGestion: this._mapTipoGestion(datos),
+        estadoGestion: this._mapEstado(datos),
+        canalContacto: this._mapCanal(datos),
+        fechaCompromiso: datos.fechaCompromiso || null,
+        proximaAccion: datos.proximaAccion || datos.proxima_accion || 'Seguimiento',
+        observaciones: datos.observaciones || datos.observacion || '',
+        responsable: datos.responsable || Session.getActiveUser().getEmail(),
+        origen: datos.origen || CONFIG.BITACORA.ORIGENES.MANUAL_PORTAL
+      };
+      
+      // Delegar a registrarGestionManual
+      return this.registrarGestionManual(datosV3);
+      
+    } catch (error) {
+      Logger.error(context, 'Error en adapter', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  /**
+   * Mapea tipo de gestión de formato legacy a v3.0
+   * @private
+   */
+  _mapTipoGestion(datos) {
+    if (datos.tipoGestion) return datos.tipoGestion;
+    if (datos.tipo_gestion) return datos.tipo_gestion;
+    if (datos.tipo) return datos.tipo;
+    
+    // Inferir de canal si existe
+    const canal = (datos.canal || datos.canalContacto || '').toUpperCase();
+    const mapeoCanal = {
+      'EMAIL': 'CORREO_INDIVIDUAL',
+      'CORREO': 'CORREO_INDIVIDUAL',
+      'LLAMADA': 'LLAMADA',
+      'TELEFONO': 'LLAMADA',
+      'WHATSAPP': 'WHATSAPP',
+      'REUNION': 'REUNION'
+    };
+    return mapeoCanal[canal] || 'OTRO';
+  },
+
+  /**
+   * Mapea estado de gestión de formato legacy a v3.0
+   * @private
+   */
+  _mapEstado(datos) {
+    if (datos.estadoGestion) return datos.estadoGestion;
+    if (datos.estado_gestion) return datos.estado_gestion;
+    if (datos.estado) return datos.estado;
+    
+    // Default según contexto
+    if (datos.fechaCompromiso) return 'COMPROMISO_PAGO';
+    return 'EN_SEGUIMIENTO';
+  },
+
+  /**
+   * Mapea canal de contacto de formato legacy a v3.0
+   * @private
+   */
+  _mapCanal(datos) {
+    if (datos.canalContacto) return datos.canalContacto;
+    if (datos.canal_contacto) return datos.canal_contacto;
+    if (datos.canal) return datos.canal.toUpperCase();
+    
+    // Inferir del tipo de gestión
+    const tipo = (datos.tipoGestion || datos.tipo || '').toUpperCase();
+    const mapeoTipo = {
+      'ENVIO_EECC': 'EMAIL',
+      'CORREO_INDIVIDUAL': 'EMAIL',
+      'LLAMADA': 'LLAMADA',
+      'WHATSAPP': 'WHATSAPP',
+      'REUNION': 'REUNION'
+    };
+    return mapeoTipo[tipo] || 'OTRO';
+  },
+
+  /**
    * Registra una gestión manual en un ciclo existente
    * 
    * @param {Object} datos
@@ -996,4 +1096,3 @@ var BitacoraService = BitacoraService || {
     }
   }
 };
-

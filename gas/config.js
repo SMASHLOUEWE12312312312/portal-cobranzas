@@ -337,6 +337,14 @@ const CONFIG = {
         bgColor: '#FFEBEE',
         requiereObservacion: true,
         requiereFechaCompromiso: false
+      },
+      NO_CONTACTABLE: {
+        codigo: 'NO_CONTACTABLE',
+        descripcion: 'Cliente no localizable/sin contacto',
+        color: '#757575',
+        bgColor: '#EEEEEE',
+        requiereObservacion: true,
+        requiereFechaCompromiso: false
       }
     },
 
