@@ -619,68 +619,254 @@
                         </div>
                     </div>
 
-                    <!-- TAB 2: REGISTRAR GESTIÓN - Formulario inline -->
+                    <!-- TAB 2: REGISTRAR GESTIÓN - Formulario UNIFICADO (igual al modal) -->
                     <div id="bitacora-embedded-registrar" class="bitacora-pane" style="display: none;">
-                        <div style="padding: 1.5rem; background: var(--tp-surface-secondary); border-radius: 8px;">
-                            <p style="margin-bottom: 1.5rem; color: var(--tp-text-secondary);">
+                        <div style="padding: 1.5rem; background: var(--tp-surface-secondary); border-radius: 12px; border: 1px solid var(--tp-border-light);">
+                            <p style="margin-bottom: 1.5rem; color: var(--tp-text-secondary); font-size: 0.875rem; line-height: 1.5;">
                                 ✍️ Completa este formulario para registrar una nueva gestión de cobranza.
                                 Los campos marcados con <span style="color: #D32F2F;">*</span> son obligatorios.
                             </p>
 
-                            <div
-                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                                <div class="form-group">
-                                    <label class="form-label">🏢 Asegurado <span style="color:#D32F2F;">*</span></label>
-                                    <select id="gestionAseguradoEmb" style="width:100%;">
-                                        <option value="">Seleccionar...</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">📌 Tipo de Gestión <span
-                                            style="color:#D32F2F;">*</span></label>
-                                    <select id="gestionTipoEmb" style="width:100%;">
-                                        <option value="">Seleccionar...</option>
-                                        <option value="LLAMADA">📞 Llamada</option>
-                                        <option value="WHATSAPP">💬 WhatsApp</option>
-                                        <option value="EMAIL">✉️ Email</option>
-                                        <option value="REUNION">🤝 Reunión</option>
-                                        <option value="VISITA">🚗 Visita</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">📊 Estado <span style="color:#D32F2F;">*</span></label>
-                                    <select id="gestionEstadoEmb" style="width:100%;">
-                                        <option value="">Seleccionar...</option>
-                                        <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
-                                        <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
-                                        <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
-                                        <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">📅 Fecha Compromiso</label>
-                                    <input type="date" id="gestionFechaCompromisoEmb" style="width:100%;">
-                                </div>
-                            </div>
+                            <form id="formGestionEmb" onsubmit="return registrarGestionEmbedded(event)">
+                                <!-- Grid de 2 columnas en desktop -->
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
 
-                            <div class="form-group" style="margin-top: 1rem;">
-                                <label class="form-label">📝 Próxima Acción <span
-                                        style="color:#D32F2F;">*</span></label>
-                                <input type="text" id="gestionProximaAccionEmb"
-                                    placeholder="Ej: Llamar para confirmar pago..." style="width:100%;">
-                            </div>
+                                    <!-- COLUMNA 1: Datos del Cliente y Gestión -->
+                                    <div>
+                                        <h3 style="font-size: 1rem; font-weight: 600; color: var(--tp-text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--tp-border-light);">
+                                            📋 Información del Cliente
+                                        </h3>
 
-                            <div class="form-group" style="margin-top: 1rem;">
-                                <label class="form-label">📋 Observaciones</label>
-                                <textarea id="gestionObservacionesEmb" rows="3" placeholder="Detalles adicionales..."
-                                    style="width:100%;"></textarea>
-                            </div>
+                                        <!-- Selector de Modo: Individual / Grupo Económico -->
+                                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                                            <label style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                                <input type="radio" name="bitacoraModeEmb" value="asegurado" checked onchange="toggleBitacoraModeEmb()">
+                                                <span>👤 Individual</span>
+                                            </label>
+                                            <label style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                                <input type="radio" name="bitacoraModeEmb" value="grupo" onchange="toggleBitacoraModeEmb()">
+                                                <span>👥 Grupo Económico</span>
+                                            </label>
+                                        </div>
 
-                            <div style="margin-top: 1.5rem; text-align: right;">
-                                <button class="btn btn-primary" onclick="registrarGestionEmbedded()">
-                                    💾 Registrar Gestión
-                                </button>
-                            </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="gestionAseguradoEmb">
+                                                🏢 Asegurado / Cliente <span style="color: #D32F2F;">*</span>
+                                            </label>
+
+                                            <!-- Componente Autocomplete -->
+                                            <div class="autocomplete-wrapper" id="autocompleteWrapperEmb">
+                                                <div class="autocomplete-input-container">
+                                                    <span class="autocomplete-icon">🔍</span>
+                                                    <input type="text" id="gestionAseguradoEmb" class="autocomplete-input"
+                                                        placeholder="Escribe o selecciona un cliente..." autocomplete="off"
+                                                        required oninput="filtrarAutocompleteEmb()"
+                                                        onfocus="mostrarDropdownAutocompleteEmb()" />
+                                                    <button type="button" class="autocomplete-dropdown-btn"
+                                                        onclick="toggleDropdownAutocompleteEmb()" title="Ver todas las opciones">
+                                                        ▼
+                                                    </button>
+                                                    <button type="button" class="autocomplete-clear-btn" id="clearAseguradoEmb"
+                                                        onclick="limpiarAutocompleteEmb()" style="display: none;"
+                                                        title="Limpiar selección">
+                                                        ✕
+                                                    </button>
+                                                </div>
+
+                                                <!-- Dropdown de opciones -->
+                                                <div class="autocomplete-dropdown" id="autocompleteDropdownEmb" style="display: none;">
+                                                    <div class="autocomplete-options" id="autocompleteOptionsEmb">
+                                                        <!-- Las opciones se cargan dinámicamente -->
+                                                    </div>
+                                                </div>
+
+                                                <!-- Contador de resultados -->
+                                                <small id="autocompleteCounterEmb" class="autocomplete-counter" style="display: none;"></small>
+                                            </div>
+
+                                            <!-- Hidden input para valor seleccionado -->
+                                            <input type="hidden" id="gestionAseguradoValueEmb" name="asegurado" required />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <div class="fecha-field-wrapper">
+                                                <div class="fecha-field-header">
+                                                    <label class="form-label" style="margin: 0;">
+                                                        📅 Fecha Envío EECC (Inicio del ciclo)
+                                                    </label>
+
+                                                    <!-- Selector Automático / Manual -->
+                                                    <div class="radio-toggle-group">
+                                                        <input type="radio" id="fechaEnvioAutoEmb" name="fechaEnvioModeEmb"
+                                                            value="auto" checked class="radio-toggle-input"
+                                                            onchange="toggleFechaEnvioModeEmb()">
+                                                        <label for="fechaEnvioAutoEmb" class="radio-toggle-label">
+                                                            <span class="radio-toggle-icon">🤖</span>
+                                                            <span>Automático</span>
+                                                        </label>
+
+                                                        <input type="radio" id="fechaEnvioManualEmb" name="fechaEnvioModeEmb"
+                                                            value="manual" class="radio-toggle-input"
+                                                            onchange="toggleFechaEnvioModeEmb()">
+                                                        <label for="fechaEnvioManualEmb" class="radio-toggle-label">
+                                                            <span class="radio-toggle-icon">✍️</span>
+                                                            <span>Manual</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <input type="datetime-local" id="gestionFechaEnvioEECCEmb" readonly
+                                                    placeholder="Se completará automáticamente">
+                                                <small class="form-help">
+                                                    <span id="fechaEnvioHelpEmb">Fecha del envío del EECC que inició este ciclo de cobranza</span>
+                                                </small>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <div class="fecha-field-wrapper">
+                                                <div class="fecha-field-header">
+                                                    <label class="form-label" style="margin: 0;">
+                                                        📅 Fecha de esta Gestión
+                                                    </label>
+
+                                                    <!-- Selector Hoy / Manual -->
+                                                    <div class="radio-toggle-group">
+                                                        <input type="radio" id="fechaGestionHoyEmb" name="fechaGestionModeEmb"
+                                                            value="auto" checked class="radio-toggle-input"
+                                                            onchange="toggleFechaGestionModeEmb()">
+                                                        <label for="fechaGestionHoyEmb" class="radio-toggle-label">
+                                                            <span class="radio-toggle-icon">🤖</span>
+                                                            <span>Hoy</span>
+                                                        </label>
+
+                                                        <input type="radio" id="fechaGestionManualEmb" name="fechaGestionModeEmb"
+                                                            value="manual" class="radio-toggle-input"
+                                                            onchange="toggleFechaGestionModeEmb()">
+                                                        <label for="fechaGestionManualEmb" class="radio-toggle-label">
+                                                            <span class="radio-toggle-icon">✍️</span>
+                                                            <span>Manual</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <input type="datetime-local" id="gestionFechaGestionEmb" readonly>
+                                                <small class="form-help">
+                                                    <span id="fechaGestionHelpEmb">Por defecto se usa la fecha y hora actual</span>
+                                                </small>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label" for="gestionResponsableEmb">
+                                                👤 Responsable
+                                            </label>
+                                            <input type="text" id="gestionResponsableEmb" readonly placeholder="Usuario actual"
+                                                style="background-color: var(--tp-surface-overlay);">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label" for="gestionTipoEmb">
+                                                📞 Tipo de Gestión <span style="color: #D32F2F;">*</span>
+                                            </label>
+                                            <select id="gestionTipoEmb" required>
+                                                <option value="">¿Cómo contactaste al cliente?</option>
+                                                <option value="LLAMADA">📞 Llamada telefónica</option>
+                                                <option value="WHATSAPP">💬 Mensaje por WhatsApp</option>
+                                                <option value="CORREO_INDIVIDUAL">📧 Correo electrónico individual</option>
+                                                <option value="REUNION">🤝 Reunión presencial o virtual</option>
+                                                <option value="OTRO">📝 Otro tipo de gestión</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- COLUMNA 2: Estado y Seguimiento -->
+                                    <div>
+                                        <h3 style="font-size: 1rem; font-weight: 600; color: var(--tp-text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--tp-border-light);">
+                                            📊 Resultado y Seguimiento
+                                        </h3>
+
+                                        <div class="form-group">
+                                            <label class="form-label" for="gestionEstadoEmb">
+                                                📌 Estado de Gestión <span style="color: #D32F2F;">*</span>
+                                            </label>
+                                            <select id="gestionEstadoEmb" required onchange="onEstadoChangeEmb()">
+                                                <option value="">¿Cuál fue el resultado?</option>
+                                                <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
+                                                <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
+                                                <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
+                                                <option value="REPROGRAMADO">📅 Reprogramado</option>
+                                                <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
+                                                <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
+                                                <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales</option>
+                                                <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
+                                                <option value="NO_COBRABLE">⛔ No cobrable</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label" for="gestionCanalEmb">
+                                                📡 Canal de Contacto <span style="color: #D32F2F;">*</span>
+                                            </label>
+                                            <select id="gestionCanalEmb" required>
+                                                <option value="">¿Por qué medio se realizó?</option>
+                                                <option value="EMAIL">📧 Correo electrónico</option>
+                                                <option value="LLAMADA">📞 Llamada telefónica</option>
+                                                <option value="WHATSAPP">💬 WhatsApp</option>
+                                                <option value="REUNION">🤝 Reunión</option>
+                                                <option value="OTRO">📝 Otro canal</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group hidden" id="grupoFechaCompromisoEmb">
+                                            <label class="form-label" for="gestionFechaCompromisoEmb">
+                                                🗓️ Fecha de Compromiso <span id="requiredCompromisoEmb" class="hidden" style="color: #D32F2F;">*</span>
+                                            </label>
+                                            <input type="date" id="gestionFechaCompromisoEmb">
+                                            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8125rem;">
+                                                💡 <strong>Obligatorio</strong> si el estado es "Compromiso de pago" o "Reprogramado"
+                                            </p>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label" for="gestionProximaAccionEmb">
+                                                🎯 Próxima Acción <span style="color: #D32F2F;">*</span>
+                                            </label>
+                                            <input type="text" id="gestionProximaAccionEmb" required
+                                                placeholder="Ej: Llamar si no paga el 20/11, Enviar recordatorio..."
+                                                maxlength="200">
+                                            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8125rem;">
+                                                Define qué hacer después de esta gestión
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Observaciones (ancho completo) -->
+                                <div class="form-group" style="margin-top: 1rem;">
+                                    <label class="form-label" for="gestionObservacionesEmb">
+                                        Observaciones <span id="requiredObsEmb" class="hidden" style="color: #D32F2F;">*</span>
+                                    </label>
+                                    <textarea id="gestionObservacionesEmb" rows="4"
+                                        placeholder="Detalles de la gestión (con quién se habló, qué se acordó, etc.)"></textarea>
+                                    <p class="text-muted" style="margin-top: 0.25rem; font-size: 0.875rem;">
+                                        Obligatorio para estados: Derivaciones, No cobrable
+                                    </p>
+                                </div>
+
+                                <!-- Estado del formulario -->
+                                <div id="gestionStatusEmb" style="margin-top: 1rem;"></div>
+
+                                <!-- Botones -->
+                                <div class="btn-group" style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                                    <button type="button" class="btn btn-secondary" onclick="limpiarFormGestionEmb()">
+                                        Limpiar
+                                    </button>
+                                    <button type="submit" class="btn btn-primary" id="btnGuardarGestionEmb">
+                                        💾 Registrar Gestión
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -1421,6 +1607,8 @@
             // FIX: Bitácora embebida v15 - cargar datos directamente sin inyectar HTML
             if (viewName === 'bitacora') {
                 loadBitacoraEmbeddedData();
+                // UNIFICADO: Inicializar formulario embebido
+                inicializarFormularioEmbedded();
             }
         }
 
@@ -4079,23 +4267,53 @@
                 toggleNotificaciones();
             }
 
-            // Abrir bitácora
-            openBitacoraModal();
+            // UNIFICADO: Navegar al módulo Bitácora embebido (NO abrir modal)
+            switchView('bitacora');
 
-            // Esperar a que cargue y luego filtrar
+            // Esperar a que la vista cargue y cambiar al tab de registrar
             setTimeout(() => {
-                const selectCliente = document.getElementById('bitacoraFiltroAsegurado');
-                if (selectCliente) {
-                    // Buscar la opción que coincida
-                    for (let i = 0; i < selectCliente.options.length; i++) {
-                        if (selectCliente.options[i].value === asegurado) {
-                            selectCliente.selectedIndex = i;
-                            filterBitacora();
-                            break;
-                        }
-                    }
+                // Cambiar al tab "Registrar Gestión"
+                switchBitacoraTabEmbedded('registrar');
+
+                // Preseleccionar el asegurado en el formulario embebido
+                setTimeout(() => {
+                    preseleccionarAseguradoEmb(asegurado);
+                }, 300);
+            }, 200);
+        }
+
+        /**
+         * Preselecciona un asegurado en el formulario embebido de Bitácora
+         * Se usa cuando se navega desde Notificaciones
+         */
+        function preseleccionarAseguradoEmb(asegurado) {
+            console.log('[preseleccionarAseguradoEmb] Preseleccionando:', asegurado);
+
+            const inputAsegurado = document.getElementById('gestionAseguradoEmb');
+            const inputHidden = document.getElementById('gestionAseguradoValueEmb');
+
+            if (inputAsegurado && inputHidden) {
+                inputAsegurado.value = asegurado;
+                inputHidden.value = asegurado;
+
+                // Mostrar botón de limpiar
+                const clearBtn = document.getElementById('clearAseguradoEmb');
+                if (clearBtn) clearBtn.style.display = 'flex';
+
+                // Cargar automáticamente la fecha de envío EECC para este cliente
+                cargarFechaEnvioEECCAutoEmb(asegurado);
+
+                // Establecer responsable
+                const inputResponsable = document.getElementById('gestionResponsableEmb');
+                if (inputResponsable && CURRENT_USER) {
+                    inputResponsable.value = CURRENT_USER.nombre || CURRENT_USER.email || 'Usuario actual';
                 }
-            }, 500);
+
+                // Establecer fecha de gestión como HOY
+                setFechaGestionHoyEmb();
+
+                console.log('[preseleccionarAseguradoEmb] ✅ Asegurado preseleccionado:', asegurado);
+            }
         }
 
         /**
@@ -4303,50 +4521,80 @@
         /**
          * Registra una gestión desde el formulario embebido
          */
-        function registrarGestionEmbedded() {
-            const asegurado = document.getElementById('gestionAseguradoEmb')?.value;
-            const tipo = document.getElementById('gestionTipoEmb')?.value;
-            const estado = document.getElementById('gestionEstadoEmb')?.value;
+        /**
+         * REGISTRAR GESTIÓN EMBEBIDO - VERSIÓN UNIFICADA
+         * Esta función maneja el formulario completo unificado del módulo Bitácora
+         */
+        function registrarGestionEmbedded(event) {
+            if (event) event.preventDefault();
+
+            // Obtener todos los valores del formulario unificado
+            const asegurado = document.getElementById('gestionAseguradoEmb')?.value || 
+                             document.getElementById('gestionAseguradoValueEmb')?.value;
+            const fechaEnvioEECC = document.getElementById('gestionFechaEnvioEECCEmb')?.value;
+            const fechaGestion = document.getElementById('gestionFechaGestionEmb')?.value;
+            const tipoGestion = document.getElementById('gestionTipoEmb')?.value;
+            const estadoGestion = document.getElementById('gestionEstadoEmb')?.value;
+            const canalContacto = document.getElementById('gestionCanalEmb')?.value;
             const fechaCompromiso = document.getElementById('gestionFechaCompromisoEmb')?.value;
-            const proximaAccion = document.getElementById('gestionProximaAccionEmb')?.value;
-            const observaciones = document.getElementById('gestionObservacionesEmb')?.value;
+            const proximaAccion = document.getElementById('gestionProximaAccionEmb')?.value?.trim();
+            const observaciones = document.getElementById('gestionObservacionesEmb')?.value?.trim();
 
-            // Validar campos obligatorios
-            if (!asegurado || !tipo || !estado || !proximaAccion) {
-                toast('Por favor completa todos los campos obligatorios', 'error');
-                return;
+            // Validación de campos obligatorios
+            if (!asegurado || !tipoGestion || !estadoGestion || !canalContacto || !proximaAccion) {
+                showGestionStatusEmb('error', 'Por favor completa todos los campos obligatorios');
+                return false;
             }
 
-            // Validar fechaCompromiso si el estado lo requiere
-            const estadoConfig = CONFIG_ESTADOS[estado];
-            if (estadoConfig && estadoConfig.requiereFechaCompromiso && !fechaCompromiso) {
-                toast('Este estado requiere una fecha de compromiso', 'error');
-                return;
+            // Validar Fecha Envío EECC
+            if (!fechaEnvioEECC) {
+                showGestionStatusEmb('error', 'Por favor ingresa o carga la Fecha de Envío EECC');
+                return false;
             }
 
-            // Obtener fechaEnvioEECC del ciclo más reciente del asegurado
-            let fechaEnvioEECC = new Date().toISOString().split('T')[0];
-            const cicloAsegurado = BITACORA_DATA.find(g => g.asegurado === asegurado);
-            if (cicloAsegurado && cicloAsegurado.fechaEnvioEECC) {
-                fechaEnvioEECC = cicloAsegurado.fechaEnvioEECC;
+            // Validar que sea una fecha válida
+            if (isNaN(new Date(fechaEnvioEECC).getTime())) {
+                showGestionStatusEmb('error', 'La Fecha de Envío EECC no es válida');
+                return false;
             }
 
-            // Mapear tipo a canalContacto
-            const mapeoTipoCanal = {
-                'LLAMADA': 'LLAMADA',
-                'WHATSAPP': 'WHATSAPP',
-                'EMAIL': 'EMAIL',
-                'REUNION': 'REUNION',
-                'VISITA': 'REUNION'
-            };
+            // Validar Fecha Gestión
+            if (!fechaGestion) {
+                showGestionStatusEmb('error', 'Por favor ingresa la Fecha de esta Gestión');
+                return false;
+            }
+
+            // Validar FECHA_COMPROMISO si es obligatoria
+            if ((estadoGestion === 'COMPROMISO_PAGO' || estadoGestion === 'REPROGRAMADO')) {
+                if (!fechaCompromiso) {
+                    showGestionStatusEmb('error', 'El estado ' + estadoGestion.replace(/_/g, ' ') + ' requiere Fecha de Compromiso');
+                    return false;
+                }
+            }
+
+            // Validar OBSERVACIONES si es obligatoria
+            const estadosRequierenObs = ['DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES', 'NO_COBRABLE'];
+            if (estadosRequierenObs.includes(estadoGestion) && !observaciones) {
+                showGestionStatusEmb('error', 'El estado ' + estadoGestion.replace(/_/g, ' ') + ' requiere Observaciones');
+                return false;
+            }
+
+            // Deshabilitar botón
+            const btn = document.getElementById('btnGuardarGestionEmb');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Registrando...';
+            }
+
+            showGestionStatusEmb('info', 'Registrando gestión...');
 
             const payload = {
                 asegurado: asegurado,
-                tipoGestion: tipo,
-                estadoGestion: estado,
-                canalContacto: mapeoTipoCanal[tipo] || 'OTRO',
                 fechaEnvioEECC: fechaEnvioEECC,
-                fechaGestion: new Date().toISOString().split('T')[0],
+                fechaGestion: fechaGestion,
+                tipoGestion: tipoGestion,
+                estadoGestion: estadoGestion,
+                canalContacto: canalContacto,
                 fechaCompromiso: fechaCompromiso || null,
                 proximaAccion: proximaAccion,
                 observaciones: observaciones || ''
@@ -4354,53 +4602,527 @@
 
             console.log('[registrarGestionEmbedded] Registrando:', payload);
 
-            // Deshabilitar botón
-            const btn = document.querySelector('#bitacora-embedded-registrar .btn-primary');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '⏳ Registrando...';
-            }
-
             google.script.run
                 .withSuccessHandler(function (result) {
                     console.log('[registrarGestionEmbedded] ✅ Resultado:', result);
-                    if (result && result.ok) {
-                        toast('✅ Gestión registrada correctamente', 'success');
-                        // Limpiar formulario
-                        limpiarFormularioGestion();
-                        // Invalidar cache
-                        BITACORA_EMB_LOADED = false;
-                        TIMELINE_CACHE = {};
-                        // Recargar datos
-                        loadBitacoraEmbeddedData();
-                        switchBitacoraTabEmbedded('estado');
-                    } else {
-                        toast('❌ Error: ' + (result?.message || 'Error desconocido'), 'error');
-                    }
+                    
                     if (btn) {
                         btn.disabled = false;
-                        btn.innerHTML = '💾 Registrar Gestión';
+                        btn.textContent = '💾 Registrar Gestión';
+                    }
+
+                    if (result && result.ok) {
+                        showGestionStatusEmb('success', '✅ Gestión registrada exitosamente');
+                        mostrarNotificacionExito('✅ Gestión registrada correctamente',
+                            'El registro se ha guardado y aparecerá en "Estado Actual"');
+
+                        // Limpiar formulario
+                        limpiarFormGestionEmb();
+
+                        // Invalidar cachés
+                        BITACORA_EMB_LOADED = false;
+                        Object.keys(TIMELINE_CACHE).forEach(key => delete TIMELINE_CACHE[key]);
+                        NOTIFICACIONES_CACHE = null;
+                        NOTIFICACIONES_CACHE_TIME = null;
+
+                        // Recargar datos después de un momento
+                        setTimeout(() => {
+                            loadBitacoraEmbeddedData();
+                            switchBitacoraTabEmbedded('estado');
+                            inicializarNotificaciones();
+                        }, 1000);
+                    } else {
+                        showGestionStatusEmb('error', '❌ Error: ' + (result?.message || 'Error desconocido'));
                     }
                 })
                 .withFailureHandler(function (err) {
                     console.error('[registrarGestionEmbedded] ❌ Error:', err);
-                    toast('❌ Error: ' + err.message, 'error');
+                    showGestionStatusEmb('error', '❌ Error: ' + err.message);
                     if (btn) {
                         btn.disabled = false;
-                        btn.innerHTML = '💾 Registrar Gestión';
+                        btn.textContent = '💾 Registrar Gestión';
                     }
                 })
                 .registrarGestionManualBitacora(payload, TOKEN);
+
+            return false;
         }
 
-        // Función para limpiar formulario de gestión
-        function limpiarFormularioGestion() {
-            const campos = ['gestionAseguradoEmb', 'gestionTipoEmb', 'gestionEstadoEmb', 
-                           'gestionFechaCompromisoEmb', 'gestionProximaAccionEmb', 'gestionObservacionesEmb'];
+        /**
+         * Mostrar estado del formulario embebido
+         */
+        function showGestionStatusEmb(type, message) {
+            const status = document.getElementById('gestionStatusEmb');
+            if (!status) return;
+            const className = type === 'success' ? 'status-success' :
+                type === 'error' ? 'status-error' : 'status-info';
+            status.innerHTML = '<div class="status ' + className + '">' + message + '</div>';
+        }
+
+        /**
+         * Limpiar formulario de gestión embebido
+         */
+        function limpiarFormGestionEmb() {
+            const form = document.getElementById('formGestionEmb');
+            if (form) form.reset();
+
+            // Limpiar campos específicos
+            const campos = ['gestionAseguradoEmb', 'gestionAseguradoValueEmb', 'gestionFechaEnvioEECCEmb', 
+                           'gestionFechaGestionEmb', 'gestionResponsableEmb', 'gestionTipoEmb',
+                           'gestionEstadoEmb', 'gestionCanalEmb', 'gestionFechaCompromisoEmb',
+                           'gestionProximaAccionEmb', 'gestionObservacionesEmb'];
             campos.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+
+            // Limpiar autocomplete
+            limpiarAutocompleteEmb();
+
+            // Resetear campos de fecha
+            resetearCamposFechaEmb();
+
+            // Ocultar grupo de fecha compromiso
+            const grupoCompromiso = document.getElementById('grupoFechaCompromisoEmb');
+            if (grupoCompromiso) grupoCompromiso.classList.add('hidden');
+
+            // Ocultar asteriscos obligatorios
+            const reqCompromiso = document.getElementById('requiredCompromisoEmb');
+            const reqObs = document.getElementById('requiredObsEmb');
+            if (reqCompromiso) reqCompromiso.classList.add('hidden');
+            if (reqObs) reqObs.classList.add('hidden');
+
+            // Limpiar status
+            const status = document.getElementById('gestionStatusEmb');
+            if (status) status.innerHTML = '';
+        }
+
+        /**
+         * Resetear campos de fecha del formulario embebido
+         */
+        function resetearCamposFechaEmb() {
+            const radioEnvioAuto = document.getElementById('fechaEnvioAutoEmb');
+            const radioEnvioManual = document.getElementById('fechaEnvioManualEmb');
+            const radioGestionHoy = document.getElementById('fechaGestionHoyEmb');
+            const radioGestionManual = document.getElementById('fechaGestionManualEmb');
+            const inputEnvio = document.getElementById('gestionFechaEnvioEECCEmb');
+            const inputGestion = document.getElementById('gestionFechaGestionEmb');
+            const helpEnvio = document.getElementById('fechaEnvioHelpEmb');
+            const helpGestion = document.getElementById('fechaGestionHelpEmb');
+
+            if (radioEnvioAuto) {
+                radioEnvioAuto.disabled = false;
+                radioEnvioAuto.checked = true;
+            }
+            if (radioEnvioManual) radioEnvioManual.disabled = false;
+            if (radioGestionHoy) {
+                radioGestionHoy.disabled = false;
+                radioGestionHoy.checked = true;
+            }
+            if (radioGestionManual) radioGestionManual.disabled = false;
+
+            if (inputEnvio) {
+                inputEnvio.value = '';
+                inputEnvio.removeAttribute('readonly');
+                inputEnvio.style.cursor = '';
+                inputEnvio.style.opacity = '';
+            }
+            if (inputGestion) {
+                inputGestion.value = '';
+                inputGestion.removeAttribute('readonly');
+                inputGestion.style.cursor = '';
+                inputGestion.style.opacity = '';
+            }
+
+            if (helpEnvio) helpEnvio.textContent = 'Fecha del envío del EECC que inició este ciclo de cobranza';
+            if (helpGestion) helpGestion.textContent = 'Por defecto se usa la fecha y hora actual';
+        }
+
+        /**
+         * Cambio de estado - mostrar/ocultar campos condicionales (versión embebida)
+         */
+        function onEstadoChangeEmb() {
+            const estado = document.getElementById('gestionEstadoEmb')?.value;
+            const requiredCompromiso = document.getElementById('requiredCompromisoEmb');
+            const requiredObs = document.getElementById('requiredObsEmb');
+            const groupFechaCompromiso = document.getElementById('grupoFechaCompromisoEmb');
+            const inputFechaCompromiso = document.getElementById('gestionFechaCompromisoEmb');
+            const inputObservaciones = document.getElementById('gestionObservacionesEmb');
+            const inputProximaAccion = document.getElementById('gestionProximaAccionEmb');
+
+            // FECHA_COMPROMISO obligatoria para COMPROMISO_PAGO y REPROGRAMADO
+            if (estado === 'COMPROMISO_PAGO' || estado === 'REPROGRAMADO') {
+                if (groupFechaCompromiso) groupFechaCompromiso.classList.remove('hidden');
+                if (requiredCompromiso) requiredCompromiso.classList.remove('hidden');
+                if (inputFechaCompromiso) inputFechaCompromiso.required = true;
+            } else {
+                if (groupFechaCompromiso) groupFechaCompromiso.classList.add('hidden');
+                if (requiredCompromiso) requiredCompromiso.classList.add('hidden');
+                if (inputFechaCompromiso) {
+                    inputFechaCompromiso.required = false;
+                    inputFechaCompromiso.value = '';
+                }
+            }
+
+            // OBSERVACIONES obligatoria para derivaciones y NO_COBRABLE
+            const estadosRequierenObs = ['DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES', 'NO_COBRABLE'];
+            if (estadosRequierenObs.includes(estado)) {
+                if (requiredObs) requiredObs.classList.remove('hidden');
+                if (inputObservaciones) inputObservaciones.required = true;
+            } else {
+                if (requiredObs) requiredObs.classList.add('hidden');
+                if (inputObservaciones) inputObservaciones.required = false;
+            }
+
+            // SMART DEFAULTS (sugerencias de próxima acción)
+            if (inputProximaAccion && !inputProximaAccion.value) {
+                switch (estado) {
+                    case 'SIN_RESPUESTA':
+                        inputProximaAccion.value = 'Reintentar contacto en 2 días';
+                        break;
+                    case 'EN_SEGUIMIENTO':
+                        inputProximaAccion.value = 'Realizar seguimiento de gestión';
+                        break;
+                    case 'COMPROMISO_PAGO':
+                        inputProximaAccion.value = 'Verificar cumplimiento del pago';
+                        break;
+                    case 'REPROGRAMADO':
+                        inputProximaAccion.value = 'Confirmar nueva fecha de pago';
+                        break;
+                    case 'DERIVADO_COMERCIAL':
+                        inputProximaAccion.value = 'Dar seguimiento con área comercial';
+                        break;
+                    case 'CERRADO_PAGADO':
+                        inputProximaAccion.value = 'Archivar gestión - Caso cerrado';
+                        break;
+                }
+            }
+        }
+
+        /**
+         * Toggle modo Individual/Grupo Económico (versión embebida)
+         */
+        function toggleBitacoraModeEmb() {
+            const selectedMode = document.querySelector('input[name="bitacoraModeEmb"]:checked')?.value || 'asegurado';
+            BITACORA_MODE = selectedMode;
+            console.log('[toggleBitacoraModeEmb] Modo:', BITACORA_MODE);
+            
+            // Limpiar selección actual
+            limpiarAutocompleteEmb();
+            
+            // Recargar opciones según el modo
+            loadClientesAutocompleteEmb();
+        }
+
+        /**
+         * Toggle Fecha Envío EECC: Automático / Manual (versión embebida)
+         */
+        function toggleFechaEnvioModeEmb() {
+            const isManual = document.getElementById('fechaEnvioManualEmb')?.checked;
+            const input = document.getElementById('gestionFechaEnvioEECCEmb');
+            const help = document.getElementById('fechaEnvioHelpEmb');
+
+            if (input) {
+                if (isManual) {
+                    input.removeAttribute('readonly');
+                    input.style.cursor = 'text';
+                    input.style.opacity = '1';
+                    if (help) help.textContent = 'Ingresa la fecha manualmente';
+                } else {
+                    input.setAttribute('readonly', true);
+                    input.style.cursor = 'not-allowed';
+                    input.style.opacity = '0.7';
+                    if (help) help.textContent = 'Fecha del envío del EECC que inició este ciclo de cobranza';
+                }
+            }
+        }
+
+        /**
+         * Toggle Fecha Gestión: Hoy / Manual (versión embebida)
+         */
+        function toggleFechaGestionModeEmb() {
+            const isManual = document.getElementById('fechaGestionManualEmb')?.checked;
+            const input = document.getElementById('gestionFechaGestionEmb');
+            const help = document.getElementById('fechaGestionHelpEmb');
+
+            if (input) {
+                if (isManual) {
+                    input.removeAttribute('readonly');
+                    input.style.cursor = 'text';
+                    input.style.opacity = '1';
+                    if (help) help.textContent = 'Ingresa la fecha manualmente';
+                } else {
+                    input.setAttribute('readonly', true);
+                    input.style.cursor = 'not-allowed';
+                    input.style.opacity = '0.7';
+                    setFechaGestionHoyEmb();
+                    if (help) help.textContent = 'Por defecto se usa la fecha y hora actual';
+                }
+            }
+        }
+
+        /**
+         * Establecer fecha de gestión como HOY (versión embebida)
+         */
+        function setFechaGestionHoyEmb() {
+            const input = document.getElementById('gestionFechaGestionEmb');
+            if (input) {
+                const now = new Date();
+                const isoString = now.toISOString().slice(0, 16);
+                input.value = isoString;
+            }
+        }
+
+        /**
+         * Cargar fecha de envío EECC automáticamente para un asegurado (versión embebida)
+         */
+        function cargarFechaEnvioEECCAutoEmb(asegurado) {
+            if (!asegurado) return;
+
+            // Buscar en los datos de bitácora el ciclo de este asegurado
+            const ciclo = BITACORA_DATA.find(g => g.asegurado === asegurado);
+            const input = document.getElementById('gestionFechaEnvioEECCEmb');
+            const help = document.getElementById('fechaEnvioHelpEmb');
+
+            if (ciclo && ciclo.fechaEnvioEECC && input) {
+                // Convertir a formato datetime-local
+                const fecha = new Date(ciclo.fechaEnvioEECC);
+                if (!isNaN(fecha.getTime())) {
+                    input.value = fecha.toISOString().slice(0, 16);
+                    if (help) help.textContent = '✅ Fecha cargada automáticamente del ciclo existente';
+                }
+            } else if (input) {
+                // Si no hay fecha, dejar vacío para que el usuario la ingrese
+                input.value = '';
+                if (help) help.textContent = '⚠️ No se encontró ciclo previo - Ingresa la fecha manualmente';
+                
+                // Cambiar a modo manual
+                const radioManual = document.getElementById('fechaEnvioManualEmb');
+                if (radioManual) {
+                    radioManual.checked = true;
+                    toggleFechaEnvioModeEmb();
+                }
+            }
+        }
+
+        // ========== AUTOCOMPLETE EMBEBIDO ==========
+        let AUTOCOMPLETE_EMB_OPTIONS = [];
+        let AUTOCOMPLETE_EMB_FILTERED = [];
+        let AUTOCOMPLETE_EMB_INDEX = -1;
+
+        /**
+         * Cargar opciones de clientes para el autocomplete embebido
+         */
+        function loadClientesAutocompleteEmb() {
+            console.log('[loadClientesAutocompleteEmb] Cargando clientes...');
+            
+            // Usar los datos de BITACORA_DATA que ya están cargados
+            if (BITACORA_DATA && BITACORA_DATA.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
+                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde BITACORA_DATA');
+                return;
+            }
+
+            // Si no hay datos, cargar desde el backend
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    if (result && result.ok && result.data) {
+                        AUTOCOMPLETE_EMB_OPTIONS = [...new Set(result.data.map(g => g.asegurado))].filter(Boolean).sort();
+                        console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados');
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    console.error('[loadClientesAutocompleteEmb] Error:', err);
+                })
+                .bitacoraGetResumenCiclos(TOKEN);
+        }
+
+        /**
+         * Filtrar opciones del autocomplete embebido según texto ingresado
+         */
+        function filtrarAutocompleteEmb() {
+            const input = document.getElementById('gestionAseguradoEmb');
+            const dropdown = document.getElementById('autocompleteDropdownEmb');
+            const options = document.getElementById('autocompleteOptionsEmb');
+            const counter = document.getElementById('autocompleteCounterEmb');
+            const clearBtn = document.getElementById('clearAseguradoEmb');
+
+            if (!input || !dropdown || !options) return;
+
+            const searchText = input.value.trim().toLowerCase();
+            
+            // Mostrar/ocultar botón de limpiar
+            if (clearBtn) clearBtn.style.display = searchText ? 'flex' : 'none';
+
+            // Filtrar opciones
+            if (searchText.length > 0) {
+                AUTOCOMPLETE_EMB_FILTERED = AUTOCOMPLETE_EMB_OPTIONS.filter(opt => 
+                    opt.toLowerCase().includes(searchText)
+                );
+            } else {
+                AUTOCOMPLETE_EMB_FILTERED = [...AUTOCOMPLETE_EMB_OPTIONS];
+            }
+
+            // Renderizar opciones
+            renderizarOpcionesEmb();
+
+            // Mostrar dropdown si hay opciones
+            dropdown.style.display = AUTOCOMPLETE_EMB_FILTERED.length > 0 ? 'block' : 'none';
+
+            // Actualizar contador
+            if (counter) {
+                counter.style.display = 'block';
+                counter.textContent = AUTOCOMPLETE_EMB_FILTERED.length + ' de ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' resultados';
+            }
+
+            AUTOCOMPLETE_EMB_INDEX = -1;
+        }
+
+        /**
+         * Renderizar opciones del dropdown embebido
+         */
+        function renderizarOpcionesEmb() {
+            const options = document.getElementById('autocompleteOptionsEmb');
+            if (!options) return;
+
+            if (AUTOCOMPLETE_EMB_FILTERED.length === 0) {
+                options.innerHTML = '<div class="autocomplete-option disabled">No se encontraron resultados</div>';
+                return;
+            }
+
+            const searchText = document.getElementById('gestionAseguradoEmb')?.value?.toLowerCase() || '';
+            
+            options.innerHTML = AUTOCOMPLETE_EMB_FILTERED.slice(0, 50).map((opt, idx) => {
+                // Resaltar texto de búsqueda
+                let displayText = opt;
+                if (searchText) {
+                    const regex = new RegExp('(' + searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    displayText = opt.replace(regex, '<strong>$1</strong>');
+                }
+                return '<div class="autocomplete-option" data-index="' + idx + '" onclick="seleccionarOpcionEmb(' + idx + ')">' + displayText + '</div>';
+            }).join('');
+        }
+
+        /**
+         * Seleccionar una opción del autocomplete embebido
+         */
+        function seleccionarOpcionEmb(index) {
+            const opcion = AUTOCOMPLETE_EMB_FILTERED[index];
+            if (!opcion) return;
+
+            const input = document.getElementById('gestionAseguradoEmb');
+            const hidden = document.getElementById('gestionAseguradoValueEmb');
+            const dropdown = document.getElementById('autocompleteDropdownEmb');
+            const clearBtn = document.getElementById('clearAseguradoEmb');
+
+            if (input) input.value = opcion;
+            if (hidden) hidden.value = opcion;
+            if (dropdown) dropdown.style.display = 'none';
+            if (clearBtn) clearBtn.style.display = 'flex';
+
+            // Cargar fecha de envío EECC automáticamente
+            cargarFechaEnvioEECCAutoEmb(opcion);
+
+            // Establecer fecha de gestión como HOY
+            setFechaGestionHoyEmb();
+
+            // Establecer responsable
+            const inputResponsable = document.getElementById('gestionResponsableEmb');
+            if (inputResponsable && CURRENT_USER) {
+                inputResponsable.value = CURRENT_USER.nombre || CURRENT_USER.email || 'Usuario actual';
+            }
+
+            console.log('[seleccionarOpcionEmb] Seleccionado:', opcion);
+        }
+
+        /**
+         * Mostrar dropdown del autocomplete embebido
+         */
+        function mostrarDropdownAutocompleteEmb() {
+            const dropdown = document.getElementById('autocompleteDropdownEmb');
+            
+            // Cargar opciones si no están cargadas
+            if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
+                loadClientesAutocompleteEmb();
+            }
+
+            // Mostrar todas las opciones
+            AUTOCOMPLETE_EMB_FILTERED = [...AUTOCOMPLETE_EMB_OPTIONS];
+            renderizarOpcionesEmb();
+
+            if (dropdown && AUTOCOMPLETE_EMB_FILTERED.length > 0) {
+                dropdown.style.display = 'block';
+            }
+        }
+
+        /**
+         * Toggle dropdown del autocomplete embebido
+         */
+        function toggleDropdownAutocompleteEmb() {
+            const dropdown = document.getElementById('autocompleteDropdownEmb');
+            if (!dropdown) return;
+
+            if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+                mostrarDropdownAutocompleteEmb();
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        /**
+         * Limpiar selección del autocomplete embebido
+         */
+        function limpiarAutocompleteEmb() {
+            const input = document.getElementById('gestionAseguradoEmb');
+            const hidden = document.getElementById('gestionAseguradoValueEmb');
+            const dropdown = document.getElementById('autocompleteDropdownEmb');
+            const clearBtn = document.getElementById('clearAseguradoEmb');
+            const counter = document.getElementById('autocompleteCounterEmb');
+
+            if (input) input.value = '';
+            if (hidden) hidden.value = '';
+            if (dropdown) dropdown.style.display = 'none';
+            if (clearBtn) clearBtn.style.display = 'none';
+            if (counter) counter.style.display = 'none';
+
+            AUTOCOMPLETE_EMB_FILTERED = [];
+            AUTOCOMPLETE_EMB_INDEX = -1;
+
+            // Limpiar también la fecha de envío
+            const inputFechaEnvio = document.getElementById('gestionFechaEnvioEECCEmb');
+            if (inputFechaEnvio) inputFechaEnvio.value = '';
+        }
+
+        /**
+         * Inicializar formulario embebido cuando se carga la vista de Bitácora
+         */
+        function inicializarFormularioEmbedded() {
+            console.log('[inicializarFormularioEmbedded] Inicializando...');
+            
+            // Cargar clientes para el autocomplete
+            loadClientesAutocompleteEmb();
+
+            // Establecer responsable
+            const inputResponsable = document.getElementById('gestionResponsableEmb');
+            if (inputResponsable && CURRENT_USER) {
+                inputResponsable.value = CURRENT_USER.nombre || CURRENT_USER.email || 'Usuario actual';
+            }
+
+            // Cerrar dropdown al hacer clic fuera
+            document.addEventListener('click', function(e) {
+                const wrapper = document.getElementById('autocompleteWrapperEmb');
+                const dropdown = document.getElementById('autocompleteDropdownEmb');
+                if (wrapper && dropdown && !wrapper.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+
+            console.log('[inicializarFormularioEmbedded] ✅ Inicialización completada');
+        }
+
+        // Función para limpiar formulario de gestión (legacy - mantener compatibilidad)
+        function limpiarFormularioGestion() {
+            limpiarFormGestionEmb();
         }
 
         // Configuración de estados para validación
@@ -4461,6 +5183,7 @@
 
         /**
          * Abre el tab de Registrar Gestión y preselecciona el asegurado
+         * UNIFICADO: Usa el nuevo formulario con autocomplete
          */
         function abrirRegistroGestionPara(asegurado) {
             console.log('[abrirRegistroGestionPara] Abriendo formulario para:', asegurado);
@@ -4468,23 +5191,9 @@
             // Cambiar al tab Registrar
             switchBitacoraTabEmbedded('registrar');
 
-            // Preseleccionar el asegurado en el formulario
-            const selectAsegurado = document.getElementById('gestionAseguradoEmb');
-            if (selectAsegurado && asegurado) {
-                // Primero verificar si la opción existe
-                const opciones = Array.from(selectAsegurado.options);
-                const existe = opciones.some(opt => opt.value === asegurado);
-
-                if (existe) {
-                    selectAsegurado.value = asegurado;
-                } else {
-                    // Si no existe, añadirla
-                    const nuevaOpcion = document.createElement('option');
-                    nuevaOpcion.value = asegurado;
-                    nuevaOpcion.textContent = asegurado;
-                    selectAsegurado.appendChild(nuevaOpcion);
-                    selectAsegurado.value = asegurado;
-                }
+            // Preseleccionar el asegurado usando la función unificada
+            if (asegurado) {
+                preseleccionarAseguradoEmb(asegurado);
             }
 
             // Scroll al top de la sección para ver el formulario
