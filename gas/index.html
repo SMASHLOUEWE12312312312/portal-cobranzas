@@ -497,50 +497,80 @@
                     <!-- TAB 1: ESTADO ACTUAL -->
                     <div id="bitacora-embedded-estado" class="bitacora-pane">
                         <!-- KPIs Panel -->
-                        <div id="bitacoraKPIsPanel" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
-                            <div class="kpi-card" onclick="filtrarPorKPI('hoy')" style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #1976D2;">
-                                <div style="font-size: 0.7rem; color: #1565C0; font-weight: 600; text-transform: uppercase;">📅 HOY</div>
+                        <div id="bitacoraKPIsPanel"
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
+                            <div class="kpi-card" onclick="filtrarPorKPI('hoy')"
+                                style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #1976D2;">
+                                <div
+                                    style="font-size: 0.7rem; color: #1565C0; font-weight: 600; text-transform: uppercase;">
+                                    📅 HOY</div>
                                 <div id="kpiHoy" style="font-size: 1.5rem; font-weight: 700; color: #1976D2;">0</div>
                                 <div style="font-size: 0.65rem; color: #1976D2;">Compromisos</div>
                             </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('1-3dias')" style="background: linear-gradient(135deg, #E8F5E9, #C8E6C9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #388E3C;">
-                                <div style="font-size: 0.7rem; color: #2E7D32; font-weight: 600; text-transform: uppercase;">📆 1-3 días</div>
+                            <div class="kpi-card" onclick="filtrarPorKPI('1-3dias')"
+                                style="background: linear-gradient(135deg, #E8F5E9, #C8E6C9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #388E3C;">
+                                <div
+                                    style="font-size: 0.7rem; color: #2E7D32; font-weight: 600; text-transform: uppercase;">
+                                    📆 1-3 días</div>
                                 <div id="kpi1a3" style="font-size: 1.5rem; font-weight: 700; color: #388E3C;">0</div>
                                 <div style="font-size: 0.65rem; color: #388E3C;">Próximos</div>
                             </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('4-7dias')" style="background: linear-gradient(135deg, #FFF3E0, #FFE0B2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #F57C00;">
-                                <div style="font-size: 0.7rem; color: #E65100; font-weight: 600; text-transform: uppercase;">📅 4-7 días</div>
+                            <div class="kpi-card" onclick="filtrarPorKPI('4-7dias')"
+                                style="background: linear-gradient(135deg, #FFF3E0, #FFE0B2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #F57C00;">
+                                <div
+                                    style="font-size: 0.7rem; color: #E65100; font-weight: 600; text-transform: uppercase;">
+                                    📅 4-7 días</div>
                                 <div id="kpi4a7" style="font-size: 1.5rem; font-weight: 700; color: #F57C00;">0</div>
                                 <div style="font-size: 0.65rem; color: #F57C00;">Semana</div>
                             </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('vencidos')" style="background: linear-gradient(135deg, #FFEBEE, #FFCDD2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #D32F2F;">
-                                <div style="font-size: 0.7rem; color: #C62828; font-weight: 600; text-transform: uppercase;">🔴 Vencidos</div>
-                                <div id="kpiVencidos" style="font-size: 1.5rem; font-weight: 700; color: #D32F2F;">0</div>
+                            <div class="kpi-card" onclick="filtrarPorKPI('vencidos')"
+                                style="background: linear-gradient(135deg, #FFEBEE, #FFCDD2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #D32F2F;">
+                                <div
+                                    style="font-size: 0.7rem; color: #C62828; font-weight: 600; text-transform: uppercase;">
+                                    🔴 Vencidos</div>
+                                <div id="kpiVencidos" style="font-size: 1.5rem; font-weight: 700; color: #D32F2F;">0
+                                </div>
                                 <div style="font-size: 0.65rem; color: #D32F2F;">Crítico</div>
                             </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('aging60')" style="background: linear-gradient(135deg, #FCE4EC, #F8BBD9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #C2185B;">
-                                <div style="font-size: 0.7rem; color: #AD1457; font-weight: 600; text-transform: uppercase;">⚠️ +60 días</div>
-                                <div id="kpiAging60" style="font-size: 1.5rem; font-weight: 700; color: #C2185B;">0</div>
+                            <div class="kpi-card" onclick="filtrarPorKPI('aging60')"
+                                style="background: linear-gradient(135deg, #FCE4EC, #F8BBD9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #C2185B;">
+                                <div
+                                    style="font-size: 0.7rem; color: #AD1457; font-weight: 600; text-transform: uppercase;">
+                                    ⚠️ +60 días</div>
+                                <div id="kpiAging60" style="font-size: 1.5rem; font-weight: 700; color: #C2185B;">0
+                                </div>
                                 <div style="font-size: 0.65rem; color: #C2185B;">Aging</div>
                             </div>
                         </div>
 
                         <!-- Búsqueda Global + Quick Actions -->
-                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
+                        <div
+                            style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
                             <div style="flex: 1; min-width: 250px; position: relative;">
-                                <input type="text" id="busquedaGlobalBitacora" 
-                                       placeholder="🔍 Buscar en toda la bitácora... (Atajo: /)" 
-                                       oninput="busquedaGlobalBitacora()"
-                                       style="width: 100%; padding: 0.6rem 1rem; border-radius: 8px; border: 1px solid var(--tp-border-light); font-size: 0.875rem;">
+                                <input type="text" id="busquedaGlobalBitacora"
+                                    placeholder="🔍 Buscar en toda la bitácora... (Atajo: /)"
+                                    oninput="busquedaGlobalBitacora()"
+                                    style="width: 100%; padding: 0.6rem 1rem; border-radius: 8px; border: 1px solid var(--tp-border-light); font-size: 0.875rem;">
                             </div>
                             <div id="quickActionsContainer" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <button class="btn-quick-action" onclick="applyQuickAction('llamada_sin_resp')" title="Llamada sin respuesta" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">📞</button>
-                                <button class="btn-quick-action" onclick="applyQuickAction('whatsapp_enviado')" title="WhatsApp enviado" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">💬</button>
-                                <button class="btn-quick-action" onclick="applyQuickAction('correo_leido')" title="Correo leído" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">📧</button>
-                                <button class="btn-quick-action" onclick="applyQuickAction('compromiso_pago')" title="Compromiso de pago" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">✅</button>
-                                <button class="btn-quick-action" onclick="applyQuickAction('no_contactable')" title="No contactable" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">❌</button>
+                                <button class="btn-quick-action" onclick="applyQuickAction('llamada_sin_resp')"
+                                    title="Llamada sin respuesta"
+                                    style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">📞</button>
+                                <button class="btn-quick-action" onclick="applyQuickAction('whatsapp_enviado')"
+                                    title="WhatsApp enviado"
+                                    style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">💬</button>
+                                <button class="btn-quick-action" onclick="applyQuickAction('correo_leido')"
+                                    title="Correo leído"
+                                    style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">📧</button>
+                                <button class="btn-quick-action" onclick="applyQuickAction('compromiso_pago')"
+                                    title="Compromiso de pago"
+                                    style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">✅</button>
+                                <button class="btn-quick-action" onclick="applyQuickAction('no_contactable')"
+                                    title="No contactable"
+                                    style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">❌</button>
                             </div>
-                            <button onclick="exportarBitacoraCSV()" class="btn btn-outline-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" title="Exportar CSV">
+                            <button onclick="exportarBitacoraCSV()" class="btn btn-outline-secondary"
+                                style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" title="Exportar CSV">
                                 📥 CSV
                             </button>
                         </div>
@@ -588,7 +618,8 @@
                             </div>
                             <div class="form-group mb-0">
                                 <label class="form-label" for="filtroCompromisoEmb">🤝 Compromisos</label>
-                                <select id="filtroCompromisoEmb" onchange="filtrarBitacoraEmbedded()" style="width: 100%;">
+                                <select id="filtroCompromisoEmb" onchange="filtrarBitacoraEmbedded()"
+                                    style="width: 100%;">
                                     <option value="">Todos</option>
                                     <option value="con">✅ Con compromiso</option>
                                     <option value="sin">➖ Sin compromiso</option>
@@ -596,14 +627,16 @@
                                 </select>
                             </div>
                             <div class="form-group mb-0" style="display: flex; align-items: flex-end;">
-                                <button onclick="limpiarFiltrosBitacora()" class="btn btn-outline-secondary" style="width: 100%; padding: 0.5rem;">
+                                <button onclick="limpiarFiltrosBitacora()" class="btn btn-outline-secondary"
+                                    style="width: 100%; padding: 0.5rem;">
                                     🧹 Limpiar
                                 </button>
                             </div>
                         </div>
 
                         <!-- Indicador de filtros activos -->
-                        <div id="indicadorFiltrosActivos" style="display: none; margin-bottom: 1rem; padding: 0.5rem 1rem; background: #E3F2FD; border-radius: 6px; font-size: 0.8rem; color: #1565C0;">
+                        <div id="indicadorFiltrosActivos"
+                            style="display: none; margin-bottom: 1rem; padding: 0.5rem 1rem; background: #E3F2FD; border-radius: 6px; font-size: 0.8rem; color: #1565C0;">
                             <span id="filtrosActivosTexto"></span>
                         </div>
 
@@ -614,16 +647,29 @@
                                 <thead
                                     style="background: #E5E7EB; color: #374151; position: sticky; top: 0; z-index: 5;">
                                     <tr>
-                                        <th onclick="ordenarBitacora('asegurado')" style="padding: 8px 10px; text-align: left; font-weight: 600; font-size: 0.7rem; white-space: nowrap; cursor: pointer; user-select: none;">
+                                        <th onclick="ordenarBitacora('asegurado')"
+                                            style="padding: 8px 10px; text-align: left; font-weight: 600; font-size: 0.7rem; white-space: nowrap; cursor: pointer; user-select: none;">
                                             ASEGURADO <span id="sortIndicatorAsegurado"></span></th>
-                                        <th onclick="ordenarBitacora('estadoGestion')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">ESTADO <span id="sortIndicatorEstadoGestion"></span></th>
-                                        <th onclick="ordenarBitacora('responsable')" style="padding: 8px 6px; text-align: left; font-size: 0.7rem; cursor: pointer; user-select: none;">RESP. <span id="sortIndicatorResponsable"></span></th>
-                                        <th onclick="ordenarBitacora('fechaEnvioEECC')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">F. EECC <span id="sortIndicatorFechaEnvioEECC"></span>
+                                        <th onclick="ordenarBitacora('estadoGestion')"
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            ESTADO <span id="sortIndicatorEstadoGestion"></span></th>
+                                        <th onclick="ordenarBitacora('responsable')"
+                                            style="padding: 8px 6px; text-align: left; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            RESP. <span id="sortIndicatorResponsable"></span></th>
+                                        <th onclick="ordenarBitacora('fechaEnvioEECC')"
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            F. EECC <span id="sortIndicatorFechaEnvioEECC"></span>
                                         </th>
-                                        <th onclick="ordenarBitacora('fechaGestion')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">F. GESTIÓN <span id="sortIndicatorFechaGestion"></span>
+                                        <th onclick="ordenarBitacora('fechaGestion')"
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            F. GESTIÓN <span id="sortIndicatorFechaGestion"></span>
                                         </th>
-                                        <th onclick="ordenarBitacora('diasDesde')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">DÍAS <span id="sortIndicatorDiasDesde"></span></th>
-                                        <th onclick="ordenarBitacora('fechaCompromiso')" style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">COMPROM. <span id="sortIndicatorFechaCompromiso"></span>
+                                        <th onclick="ordenarBitacora('diasDesde')"
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            DÍAS <span id="sortIndicatorDiasDesde"></span></th>
+                                        <th onclick="ordenarBitacora('fechaCompromiso')"
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            COMPROM. <span id="sortIndicatorFechaCompromiso"></span>
                                         </th>
                                         <th style="padding: 8px 6px; text-align: left; font-size: 0.7rem;">PRÓX. ACCIÓN
                                         </th>
@@ -648,163 +694,326 @@
                         </div>
                     </div>
 
-                    <!-- TAB 2: REGISTRAR GESTIÓN - Formulario UNIFICADO (igual al modal) -->
+                    <!-- ═══════════════════════════════════════════════════════════════════════════════
+                         TAB 2: REGISTRAR GESTIÓN v4.0 - PREMIUM REDESIGN
+                         ═══════════════════════════════════════════════════════════════════════════════ -->
                     <div id="bitacora-embedded-registrar" class="bitacora-pane" style="display: none;">
-                        <div style="padding: 1.5rem; background: var(--tp-surface-secondary); border-radius: 12px; border: 1px solid var(--tp-border-light);">
-                            <p style="margin-bottom: 1.5rem; color: var(--tp-text-secondary); font-size: 0.875rem; line-height: 1.5;">
-                                ✍️ Completa este formulario para registrar una nueva gestión de cobranza.
-                                Los campos marcados con <span style="color: #D32F2F;">*</span> son obligatorios.
-                            </p>
 
-                            <form id="formGestionEmb" onsubmit="return registrarGestionEmbedded(event)">
-                                <!-- Grid de 2 columnas en desktop -->
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                        <!-- HEADER DEL FORMULARIO -->
+                        <div class="registro-header" style="
+                            background: linear-gradient(135deg, rgba(211, 47, 47, 0.03) 0%, rgba(211, 47, 47, 0.08) 100%);
+                            border: 1px solid rgba(211, 47, 47, 0.12);
+                            border-radius: 16px;
+                            padding: 1.5rem;
+                            margin-bottom: 1.5rem;
+                        ">
+                            <div
+                                style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                                <div>
+                                    <h3 style="
+                                        font-size: 1.125rem;
+                                        font-weight: 700;
+                                        color: var(--tp-text-primary);
+                                        margin: 0 0 0.5rem 0;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 0.5rem;
+                                    ">
+                                        <span style="
+                                            display: inline-flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            width: 32px;
+                                            height: 32px;
+                                            background: var(--tp-primary);
+                                            color: white;
+                                            border-radius: 8px;
+                                            font-size: 1rem;
+                                        ">✍️</span>
+                                        Nueva Gestión de Cobranza
+                                    </h3>
+                                    <p style="
+                                        font-size: 0.8125rem;
+                                        color: var(--tp-text-secondary);
+                                        margin: 0;
+                                        line-height: 1.5;
+                                    ">
+                                        Registra el resultado de tu contacto con el cliente. Los campos marcados con
+                                        <span style="color: var(--tp-primary); font-weight: 600;">*</span> son
+                                        obligatorios.
+                                    </p>
+                                </div>
 
-                                    <!-- COLUMNA 1: Datos del Cliente y Gestión -->
+                                <!-- Indicador de Completitud -->
+                                <div id="completitudIndicator" style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 0.75rem;
+                                    padding: 0.625rem 1rem;
+                                    background: var(--tp-surface);
+                                    border-radius: 10px;
+                                    border: 1px solid var(--tp-border-light);
+                                    min-width: 140px;
+                                ">
+                                    <div style="
+                                        position: relative;
+                                        width: 36px;
+                                        height: 36px;
+                                    ">
+                                        <svg viewBox="0 0 36 36" style="transform: rotate(-90deg);">
+                                            <path d="M18 2.5 a 15.5 15.5 0 0 1 0 31 a 15.5 15.5 0 0 1 0 -31" fill="none"
+                                                stroke="#E0E0E0" stroke-width="3" stroke-linecap="round" />
+                                            <path id="completitudArc"
+                                                d="M18 2.5 a 15.5 15.5 0 0 1 0 31 a 15.5 15.5 0 0 1 0 -31" fill="none"
+                                                stroke="var(--tp-primary)" stroke-width="3" stroke-linecap="round"
+                                                stroke-dasharray="0 100" />
+                                        </svg>
+                                        <span id="completitudPercent" style="
+                                            position: absolute;
+                                            top: 50%;
+                                            left: 50%;
+                                            transform: translate(-50%, -50%);
+                                            font-size: 0.625rem;
+                                            font-weight: 700;
+                                            color: var(--tp-text-primary);
+                                        ">0%</span>
+                                    </div>
                                     <div>
-                                        <h3 style="font-size: 1rem; font-weight: 600; color: var(--tp-text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--tp-border-light);">
-                                            📋 Información del Cliente
-                                        </h3>
+                                        <div
+                                            style="font-size: 0.6875rem; color: var(--tp-text-tertiary); text-transform: uppercase; letter-spacing: 0.025em;">
+                                            Completado</div>
+                                        <div id="completitudCampos"
+                                            style="font-size: 0.75rem; font-weight: 600; color: var(--tp-text-primary);">
+                                            0 de 4</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                        <!-- Selector de Modo: Individual / Grupo Económico -->
-                                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                                            <label style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                                                <input type="radio" name="bitacoraModeEmb" value="asegurado" checked onchange="toggleBitacoraModeEmb()">
-                                                <span>👤 Individual</span>
-                                            </label>
-                                            <label style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                                                <input type="radio" name="bitacoraModeEmb" value="grupo" onchange="toggleBitacoraModeEmb()">
-                                                <span>👥 Grupo Económico</span>
-                                            </label>
+                        <!-- ACCIONES RÁPIDAS - CHIPS INTEGRADOS -->
+                        <div class="quick-actions-section" style="
+                            background: linear-gradient(135deg, #FFFDE7 0%, #FFF8E1 100%);
+                            border: 1px solid #FFE082;
+                            border-radius: 12px;
+                            padding: 1rem 1.25rem;
+                            margin-bottom: 1.5rem;
+                        ">
+                            <div style="display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.875rem;">
+                                <span style="
+                                    display: inline-flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    width: 24px;
+                                    height: 24px;
+                                    background: #FFA000;
+                                    color: white;
+                                    border-radius: 6px;
+                                    font-size: 0.75rem;
+                                ">⚡</span>
+                                <span style="font-weight: 600; color: #E65100; font-size: 0.875rem;">Acciones
+                                    Rápidas</span>
+                                <span style="font-size: 0.75rem; color: #F57C00;">— Selecciona para prellenar
+                                    automáticamente</span>
+                            </div>
+
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button type="button" class="quick-chip" onclick="applyQuickActionV4('sin_respuesta')"
+                                    style="
+                                    display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+                                    background: white; border: 2px solid #FFAB91; border-radius: 24px;
+                                    font-size: 0.8125rem; font-weight: 500; color: #D84315; cursor: pointer;
+                                    transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+                                "><span style="font-size: 1rem;">📞</span> Sin respuesta</button>
+
+                                <button type="button" class="quick-chip" onclick="applyQuickActionV4('whatsapp')" style="
+                                    display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+                                    background: white; border: 2px solid #A5D6A7; border-radius: 24px;
+                                    font-size: 0.8125rem; font-weight: 500; color: #2E7D32; cursor: pointer;
+                                    transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+                                "><span style="font-size: 1rem;">💬</span> WhatsApp enviado</button>
+
+                                <button type="button" class="quick-chip" onclick="applyQuickActionV4('correo')" style="
+                                    display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+                                    background: white; border: 2px solid #90CAF9; border-radius: 24px;
+                                    font-size: 0.8125rem; font-weight: 500; color: #1565C0; cursor: pointer;
+                                    transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+                                "><span style="font-size: 1rem;">📧</span> Correo enviado</button>
+
+                                <button type="button" class="quick-chip" onclick="applyQuickActionV4('compromiso')"
+                                    style="
+                                    display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+                                    background: white; border: 2px solid #80CBC4; border-radius: 24px;
+                                    font-size: 0.8125rem; font-weight: 500; color: #00695C; cursor: pointer;
+                                    transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+                                "><span style="font-size: 1rem;">✅</span> Compromiso de pago</button>
+
+                                <button type="button" class="quick-chip" onclick="applyQuickActionV4('no_contactable')"
+                                    style="
+                                    display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+                                    background: white; border: 2px solid #BDBDBD; border-radius: 24px;
+                                    font-size: 0.8125rem; font-weight: 500; color: #616161; cursor: pointer;
+                                    transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+                                "><span style="font-size: 1rem;">❌</span> No contactable</button>
+                            </div>
+                        </div>
+
+                        <!-- FORMULARIO PRINCIPAL -->
+                        <form id="formGestionEmb" onsubmit="return registrarGestionEmbeddedV4(event)" novalidate>
+
+                            <!-- Grid de 2 Columnas -->
+                            <div
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+
+                                <!-- COLUMNA 1: INFORMACIÓN DEL CLIENTE -->
+                                <div class="form-card"
+                                    style="background: var(--tp-surface); border: 1px solid var(--tp-border-light); border-radius: 12px; overflow: hidden; box-shadow: var(--tp-shadow-sm);">
+                                    <div
+                                        style="background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%); padding: 1rem 1.25rem; border-bottom: 1px solid var(--tp-border-light); display: flex; align-items: center; gap: 0.75rem;">
+                                        <span
+                                            style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: #E3F2FD; color: #1565C0; border-radius: 8px; font-size: 0.875rem;">📋</span>
+                                        <h4
+                                            style="margin: 0; font-size: 0.9375rem; font-weight: 600; color: var(--tp-text-primary);">
+                                            Información del Cliente</h4>
+                                    </div>
+
+                                    <div style="padding: 1.25rem;">
+                                        <!-- Selector Individual / Grupo Económico -->
+                                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                                            <div
+                                                style="display: inline-flex; background: var(--tp-surface-overlay); border-radius: 8px; padding: 4px; gap: 4px;">
+                                                <label
+                                                    style="cursor: pointer; display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.875rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 500; transition: all 0.15s ease;">
+                                                    <input type="radio" name="bitacoraModeEmb" value="asegurado" checked
+                                                        onchange="toggleBitacoraModeEmb()" style="display: none;">
+                                                    <span class="mode-toggle-inner"
+                                                        style="display: flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.625rem; background: var(--tp-primary); color: white; border-radius: 5px;">
+                                                        <span>👤</span> Individual
+                                                    </span>
+                                                </label>
+                                                <label
+                                                    style="cursor: pointer; display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.875rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 500; color: var(--tp-text-secondary); transition: all 0.15s ease;">
+                                                    <input type="radio" name="bitacoraModeEmb" value="grupo"
+                                                        onchange="toggleBitacoraModeEmb()" style="display: none;">
+                                                    <span class="mode-toggle-inner"
+                                                        style="display: flex; align-items: center; gap: 0.375rem;">
+                                                        <span>👥</span> Grupo Económico
+                                                    </span>
+                                                </label>
+                                            </div>
                                         </div>
 
-                                        <div class="form-group">
-                                            <label class="form-label" for="gestionAseguradoEmb">
-                                                🏢 Asegurado / Cliente <span style="color: #D32F2F;">*</span>
+                                        <!-- Campo: Asegurado / Cliente -->
+                                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                                            <label class="form-label"
+                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">
+                                                <span style="font-size: 1rem;">🏢</span> Asegurado / Cliente <span
+                                                    style="color: var(--tp-primary); font-weight: 700;">*</span>
                                             </label>
-
-                                            <!-- Componente Autocomplete -->
                                             <div class="autocomplete-wrapper" id="autocompleteWrapperEmb">
-                                                <div class="autocomplete-input-container">
-                                                    <span class="autocomplete-icon">🔍</span>
-                                                    <input type="text" id="gestionAseguradoEmb" class="autocomplete-input"
-                                                        placeholder="Escribe o selecciona un cliente..." autocomplete="off"
-                                                        required oninput="filtrarAutocompleteEmb()"
-                                                        onfocus="mostrarDropdownAutocompleteEmb()" />
+                                                <div class="autocomplete-input-container"
+                                                    style="position: relative; display: flex; align-items: center;">
+                                                    <span
+                                                        style="position: absolute; left: 12px; color: var(--tp-text-tertiary); font-size: 0.875rem; pointer-events: none;">🔍</span>
+                                                    <input type="text" id="gestionAseguradoEmb"
+                                                        class="autocomplete-input"
+                                                        placeholder="Escribe o selecciona un cliente..."
+                                                        autocomplete="off" required
+                                                        oninput="filtrarAutocompleteEmb(); validateFormV4();"
+                                                        onfocus="mostrarDropdownAutocompleteEmb()"
+                                                        style="width: 100%; padding: 0.75rem 2.5rem 0.75rem 2.5rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; transition: border-color 0.15s ease, box-shadow 0.15s ease;">
                                                     <button type="button" class="autocomplete-dropdown-btn"
-                                                        onclick="toggleDropdownAutocompleteEmb()" title="Ver todas las opciones">
-                                                        ▼
-                                                    </button>
-                                                    <button type="button" class="autocomplete-clear-btn" id="clearAseguradoEmb"
-                                                        onclick="limpiarAutocompleteEmb()" style="display: none;"
-                                                        title="Limpiar selección">
-                                                        ✕
-                                                    </button>
+                                                        onclick="toggleDropdownAutocompleteEmb()"
+                                                        title="Ver todas las opciones"
+                                                        style="position: absolute; right: 8px; background: none; border: none; padding: 4px 8px; cursor: pointer; color: var(--tp-text-tertiary); font-size: 0.75rem;">▼</button>
                                                 </div>
-
-                                                <!-- Dropdown de opciones -->
-                                                <div class="autocomplete-dropdown" id="autocompleteDropdownEmb" style="display: none;">
-                                                    <div class="autocomplete-options" id="autocompleteOptionsEmb">
-                                                        <!-- Las opciones se cargan dinámicamente -->
-                                                    </div>
+                                                <div class="autocomplete-dropdown" id="autocompleteDropdownEmb"
+                                                    style="display: none;">
+                                                    <div class="autocomplete-options" id="autocompleteOptionsEmb"></div>
                                                 </div>
-
-                                                <!-- Contador de resultados -->
-                                                <small id="autocompleteCounterEmb" class="autocomplete-counter" style="display: none;"></small>
+                                                <small id="autocompleteCounterEmb" class="autocomplete-counter"
+                                                    style="display: none;"></small>
                                             </div>
-
-                                            <!-- Hidden input para valor seleccionado -->
-                                            <input type="hidden" id="gestionAseguradoValueEmb" name="asegurado" required />
+                                            <input type="hidden" id="gestionAseguradoValueEmb" name="asegurado"
+                                                required />
                                         </div>
 
-                                        <div class="form-group">
-                                            <div class="fecha-field-wrapper">
-                                                <div class="fecha-field-header">
-                                                    <label class="form-label" style="margin: 0;">
-                                                        📅 Fecha Envío EECC (Inicio del ciclo)
-                                                    </label>
-
-                                                    <!-- Selector Automático / Manual -->
-                                                    <div class="radio-toggle-group">
-                                                        <input type="radio" id="fechaEnvioAutoEmb" name="fechaEnvioModeEmb"
-                                                            value="auto" checked class="radio-toggle-input"
-                                                            onchange="toggleFechaEnvioModeEmb()">
-                                                        <label for="fechaEnvioAutoEmb" class="radio-toggle-label">
-                                                            <span class="radio-toggle-icon">🤖</span>
-                                                            <span>Automático</span>
-                                                        </label>
-
-                                                        <input type="radio" id="fechaEnvioManualEmb" name="fechaEnvioModeEmb"
-                                                            value="manual" class="radio-toggle-input"
-                                                            onchange="toggleFechaEnvioModeEmb()">
-                                                        <label for="fechaEnvioManualEmb" class="radio-toggle-label">
-                                                            <span class="radio-toggle-icon">✍️</span>
-                                                            <span>Manual</span>
-                                                        </label>
-                                                    </div>
-                                                </div>
-
-                                                <input type="datetime-local" id="gestionFechaEnvioEECCEmb" readonly
-                                                    placeholder="Se completará automáticamente">
-                                                <small class="form-help">
-                                                    <span id="fechaEnvioHelpEmb">Fecha del envío del EECC que inició este ciclo de cobranza</span>
-                                                </small>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <div class="fecha-field-wrapper">
-                                                <div class="fecha-field-header">
-                                                    <label class="form-label" style="margin: 0;">
-                                                        📅 Fecha de esta Gestión
-                                                        <span style="background: #E8F5E9; color: #2E7D32; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">
-                                                            🤖 Automático
-                                                        </span>
-                                                    </label>
-                                                </div>
-
-                                                <input type="datetime-local" id="gestionFechaGestionEmb" readonly
-                                                    style="background-color: var(--tp-surface-overlay); cursor: not-allowed; opacity: 0.85;">
-                                                <small class="form-help">
-                                                    <span id="fechaGestionHelpEmb">✅ Se registra automáticamente con fecha/hora actual al guardar</span>
-                                                </small>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="form-label" for="gestionResponsableEmb">
-                                                👤 Responsable
+                                        <!-- Campo: Tipo de Gestión -->
+                                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                                            <label class="form-label"
+                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">
+                                                <span style="font-size: 1rem;">📞</span> Tipo de Contacto <span
+                                                    style="color: var(--tp-primary); font-weight: 700;">*</span>
                                             </label>
-                                            <input type="text" id="gestionResponsableEmb" readonly placeholder="Usuario actual"
-                                                style="background-color: var(--tp-surface-overlay);">
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="form-label" for="gestionTipoEmb">
-                                                📞 Tipo de Gestión <span style="color: #D32F2F;">*</span>
-                                            </label>
-                                            <select id="gestionTipoEmb" required>
+                                            <select id="gestionTipoEmb" required onchange="validateFormV4()"
+                                                style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer; transition: border-color 0.15s ease;">
                                                 <option value="">¿Cómo contactaste al cliente?</option>
                                                 <option value="LLAMADA">📞 Llamada telefónica</option>
                                                 <option value="WHATSAPP">💬 Mensaje por WhatsApp</option>
-                                                <option value="CORREO_INDIVIDUAL">📧 Correo electrónico individual</option>
-                                                <option value="REUNION">🤝 Reunión presencial o virtual</option>
+                                                <option value="CORREO_INDIVIDUAL">📧 Correo electrónico</option>
+                                                <option value="REUNION">🤝 Reunión (presencial o virtual)</option>
                                                 <option value="OTRO">📝 Otro tipo de gestión</option>
                                             </select>
                                         </div>
+
+                                        <!-- Campo: Fecha y Hora de la Gestión -->
+                                        <div class="form-group" style="margin-bottom: 1rem;">
+                                            <label class="form-label"
+                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">
+                                                <span style="font-size: 1rem;">🕐</span> Fecha y Hora de la Gestión
+                                                <span style="color: var(--tp-primary); font-weight: 700;">*</span>
+                                            </label>
+                                            <div style="position: relative;">
+                                                <input type="datetime-local" id="gestionFechaGestionEmb" required
+                                                    onchange="validateFormV4()"
+                                                    style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; transition: border-color 0.15s ease;">
+                                            </div>
+                                            <div
+                                                style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                                                <button type="button" onclick="setFechaGestionAhora()"
+                                                    style="padding: 0.375rem 0.75rem; background: var(--tp-info-pale); border: 1px solid var(--tp-info-light); border-radius: 6px; font-size: 0.75rem; font-weight: 500; color: var(--tp-info); cursor: pointer; transition: all 0.15s ease;">⏰
+                                                    Ahora</button>
+                                                <span
+                                                    style="font-size: 0.75rem; color: var(--tp-text-tertiary);">Editable
+                                                    para corrección o backdating</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Responsable -->
+                                        <div class="form-group">
+                                            <label class="form-label"
+                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-tertiary);">
+                                                <span style="font-size: 1rem;">👤</span> Responsable
+                                            </label>
+                                            <input type="text" id="gestionResponsableEmb" readonly
+                                                placeholder="Usuario actual"
+                                                style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; background: var(--tp-surface-overlay); color: var(--tp-text-secondary); cursor: not-allowed;">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- COLUMNA 2: RESULTADO Y SEGUIMIENTO -->
+                                <div class="form-card"
+                                    style="background: var(--tp-surface); border: 1px solid var(--tp-border-light); border-radius: 12px; overflow: hidden; box-shadow: var(--tp-shadow-sm);">
+                                    <div
+                                        style="background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%); padding: 1rem 1.25rem; border-bottom: 1px solid var(--tp-border-light); display: flex; align-items: center; gap: 0.75rem;">
+                                        <span
+                                            style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: #E8F5E9; color: #2E7D32; border-radius: 8px; font-size: 0.875rem;">📊</span>
+                                        <h4
+                                            style="margin: 0; font-size: 0.9375rem; font-weight: 600; color: var(--tp-text-primary);">
+                                            Resultado y Seguimiento</h4>
                                     </div>
 
-                                    <!-- COLUMNA 2: Estado y Seguimiento -->
-                                    <div>
-                                        <h3 style="font-size: 1rem; font-weight: 600; color: var(--tp-text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--tp-border-light);">
-                                            📊 Resultado y Seguimiento
-                                        </h3>
-
-                                        <div class="form-group">
-                                            <label class="form-label" for="gestionEstadoEmb">
-                                                📌 Estado de Gestión <span style="color: #D32F2F;">*</span>
+                                    <div style="padding: 1.25rem;">
+                                        <!-- Campo: Estado de Gestión -->
+                                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                                            <label class="form-label"
+                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">
+                                                <span style="font-size: 1rem;">📌</span> Estado de Gestión <span
+                                                    style="color: var(--tp-primary); font-weight: 700;">*</span>
                                             </label>
-                                            <select id="gestionEstadoEmb" required onchange="onEstadoChangeEmb()">
+                                            <select id="gestionEstadoEmb" required
+                                                onchange="onEstadoChangeEmbV4(); validateFormV4();"
+                                                style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer; transition: border-color 0.15s ease;">
                                                 <option value="">¿Cuál fue el resultado?</option>
                                                 <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
                                                 <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
@@ -812,65 +1021,136 @@
                                                 <option value="REPROGRAMADO">📅 Reprogramado</option>
                                                 <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
                                                 <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
-                                                <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales</option>
+                                                <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales
+                                                </option>
                                                 <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
                                                 <option value="NO_COBRABLE">⛔ No cobrable</option>
                                             </select>
                                         </div>
 
-                                        <!-- Campo Canal de Contacto ELIMINADO - se deriva automáticamente de Tipo de Gestión -->
-                                        <input type="hidden" id="gestionCanalEmb" value="">
-
-                                        <div class="form-group hidden" id="grupoFechaCompromisoEmb">
-                                            <label class="form-label" for="gestionFechaCompromisoEmb">
-                                                🗓️ Fecha de Compromiso <span id="requiredCompromisoEmb" class="hidden" style="color: #D32F2F;">*</span>
+                                        <!-- Campo: Fecha de Compromiso -->
+                                        <div class="form-group" id="grupoFechaCompromisoEmb"
+                                            style="display: none; margin-bottom: 1.25rem;">
+                                            <label class="form-label"
+                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">
+                                                <span style="font-size: 1rem;">🗓️</span> Fecha de Compromiso <span
+                                                    id="requiredCompromisoEmb"
+                                                    style="color: var(--tp-primary); font-weight: 700;">*</span>
                                             </label>
-                                            <input type="date" id="gestionFechaCompromisoEmb">
-                                            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8125rem;">
-                                                💡 <strong>Obligatorio</strong> si el estado es "Compromiso de pago" o "Reprogramado"
+                                            <input type="date" id="gestionFechaCompromisoEmb"
+                                                onchange="validateFormV4()"
+                                                style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; transition: border-color 0.15s ease;">
+                                            <p
+                                                style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--tp-text-tertiary); display: flex; align-items: center; gap: 0.375rem;">
+                                                <span style="color: var(--tp-warning);">💡</span> Obligatorio para
+                                                "Compromiso de pago" o "Reprogramado"
                                             </p>
                                         </div>
 
-                                        <div class="form-group">
-                                            <label class="form-label" for="gestionProximaAccionEmb">
-                                                🎯 Próxima Acción <span style="color: #D32F2F;">*</span>
+                                        <!-- Campo: Próxima Acción -->
+                                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                                            <label class="form-label"
+                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">
+                                                <span style="font-size: 1rem;">🎯</span> Próxima Acción <span
+                                                    style="color: var(--tp-primary); font-weight: 700;">*</span>
                                             </label>
                                             <input type="text" id="gestionProximaAccionEmb" required
-                                                placeholder="Ej: Llamar si no paga el 20/11, Enviar recordatorio..."
-                                                maxlength="200">
-                                            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8125rem;">
-                                                Define qué hacer después de esta gestión
-                                            </p>
+                                                oninput="validateFormV4()"
+                                                placeholder="Ej: Llamar si no paga el 20/01, Enviar recordatorio..."
+                                                maxlength="200"
+                                                style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; transition: border-color 0.15s ease;">
+                                            <p
+                                                style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--tp-text-tertiary);">
+                                                Define qué hacer después de esta gestión</p>
+                                        </div>
+
+                                        <!-- Campo: Observaciones -->
+                                        <div class="form-group">
+                                            <label class="form-label"
+                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">
+                                                <span style="font-size: 1rem;">📝</span> Observaciones <span
+                                                    id="requiredObsEmb"
+                                                    style="display: none; color: var(--tp-primary); font-weight: 700;">*</span>
+                                            </label>
+                                            <textarea id="gestionObservacionesEmb" rows="3" oninput="validateFormV4()"
+                                                placeholder="Detalles de la gestión (con quién se habló, qué se acordó, etc.)"
+                                                style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; resize: vertical; min-height: 80px; transition: border-color 0.15s ease;"></textarea>
+                                            <p id="obsHelperText"
+                                                style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--tp-text-tertiary);">
+                                                Obligatorio para: Derivaciones, No cobrable</p>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Observaciones (ancho completo) -->
-                                <div class="form-group" style="margin-top: 1rem;">
-                                    <label class="form-label" for="gestionObservacionesEmb">
-                                        Observaciones <span id="requiredObsEmb" class="hidden" style="color: #D32F2F;">*</span>
-                                    </label>
-                                    <textarea id="gestionObservacionesEmb" rows="4"
-                                        placeholder="Detalles de la gestión (con quién se habló, qué se acordó, etc.)"></textarea>
-                                    <p class="text-muted" style="margin-top: 0.25rem; font-size: 0.875rem;">
-                                        Obligatorio para estados: Derivaciones, No cobrable
-                                    </p>
+                            <!-- SECCIÓN AVANZADA (COLAPSABLE) -->
+                            <details class="advanced-section"
+                                style="background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 10px; margin-bottom: 1.5rem;">
+                                <summary
+                                    style="padding: 0.875rem 1.25rem; cursor: pointer; display: flex; align-items: center; gap: 0.625rem; font-size: 0.8125rem; font-weight: 500; color: var(--tp-text-secondary); list-style: none; user-select: none;">
+                                    <span
+                                        style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--tp-border-light); border-radius: 4px; font-size: 0.625rem; transition: transform 0.2s ease;"
+                                        class="chevron">▶</span>
+                                    <span>⚙️ Opciones avanzadas</span>
+                                    <span
+                                        style="font-size: 0.75rem; color: var(--tp-text-tertiary); font-weight: 400;">—
+                                        Fecha de inicio del ciclo (EECC)</span>
+                                </summary>
+
+                                <div
+                                    style="padding: 1rem 1.25rem 1.25rem; border-top: 1px solid var(--tp-border-light);">
+                                    <div class="form-group">
+                                        <label class="form-label"
+                                            style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">
+                                            <span style="font-size: 1rem;">📅</span> Fecha Envío EECC (Inicio del ciclo)
+                                        </label>
+
+                                        <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem;">
+                                            <label
+                                                style="display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.875rem; background: var(--tp-primary); color: white; border-radius: 6px; font-size: 0.8125rem; cursor: pointer;">
+                                                <input type="radio" id="fechaEnvioAutoEmb" name="fechaEnvioModeEmb"
+                                                    value="auto" checked onchange="toggleFechaEnvioModeEmbV4()"
+                                                    style="display: none;">
+                                                <span>🤖 Automático</span>
+                                            </label>
+                                            <label
+                                                style="display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.875rem; background: var(--tp-surface); border: 1px solid var(--tp-border-light); color: var(--tp-text-secondary); border-radius: 6px; font-size: 0.8125rem; cursor: pointer;">
+                                                <input type="radio" id="fechaEnvioManualEmb" name="fechaEnvioModeEmb"
+                                                    value="manual" onchange="toggleFechaEnvioModeEmbV4()"
+                                                    style="display: none;">
+                                                <span>✍️ Manual</span>
+                                            </label>
+                                        </div>
+
+                                        <input type="datetime-local" id="gestionFechaEnvioEECCEmb" readonly
+                                            style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; background: var(--tp-surface-overlay);">
+                                        <p
+                                            style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--tp-text-tertiary);">
+                                            <span id="fechaEnvioHelpEmb">Se detecta automáticamente del ciclo de
+                                                cobranza activo. Solo editar si necesitas corregir.</span>
+                                        </p>
+                                    </div>
                                 </div>
+                            </details>
 
-                                <!-- Estado del formulario -->
-                                <div id="gestionStatusEmb" style="margin-top: 1rem;"></div>
+                            <input type="hidden" id="gestionCanalEmb" value="">
 
-                                <!-- Botones -->
-                                <div class="btn-group" style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
-                                    <button type="button" class="btn btn-secondary" onclick="limpiarFormGestionEmb()">
-                                        Limpiar
-                                    </button>
-                                    <button type="submit" class="btn btn-primary" id="btnGuardarGestionEmb">
-                                        💾 Registrar Gestión
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                            <!-- ESTADO DEL FORMULARIO Y BOTONES -->
+                            <div id="gestionStatusEmb" style="margin-bottom: 1rem;"></div>
+
+                            <div
+                                style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding-top: 0.5rem; border-top: 1px solid var(--tp-border-light); padding-top: 1.25rem;">
+                                <button type="button" onclick="limpiarFormGestionEmbV4()"
+                                    style="padding: 0.75rem 1.5rem; background: var(--tp-surface); border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; font-weight: 500; color: var(--tp-text-secondary); cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; gap: 0.5rem;">
+                                    <span>🗑️</span> Limpiar
+                                </button>
+
+                                <button type="submit" id="btnGuardarGestionEmb" disabled
+                                    style="padding: 0.875rem 2rem; background: linear-gradient(135deg, var(--tp-primary) 0%, var(--tp-primary-dark) 100%); border: none; border-radius: 8px; font-size: 0.9375rem; font-weight: 600; color: white; cursor: not-allowed; opacity: 0.6; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(211, 47, 47, 0.25);">
+                                    <span>💾</span> Registrar Gestión
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
 
@@ -1248,7 +1528,8 @@
                                         <div class="fecha-field-header">
                                             <label class="form-label" style="margin: 0;">
                                                 📅 Fecha de esta Gestión
-                                                <span style="background: #E8F5E9; color: #2E7D32; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">
+                                                <span
+                                                    style="background: #E8F5E9; color: #2E7D32; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">
                                                     🤖 Automático
                                                 </span>
                                             </label>
@@ -1257,7 +1538,8 @@
                                         <input type="datetime-local" id="gestionFechaGestion" readonly
                                             style="background-color: var(--tp-surface-overlay); cursor: not-allowed; opacity: 0.85;">
                                         <small class="form-help">
-                                            <span id="fechaGestionHelp">✅ Se registra automáticamente con fecha/hora actual al guardar</span>
+                                            <span id="fechaGestionHelp">✅ Se registra automáticamente con fecha/hora
+                                                actual al guardar</span>
                                         </small>
                                     </div>
                                 </div>
@@ -2735,10 +3017,10 @@
                     ALL_CLIENTES = ASEGURADOS_DS.items;
 
                     // Log de progreso
-                    const progress = ASEGURADOS_DS.totalExpected > 0 
+                    const progress = ASEGURADOS_DS.totalExpected > 0
                         ? Math.round((ASEGURADOS_DS.items.length / ASEGURADOS_DS.totalExpected) * 100)
                         : 100;
-                    
+
                     // AUTO-CARGA: Si hay más páginas, cargar automáticamente la siguiente
                     if (res.hasMore && res.nextCursor) {
                         log(`⏳ Cargando asegurados... ${ASEGURADOS_DS.items.length}/${ASEGURADOS_DS.totalExpected} (${progress}%)`, 'info');
@@ -2958,11 +3240,11 @@
                 loadMore.style.cursor = 'default';
 
                 // Siempre mostrar estado de carga (carga automática)
-                const progress = ASEGURADOS_DS.totalExpected > 0 
+                const progress = ASEGURADOS_DS.totalExpected > 0
                     ? Math.round((ASEGURADOS_DS.items.length / ASEGURADOS_DS.totalExpected) * 100)
                     : 0;
                 loadMore.textContent = `⏳ Cargando asegurados... ${progress}%`;
-                
+
                 optionsContainer.appendChild(loadMore);
             }
         }
@@ -4531,18 +4813,18 @@
             };
 
             // Obtener todos los valores del formulario unificado
-            const asegurado = document.getElementById('gestionAseguradoEmb')?.value || 
-                             document.getElementById('gestionAseguradoValueEmb')?.value;
+            const asegurado = document.getElementById('gestionAseguradoEmb')?.value ||
+                document.getElementById('gestionAseguradoValueEmb')?.value;
             const fechaEnvioEECC = document.getElementById('gestionFechaEnvioEECCEmb')?.value;
             const tipoGestion = document.getElementById('gestionTipoEmb')?.value;
             const estadoGestion = document.getElementById('gestionEstadoEmb')?.value;
             const fechaCompromiso = document.getElementById('gestionFechaCompromisoEmb')?.value;
             const proximaAccion = document.getElementById('gestionProximaAccionEmb')?.value?.trim();
             const observaciones = document.getElementById('gestionObservacionesEmb')?.value?.trim();
-            
+
             // AUTOMÁTICO: Derivar Canal de Contacto del Tipo de Gestión
             const canalContacto = TIPO_A_CANAL[tipoGestion] || tipoGestion || 'OTRO';
-            
+
             // AUTOMÁTICO: Generar Fecha de Gestión como fecha/hora actual
             const fechaGestion = new Date().toISOString().slice(0, 16);
 
@@ -4605,7 +4887,7 @@
             google.script.run
                 .withSuccessHandler(function (result) {
                     console.log('[registrarGestionEmbedded] ✅ Resultado:', result);
-                    
+
                     if (btn) {
                         btn.disabled = false;
                         btn.textContent = '💾 Registrar Gestión';
@@ -4667,10 +4949,10 @@
             if (form) form.reset();
 
             // Limpiar campos específicos
-            const campos = ['gestionAseguradoEmb', 'gestionAseguradoValueEmb', 'gestionFechaEnvioEECCEmb', 
-                           'gestionFechaGestionEmb', 'gestionResponsableEmb', 'gestionTipoEmb',
-                           'gestionEstadoEmb', 'gestionCanalEmb', 'gestionFechaCompromisoEmb',
-                           'gestionProximaAccionEmb', 'gestionObservacionesEmb'];
+            const campos = ['gestionAseguradoEmb', 'gestionAseguradoValueEmb', 'gestionFechaEnvioEECCEmb',
+                'gestionFechaGestionEmb', 'gestionResponsableEmb', 'gestionTipoEmb',
+                'gestionEstadoEmb', 'gestionCanalEmb', 'gestionFechaCompromisoEmb',
+                'gestionProximaAccionEmb', 'gestionObservacionesEmb'];
             campos.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
@@ -4806,10 +5088,10 @@
             const selectedMode = document.querySelector('input[name="bitacoraModeEmb"]:checked')?.value || 'asegurado';
             BITACORA_MODE = selectedMode;
             console.log('[toggleBitacoraModeEmb] Modo:', BITACORA_MODE);
-            
+
             // Limpiar selección actual
             limpiarAutocompleteEmb();
-            
+
             // Recargar opciones según el modo
             loadClientesAutocompleteEmb();
         }
@@ -4895,7 +5177,7 @@
                 // Si no hay fecha, dejar vacío para que el usuario la ingrese
                 input.value = '';
                 if (help) help.textContent = '⚠️ No se encontró ciclo previo - Ingresa la fecha manualmente';
-                
+
                 // Cambiar a modo manual
                 const radioManual = document.getElementById('fechaEnvioManualEmb');
                 if (radioManual) {
@@ -4915,7 +5197,7 @@
          */
         function loadClientesAutocompleteEmb() {
             console.log('[loadClientesAutocompleteEmb] Cargando clientes...');
-            
+
             // Usar los datos de BITACORA_DATA que ya están cargados
             if (BITACORA_DATA && BITACORA_DATA.length > 0) {
                 AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
@@ -4925,13 +5207,13 @@
 
             // Si no hay datos, cargar desde el backend
             google.script.run
-                .withSuccessHandler(function(result) {
+                .withSuccessHandler(function (result) {
                     if (result && result.ok && result.data) {
                         AUTOCOMPLETE_EMB_OPTIONS = [...new Set(result.data.map(g => g.asegurado))].filter(Boolean).sort();
                         console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados');
                     }
                 })
-                .withFailureHandler(function(err) {
+                .withFailureHandler(function (err) {
                     console.error('[loadClientesAutocompleteEmb] Error:', err);
                 })
                 .bitacoraGetResumenCiclos(TOKEN);
@@ -4950,13 +5232,13 @@
             if (!input || !dropdown || !options) return;
 
             const searchText = input.value.trim().toLowerCase();
-            
+
             // Mostrar/ocultar botón de limpiar
             if (clearBtn) clearBtn.style.display = searchText ? 'flex' : 'none';
 
             // Filtrar opciones
             if (searchText.length > 0) {
-                AUTOCOMPLETE_EMB_FILTERED = AUTOCOMPLETE_EMB_OPTIONS.filter(opt => 
+                AUTOCOMPLETE_EMB_FILTERED = AUTOCOMPLETE_EMB_OPTIONS.filter(opt =>
                     opt.toLowerCase().includes(searchText)
                 );
             } else {
@@ -4991,7 +5273,7 @@
             }
 
             const searchText = document.getElementById('gestionAseguradoEmb')?.value?.toLowerCase() || '';
-            
+
             options.innerHTML = AUTOCOMPLETE_EMB_FILTERED.slice(0, 50).map((opt, idx) => {
                 // Resaltar texto de búsqueda
                 let displayText = opt;
@@ -5040,7 +5322,7 @@
          */
         function mostrarDropdownAutocompleteEmb() {
             const dropdown = document.getElementById('autocompleteDropdownEmb');
-            
+
             // Cargar opciones si no están cargadas
             if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
                 loadClientesAutocompleteEmb();
@@ -5098,7 +5380,7 @@
          */
         function inicializarFormularioEmbedded() {
             console.log('[inicializarFormularioEmbedded] Inicializando...');
-            
+
             // Cargar clientes para el autocomplete
             loadClientesAutocompleteEmb();
 
@@ -5109,7 +5391,7 @@
             }
 
             // Cerrar dropdown al hacer clic fuera
-            document.addEventListener('click', function(e) {
+            document.addEventListener('click', function (e) {
                 const wrapper = document.getElementById('autocompleteWrapperEmb');
                 const dropdown = document.getElementById('autocompleteDropdownEmb');
                 if (wrapper && dropdown && !wrapper.contains(e.target)) {
@@ -6009,29 +6291,29 @@
         }
 
         // ========== KPIs COMPROMISOS (NUEVO PANEL) ==========
-        
+
         function actualizarKPIsCompromisosPanel() {
             if (!BITACORA_DATA || !Array.isArray(BITACORA_DATA)) {
                 console.warn('[actualizarKPIsCompromisosPanel] BITACORA_DATA no inicializado');
                 return;
             }
-            
+
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
-            
+
             let kpiHoy = 0;
             let kpi1a3 = 0;
             let kpi4a7 = 0;
             let kpiVencidos = 0;
             let kpiAging60 = 0;
-            
+
             BITACORA_DATA.forEach(item => {
                 // KPIs de Compromisos (basados en fechaCompromiso)
                 if (item.fechaCompromiso) {
                     const fechaComp = new Date(item.fechaCompromiso);
                     fechaComp.setHours(0, 0, 0, 0);
                     const diffDias = Math.floor((fechaComp - hoy) / (1000 * 60 * 60 * 24));
-                    
+
                     if (diffDias < 0) {
                         kpiVencidos++;
                     } else if (diffDias === 0) {
@@ -6042,13 +6324,13 @@
                         kpi4a7++;
                     }
                 }
-                
+
                 // Aging +60 días (basado en diasPendientes)
                 if (item.diasPendientes && parseInt(item.diasPendientes) > 60) {
                     kpiAging60++;
                 }
             });
-            
+
             // Actualizar DOM con animación
             const updateWithAnimation = (elementId, value) => {
                 const el = document.getElementById(elementId);
@@ -6061,17 +6343,17 @@
                     }
                 }
             };
-            
+
             updateWithAnimation('kpiHoy', kpiHoy);
             updateWithAnimation('kpi1a3', kpi1a3);
             updateWithAnimation('kpi4a7', kpi4a7);
             updateWithAnimation('kpiVencidos', kpiVencidos);
             updateWithAnimation('kpiAging60', kpiAging60);
         }
-        
+
         // Variable para rastrear filtro KPI activo
         let KPI_FILTRO_ACTIVO = null;
-        
+
         function filtrarPorKPI(tipo) {
             // Toggle: si ya está activo el mismo filtro, desactivar
             if (KPI_FILTRO_ACTIVO === tipo) {
@@ -6081,18 +6363,18 @@
                 filtrarBitacoraEmbedded();
                 return;
             }
-            
+
             KPI_FILTRO_ACTIVO = tipo;
-            
+
             // Resaltar KPI seleccionado
             document.querySelectorAll('.kpi-card').forEach(c => c.style.boxShadow = 'none');
             event.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-            
+
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
-            
+
             BITACORA_FILTERED = BITACORA_DATA.filter(item => {
-                switch(tipo) {
+                switch (tipo) {
                     case 'hoy':
                         if (!item.fechaCompromiso) return false;
                         const fHoy = new Date(item.fechaCompromiso);
@@ -6121,17 +6403,17 @@
                         return true;
                 }
             });
-            
+
             renderBitacoraTable();
             showToast(`Filtrado por: ${tipo}`, 'info');
         }
-        
+
         // ========== BÚSQUEDA GLOBAL ==========
-        
+
         function busquedaGlobalBitacora() {
             const input = document.getElementById('busquedaGlobalBitacora');
             const query = (input?.value || '').toLowerCase().trim();
-            
+
             if (!query) {
                 // Si vacío, restaurar filtros normales
                 KPI_FILTRO_ACTIVO = null;
@@ -6139,7 +6421,7 @@
                 filtrarBitacoraEmbedded();
                 return;
             }
-            
+
             BITACORA_FILTERED = BITACORA_DATA.filter(item => {
                 const campos = [
                     item.asegurado,
@@ -6152,12 +6434,12 @@
                 ];
                 return campos.some(c => (c || '').toLowerCase().includes(query));
             });
-            
+
             renderBitacoraTable();
         }
-        
+
         // ========== QUICK ACTIONS ==========
-        
+
         function applyQuickAction(actionId) {
             // Configuración de Quick Actions
             const QUICK_ACTIONS_CONFIG = {
@@ -6187,18 +6469,18 @@
                     proximaAccion: 'Buscar contacto alternativo'
                 }
             };
-            
+
             const config = QUICK_ACTIONS_CONFIG[actionId];
             if (!config) {
                 console.warn('[applyQuickAction] Acción no encontrada:', actionId);
                 return;
             }
-            
+
             // Pre-llenar formulario embebido
             const tipoSelect = document.getElementById('tipoGestionEmb');
             const estadoSelect = document.getElementById('estadoGestionEmb');
             const proxAccionInput = document.getElementById('proximaAccionEmb');
-            
+
             if (tipoSelect) tipoSelect.value = config.tipoGestion;
             if (estadoSelect) {
                 estadoSelect.value = config.estadoGestion;
@@ -6206,27 +6488,27 @@
                 estadoSelect.dispatchEvent(new Event('change'));
             }
             if (proxAccionInput) proxAccionInput.value = config.proximaAccion;
-            
+
             // Scroll al formulario
             const form = document.getElementById('formRegistroGestionEmb');
             if (form) {
                 form.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
-            
+
             showToast('Quick Action aplicada: ' + actionId.replace(/_/g, ' '), 'success');
         }
-        
+
         // ========== EXPORT CSV ==========
-        
+
         function exportarBitacoraCSV() {
             if (!BITACORA_FILTERED || BITACORA_FILTERED.length === 0) {
                 showToast('No hay datos para exportar', 'warning');
                 return;
             }
-            
+
             // Definir columnas
             const headers = ['Asegurado', 'Estado', 'Tipo', 'Canal', 'Responsable', 'Fecha Gestión', 'Días', 'Fecha Compromiso', 'Próxima Acción', 'Observaciones'];
-            
+
             // Construir filas
             const rows = BITACORA_FILTERED.map(item => [
                 item.asegurado || '',
@@ -6240,35 +6522,35 @@
                 item.proximaAccion || '',
                 (item.observaciones || '').replace(/"/g, '""') // Escapar comillas
             ]);
-            
+
             // Construir CSV con BOM para Excel
             const BOM = '\uFEFF';
             let csv = BOM + headers.join(',') + '\n';
             rows.forEach(row => {
                 csv += row.map(cell => `"${cell}"`).join(',') + '\n';
             });
-            
+
             // Crear blob y descargar
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.setAttribute('href', url);
-            
+
             // Nombre con fecha
             const fecha = new Date().toISOString().split('T')[0];
             link.setAttribute('download', `bitacora_cobranzas_${fecha}.csv`);
-            
+
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            
+
             showToast(`Exportado: ${BITACORA_FILTERED.length} registros`, 'success');
         }
-        
+
         // ========== KEYBOARD SHORTCUTS ==========
-        
-        document.addEventListener('keydown', function(e) {
+
+        document.addEventListener('keydown', function (e) {
             // Solo si no está en un input/textarea
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
                 // Esc en búsqueda: limpiar
@@ -6278,14 +6560,14 @@
                 }
                 return;
             }
-            
+
             // / = Focus en búsqueda
             if (e.key === '/') {
                 e.preventDefault();
                 const searchInput = document.getElementById('busquedaGlobalBitacora');
                 if (searchInput) searchInput.focus();
             }
-            
+
             // N = Nuevo registro (scroll al form)
             if (e.key === 'n' || e.key === 'N') {
                 const form = document.getElementById('formRegistroGestionEmb');
@@ -6329,7 +6611,7 @@
 
             // AUTOMÁTICO: Derivar Canal de Contacto del Tipo de Gestión
             const canalContacto = TIPO_A_CANAL[tipoGestion] || tipoGestion || 'OTRO';
-            
+
             // AUTOMÁTICO: Generar Fecha de Gestión como fecha/hora actual
             const fechaGestion = new Date().toISOString().slice(0, 16);
 
@@ -7332,6 +7614,547 @@
             return text.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         }
     </script>
+    <!-- ═══════════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT v4.0 - LÓGICA DEL FORMULARIO MEJORADO
+     ═══════════════════════════════════════════════════════════════════════════════ -->
+    <script>
+        // ════════════════════════════════════════════════════════════════════════════════
+        // CONFIGURACIÓN DE ACCIONES RÁPIDAS v4.0
+        // ════════════════════════════════════════════════════════════════════════════════
+        const QUICK_ACTIONS_CONFIG_V4 = {
+            sin_respuesta: {
+                tipoGestion: 'LLAMADA',
+                estadoGestion: 'SIN_RESPUESTA',
+                proximaAccion: 'Reintentar llamada en 24 horas',
+                chipSelector: 0
+            },
+            whatsapp: {
+                tipoGestion: 'WHATSAPP',
+                estadoGestion: 'EN_SEGUIMIENTO',
+                proximaAccion: 'Esperar respuesta de WhatsApp (48h)',
+                chipSelector: 1
+            },
+            correo: {
+                tipoGestion: 'CORREO_INDIVIDUAL',
+                estadoGestion: 'EN_SEGUIMIENTO',
+                proximaAccion: 'Confirmar lectura y esperar respuesta',
+                chipSelector: 2
+            },
+            compromiso: {
+                tipoGestion: 'LLAMADA',
+                estadoGestion: 'COMPROMISO_PAGO',
+                proximaAccion: 'Verificar pago en fecha comprometida',
+                chipSelector: 3
+            },
+            no_contactable: {
+                tipoGestion: 'LLAMADA',
+                estadoGestion: 'NO_CONTACTABLE',
+                proximaAccion: 'Buscar contacto alternativo',
+                chipSelector: 4
+            }
+        };
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // APLICAR ACCIÓN RÁPIDA
+        // ════════════════════════════════════════════════════════════════════════════════
+        function applyQuickActionV4(actionId) {
+            const config = QUICK_ACTIONS_CONFIG_V4[actionId];
+            if (!config) {
+                console.warn('[QuickAction V4] Acción no encontrada:', actionId);
+                return;
+            }
+
+            // Prellenar campos
+            const tipoSelect = document.getElementById('gestionTipoEmb');
+            const estadoSelect = document.getElementById('gestionEstadoEmb');
+            const proxAccionInput = document.getElementById('gestionProximaAccionEmb');
+
+            if (tipoSelect) {
+                tipoSelect.value = config.tipoGestion;
+                // Animación visual
+                tipoSelect.style.borderColor = 'var(--tp-success)';
+                setTimeout(() => tipoSelect.style.borderColor = '', 800);
+            }
+
+            if (estadoSelect) {
+                estadoSelect.value = config.estadoGestion;
+                estadoSelect.dispatchEvent(new Event('change')); // Trigger para mostrar fecha compromiso si aplica
+                estadoSelect.style.borderColor = 'var(--tp-success)';
+                setTimeout(() => estadoSelect.style.borderColor = '', 800);
+            }
+
+            if (proxAccionInput) {
+                proxAccionInput.value = config.proximaAccion;
+                proxAccionInput.style.borderColor = 'var(--tp-success)';
+                setTimeout(() => proxAccionInput.style.borderColor = '', 800);
+            }
+
+            // Resaltar chip seleccionado
+            const chips = document.querySelectorAll('.quick-chip');
+            chips.forEach((chip, index) => {
+                if (index === config.chipSelector) {
+                    chip.style.transform = 'scale(1.05)';
+                    chip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                    setTimeout(() => {
+                        chip.style.transform = '';
+                        chip.style.boxShadow = '';
+                    }, 600);
+                }
+            });
+
+            // Validar formulario
+            validateFormV4();
+
+            // Toast de confirmación
+            if (typeof showToast === 'function') {
+                showToast('✅ Campos prellenados: ' + actionId.replace(/_/g, ' '), 'success');
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // VALIDACIÓN DEL FORMULARIO CON INDICADOR DE COMPLETITUD
+        // ════════════════════════════════════════════════════════════════════════════════
+        function validateFormV4() {
+            const asegurado = document.getElementById('gestionAseguradoValueEmb')?.value ||
+                document.getElementById('gestionAseguradoEmb')?.value;
+            const tipoGestion = document.getElementById('gestionTipoEmb')?.value;
+            const estadoGestion = document.getElementById('gestionEstadoEmb')?.value;
+            const proximaAccion = document.getElementById('gestionProximaAccionEmb')?.value?.trim();
+            const fechaGestion = document.getElementById('gestionFechaGestionEmb')?.value;
+            const fechaCompromiso = document.getElementById('gestionFechaCompromisoEmb')?.value;
+            const observaciones = document.getElementById('gestionObservacionesEmb')?.value?.trim();
+
+            // Campos obligatorios base
+            let requiredFields = 4;
+            let completedFields = 0;
+
+            if (asegurado) completedFields++;
+            if (tipoGestion) completedFields++;
+            if (estadoGestion) completedFields++;
+            if (proximaAccion) completedFields++;
+
+            // Campos condicionales
+            const needsFechaCompromiso = ['COMPROMISO_PAGO', 'REPROGRAMADO'].includes(estadoGestion);
+            const needsObservaciones = ['DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES', 'NO_COBRABLE'].includes(estadoGestion);
+
+            if (needsFechaCompromiso) {
+                requiredFields++;
+                if (fechaCompromiso) completedFields++;
+            }
+
+            if (needsObservaciones) {
+                requiredFields++;
+                if (observaciones) completedFields++;
+            }
+
+            // Calcular porcentaje
+            const percent = Math.round((completedFields / requiredFields) * 100);
+
+            // Actualizar indicador visual
+            updateCompletitudIndicator(percent, completedFields, requiredFields);
+
+            // Habilitar/deshabilitar botón
+            const btn = document.getElementById('btnGuardarGestionEmb');
+            const isComplete = completedFields >= requiredFields && fechaGestion;
+
+            if (btn) {
+                if (isComplete) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                } else {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.6';
+                    btn.style.cursor = 'not-allowed';
+                }
+            }
+
+            return isComplete;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // ACTUALIZAR INDICADOR DE COMPLETITUD
+        // ════════════════════════════════════════════════════════════════════════════════
+        function updateCompletitudIndicator(percent, completed, total) {
+            const percentEl = document.getElementById('completitudPercent');
+            const camposEl = document.getElementById('completitudCampos');
+            const arcEl = document.getElementById('completitudArc');
+
+            if (percentEl) percentEl.textContent = percent + '%';
+            if (camposEl) camposEl.textContent = completed + ' de ' + total;
+
+            if (arcEl) {
+                // Calcular stroke-dasharray para el arco (circunferencia = 2 * PI * 15.5 ≈ 97.4)
+                const circumference = 97.4;
+                const dashLength = (percent / 100) * circumference;
+                arcEl.setAttribute('stroke-dasharray', `${dashLength} ${circumference}`);
+
+                // Color según porcentaje
+                if (percent === 100) {
+                    arcEl.setAttribute('stroke', 'var(--tp-success)');
+                } else if (percent >= 50) {
+                    arcEl.setAttribute('stroke', 'var(--tp-warning)');
+                } else {
+                    arcEl.setAttribute('stroke', 'var(--tp-primary)');
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // CAMBIO DE ESTADO - MOSTRAR/OCULTAR CAMPOS CONDICIONALES
+        // ════════════════════════════════════════════════════════════════════════════════
+        function onEstadoChangeEmbV4() {
+            const estado = document.getElementById('gestionEstadoEmb')?.value;
+            const grupoFechaCompromiso = document.getElementById('grupoFechaCompromisoEmb');
+            const requiredObs = document.getElementById('requiredObsEmb');
+            const obsHelper = document.getElementById('obsHelperText');
+
+            // Mostrar/ocultar fecha de compromiso
+            const needsFechaCompromiso = ['COMPROMISO_PAGO', 'REPROGRAMADO'].includes(estado);
+            if (grupoFechaCompromiso) {
+                grupoFechaCompromiso.style.display = needsFechaCompromiso ? 'block' : 'none';
+            }
+
+            // Mostrar/ocultar asterisco en observaciones
+            const needsObservaciones = ['DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES', 'NO_COBRABLE'].includes(estado);
+            if (requiredObs) {
+                requiredObs.style.display = needsObservaciones ? 'inline' : 'none';
+            }
+            if (obsHelper) {
+                if (needsObservaciones) {
+                    obsHelper.innerHTML = '<span style="color: var(--tp-error);">⚠️ Obligatorio para este estado</span>';
+                } else {
+                    obsHelper.textContent = 'Obligatorio para: Derivaciones, No cobrable';
+                }
+            }
+
+            validateFormV4();
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // ESTABLECER FECHA/HORA ACTUAL
+        // ════════════════════════════════════════════════════════════════════════════════
+        function setFechaGestionAhora() {
+            const input = document.getElementById('gestionFechaGestionEmb');
+            if (input) {
+                const now = new Date();
+                // Ajustar a zona horaria local
+                const offset = now.getTimezoneOffset() * 60000;
+                const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
+                input.value = localISOTime;
+
+                // Feedback visual
+                input.style.borderColor = 'var(--tp-success)';
+                setTimeout(() => input.style.borderColor = '', 800);
+
+                validateFormV4();
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // TOGGLE MODO FECHA ENVÍO EECC
+        // ════════════════════════════════════════════════════════════════════════════════
+        function toggleFechaEnvioModeEmbV4() {
+            const isManual = document.getElementById('fechaEnvioManualEmb')?.checked;
+            const input = document.getElementById('gestionFechaEnvioEECCEmb');
+            const helpText = document.getElementById('fechaEnvioHelpEmb');
+
+            if (input) {
+                if (isManual) {
+                    input.removeAttribute('readonly');
+                    input.style.background = 'white';
+                    input.style.cursor = 'text';
+                } else {
+                    input.setAttribute('readonly', 'readonly');
+                    input.style.background = 'var(--tp-surface-overlay)';
+                    input.style.cursor = 'not-allowed';
+                }
+            }
+
+            if (helpText) {
+                helpText.textContent = isManual
+                    ? 'Modo manual: ingresa la fecha de envío del EECC que inició este ciclo'
+                    : 'Se detecta automáticamente del ciclo de cobranza activo. Solo editar si necesitas corregir.';
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // LIMPIAR FORMULARIO v4
+        // ════════════════════════════════════════════════════════════════════════════════
+        function limpiarFormGestionEmbV4() {
+            // Limpiar campos de texto
+            const textFields = [
+                'gestionAseguradoEmb',
+                'gestionAseguradoValueEmb',
+                'gestionProximaAccionEmb',
+                'gestionObservacionesEmb'
+            ];
+            textFields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            // Limpiar selects
+            const selectFields = ['gestionTipoEmb', 'gestionEstadoEmb'];
+            selectFields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.selectedIndex = 0;
+            });
+
+            // Limpiar fechas
+            document.getElementById('gestionFechaCompromisoEmb').value = '';
+
+            // Reiniciar fecha de gestión a ahora
+            setFechaGestionAhora();
+
+            // Ocultar campos condicionales
+            document.getElementById('grupoFechaCompromisoEmb').style.display = 'none';
+            document.getElementById('requiredObsEmb').style.display = 'none';
+
+            // Limpiar status
+            const status = document.getElementById('gestionStatusEmb');
+            if (status) status.innerHTML = '';
+
+            // Resetear indicador
+            updateCompletitudIndicator(0, 0, 4);
+
+            // Deshabilitar botón
+            const btn = document.getElementById('btnGuardarGestionEmb');
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.style.cursor = 'not-allowed';
+            }
+
+            // Limpiar autocomplete visual
+            const clearBtn = document.getElementById('clearAseguradoEmb');
+            if (clearBtn) clearBtn.style.display = 'none';
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // REGISTRAR GESTIÓN v4 (adaptado del original)
+        // ════════════════════════════════════════════════════════════════════════════════
+        function registrarGestionEmbeddedV4(event) {
+            if (event) event.preventDefault();
+
+            // Si la función original existe, usarla para mantener compatibilidad
+            if (typeof registrarGestionEmbedded === 'function') {
+                return registrarGestionEmbedded(event);
+            }
+
+            // Fallback: lógica propia
+            const TIPO_A_CANAL = {
+                'LLAMADA': 'LLAMADA',
+                'WHATSAPP': 'WHATSAPP',
+                'CORREO_INDIVIDUAL': 'EMAIL',
+                'REUNION': 'REUNION',
+                'OTRO': 'OTRO'
+            };
+
+            const asegurado = document.getElementById('gestionAseguradoEmb')?.value ||
+                document.getElementById('gestionAseguradoValueEmb')?.value;
+            const fechaEnvioEECC = document.getElementById('gestionFechaEnvioEECCEmb')?.value;
+            const fechaGestion = document.getElementById('gestionFechaGestionEmb')?.value;
+            const tipoGestion = document.getElementById('gestionTipoEmb')?.value;
+            const estadoGestion = document.getElementById('gestionEstadoEmb')?.value;
+            const fechaCompromiso = document.getElementById('gestionFechaCompromisoEmb')?.value;
+            const proximaAccion = document.getElementById('gestionProximaAccionEmb')?.value?.trim();
+            const observaciones = document.getElementById('gestionObservacionesEmb')?.value?.trim();
+
+            const canalContacto = TIPO_A_CANAL[tipoGestion] || tipoGestion || 'OTRO';
+
+            // Validaciones
+            if (!validateFormV4()) {
+                showGestionStatusEmbV4('error', 'Por favor completa todos los campos obligatorios');
+                return false;
+            }
+
+            // UI feedback
+            const btn = document.getElementById('btnGuardarGestionEmb');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-small"></span> Registrando...';
+            }
+
+            showGestionStatusEmbV4('info', '⏳ Registrando gestión...');
+
+            const payload = {
+                asegurado,
+                fechaEnvioEECC: fechaEnvioEECC || fechaGestion, // Si no hay fecha EECC, usar fecha gestión
+                fechaGestion,
+                tipoGestion,
+                estadoGestion,
+                canalContacto,
+                fechaCompromiso: fechaCompromiso || null,
+                proximaAccion,
+                observaciones: observaciones || ''
+            };
+
+            console.log('[registrarGestionEmbeddedV4] Payload:', payload);
+
+            // Llamada al backend (si google.script está disponible)
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run
+                    .withSuccessHandler(function (result) {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<span>💾</span> Registrar Gestión';
+                        }
+
+                        if (result && result.ok) {
+                            showGestionStatusEmbV4('success', '✅ Gestión registrada exitosamente');
+                            limpiarFormGestionEmbV4();
+
+                            // Recargar datos
+                            if (typeof loadBitacoraEmbeddedData === 'function') {
+                                setTimeout(() => {
+                                    loadBitacoraEmbeddedData();
+                                    if (typeof switchBitacoraTabEmbedded === 'function') {
+                                        switchBitacoraTabEmbedded('estado');
+                                    }
+                                }, 1000);
+                            }
+                        } else {
+                            showGestionStatusEmbV4('error', '❌ Error: ' + (result?.message || 'Error desconocido'));
+                        }
+                    })
+                    .withFailureHandler(function (err) {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<span>💾</span> Registrar Gestión';
+                        }
+                        showGestionStatusEmbV4('error', '❌ Error: ' + err.message);
+                    })
+                    .registrarGestionManualBitacora(payload, TOKEN);
+            }
+
+            return false;
+        }
+
+        function showGestionStatusEmbV4(type, message) {
+            const status = document.getElementById('gestionStatusEmb');
+            if (!status) return;
+
+            const colors = {
+                success: { bg: 'var(--tp-success-pale)', border: 'var(--tp-success)', text: 'var(--tp-success)' },
+                error: { bg: 'var(--tp-error-pale)', border: 'var(--tp-error)', text: 'var(--tp-error)' },
+                info: { bg: 'var(--tp-info-pale)', border: 'var(--tp-info)', text: 'var(--tp-info)' }
+            };
+
+            const c = colors[type] || colors.info;
+
+            status.innerHTML = `
+        <div style="
+            padding: 0.875rem 1rem;
+            background: ${c.bg};
+            border: 1px solid ${c.border};
+            border-radius: 8px;
+            color: ${c.text};
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        ">
+            ${message}
+        </div>
+    `;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // INICIALIZACIÓN
+        // ════════════════════════════════════════════════════════════════════════════════
+        document.addEventListener('DOMContentLoaded', function () {
+            // Establecer fecha/hora actual por defecto
+            setFechaGestionAhora();
+
+            // Inicializar validación
+            validateFormV4();
+
+            // Estilo para details/summary chevron rotation
+            document.querySelectorAll('details').forEach(details => {
+                details.addEventListener('toggle', function () {
+                    const chevron = this.querySelector('.chevron');
+                    if (chevron) {
+                        chevron.style.transform = this.open ? 'rotate(90deg)' : 'rotate(0deg)';
+                    }
+                });
+            });
+        });
+
+        // Auto-inicializar si se carga después del DOM
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setFechaGestionAhora();
+            validateFormV4();
+        }
+    </script>
+
+    <style>
+        /* ════════════════════════════════════════════════════════════════════════════════
+   ESTILOS ADICIONALES PARA EL FORMULARIO v4
+   ════════════════════════════════════════════════════════════════════════════════ */
+
+        /* Focus states para inputs */
+        #formGestionEmb input:focus,
+        #formGestionEmb select:focus,
+        #formGestionEmb textarea:focus {
+            outline: none;
+            border-color: var(--tp-primary) !important;
+            box-shadow: 0 0 0 3px var(--tp-primary-pale);
+        }
+
+        /* Quick chips hover effect */
+        .quick-chip:active {
+            transform: scale(0.98) !important;
+        }
+
+        /* Spinner para botón de carga */
+        .spinner-small {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Details/Summary styling */
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        details[open] .chevron {
+            transform: rotate(90deg);
+        }
+
+        /* Card hover effect */
+        .form-card:hover {
+            box-shadow: var(--tp-shadow-md);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 720px) {
+            #formGestionEmb>div:first-of-type {
+                grid-template-columns: 1fr !important;
+            }
+
+            .quick-actions-section>div:last-child {
+                justify-content: center;
+            }
+
+            .quick-chip {
+                flex: 1 1 calc(50% - 0.25rem);
+                justify-content: center;
+            }
+        }
+    </style>
 </body>
 
 </html>
