@@ -205,6 +205,7 @@ function auditHardcodedSecrets() {
 /**
  * Ver credenciales de usuarios bootstrap
  * SOLO ejecutar manualmente cuando sea necesario
+ * NOTA: Passwords NO se muestran en logs por seguridad, solo en el return
  */
 function verCredenciales() {
     const props = PropertiesService.getScriptProperties();
@@ -216,16 +217,16 @@ function verCredenciales() {
     }
 
     const users = JSON.parse(usersJson);
-    console.log('🔐 Credenciales de usuarios bootstrap:');
+    console.log('🔐 Usuarios bootstrap configurados:');
     console.log('');
     users.forEach(u => {
-        console.log(`   Usuario: ${u.user}`);
-        console.log(`   Password: ${u.password}`);
-        console.log('   ---');
+        console.log(`   Usuario: ${u.user} | Password: [HIDDEN]`);
     });
     console.log('');
+    console.log('💡 Ver passwords en el objeto de retorno (Execution Log > Return value)');
     console.log('⚠️ IMPORTANTE: Cambiar contraseñas después del primer login');
 
+    // Passwords solo en return, NO en logs
     return { ok: true, users: users.map(u => ({ user: u.user, password: u.password })) };
 }
 
