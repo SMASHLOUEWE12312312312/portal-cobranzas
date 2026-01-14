@@ -255,14 +255,14 @@ var BitacoraService = BitacoraService || {
    */
   registrarGestion(datos) {
     const context = 'BitacoraService.registrarGestion (adapter)';
-    
+
     try {
-      Logger.info(context, 'Adaptando llamada legacy', { 
+      Logger.info(context, 'Adaptando llamada legacy', {
         tieneIdCiclo: !!datos.idCiclo,
         tieneTipoGestion: !!datos.tipoGestion,
         tieneCanal: !!datos.canal
       });
-      
+
       // Mapear campos legacy a v3.0
       const datosV3 = {
         idCiclo: datos.idCiclo || null,
@@ -279,10 +279,10 @@ var BitacoraService = BitacoraService || {
         responsable: datos.responsable || Session.getActiveUser().getEmail(),
         origen: datos.origen || CONFIG.BITACORA.ORIGENES.MANUAL_PORTAL
       };
-      
+
       // Delegar a registrarGestionManual
       return this.registrarGestionManual(datosV3);
-      
+
     } catch (error) {
       Logger.error(context, 'Error en adapter', error);
       return { ok: false, error: error.message };
@@ -297,7 +297,7 @@ var BitacoraService = BitacoraService || {
     if (datos.tipoGestion) return datos.tipoGestion;
     if (datos.tipo_gestion) return datos.tipo_gestion;
     if (datos.tipo) return datos.tipo;
-    
+
     // Inferir de canal si existe
     const canal = (datos.canal || datos.canalContacto || '').toUpperCase();
     const mapeoCanal = {
@@ -319,7 +319,7 @@ var BitacoraService = BitacoraService || {
     if (datos.estadoGestion) return datos.estadoGestion;
     if (datos.estado_gestion) return datos.estado_gestion;
     if (datos.estado) return datos.estado;
-    
+
     // Default según contexto
     if (datos.fechaCompromiso) return 'COMPROMISO_PAGO';
     return 'EN_SEGUIMIENTO';
@@ -333,7 +333,7 @@ var BitacoraService = BitacoraService || {
     if (datos.canalContacto) return datos.canalContacto;
     if (datos.canal_contacto) return datos.canal_contacto;
     if (datos.canal) return datos.canal.toUpperCase();
-    
+
     // Inferir del tipo de gestión
     const tipo = (datos.tipoGestion || datos.tipo || '').toUpperCase();
     const mapeoTipo = {
@@ -589,9 +589,10 @@ var BitacoraService = BitacoraService || {
    * Calcula días_desde_registro dinámicamente
    * 
    * @param {Object} filtros
-   * @return {Array<Object>} Lista con 1 registro por asegurado (su ciclo más reciente)
+   * @param {Object} opciones - { page, pageSize }
+   * @return {Object} { data: [], pagination: {} } - Contrato fijo v4.1+
    */
-  obtenerResumenCiclos(filtros = {}) {
+  obtenerResumenCiclos(filtros = {}, opciones = {}) {
     const context = 'BitacoraService.obtenerResumenCiclos';
 
     try {
@@ -689,11 +690,40 @@ var BitacoraService = BitacoraService || {
 
       Logger.info(context, 'Resumen de ciclos obtenido (1 por asegurado)', { count: resultado.length });
 
-      return resultado;
+      // ========== PAGINACIÓN - Contrato fijo v4.1+ ==========
+      const page = opciones.page || 1;
+      const pageSize = Math.min(opciones.pageSize || 50, 100);
+      const startIdx = (page - 1) * pageSize;
+      const paginatedData = resultado.slice(startIdx, startIdx + pageSize);
+
+      return {
+        data: paginatedData,
+        pagination: {
+          page: page,
+          pageSize: pageSize,
+          total: resultado.length,
+          totalPages: Math.ceil(resultado.length / pageSize),
+          hasNext: startIdx + pageSize < resultado.length,
+          hasPrev: page > 1
+        }
+      };
 
     } catch (error) {
       Logger.error(context, 'Error al obtener resumen', error);
-      return [];
+      // Contrato fijo incluso en error - respetar page/pageSize del request
+      const page = opciones.page || 1;
+      const pageSize = opciones.pageSize || 50;
+      return {
+        data: [],
+        pagination: {
+          page: page,
+          pageSize: pageSize,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false
+        }
+      };
     }
   },
 

@@ -689,8 +689,15 @@
                                 </tbody>
                             </table>
                         </div>
-                        <div style="margin-top: 1rem;">
+                        <div
+                            style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
                             <span class="text-muted"><span id="bitacoraCountEmb">0</span> ciclos de gestión</span>
+                            <div id="bitacora-load-more" style="display:none;">
+                                <button id="btnCargarMas" onclick="cargarMasBitacora()"
+                                    class="btn btn-outline-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                    📄 Cargar más resultados
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -4652,40 +4659,110 @@
         let BITACORA_CLIENTES = [];
         let BITACORA_RESPONSABLES = [];
         let BITACORA_EMB_LOADED = false;
+        let BITACORA_PAGE = 1;
+        let BITACORA_HAS_MORE = false;
+        let BITACORA_LOADING = false;
+
+        // ========== PROMISE WRAPPER PARA google.script.run (v4.1+) ==========
+        function runGas(fnName, ...args) {
+            return new Promise((resolve, reject) => {
+                google.script.run
+                    .withSuccessHandler(resolve)
+                    .withFailureHandler(reject)[fnName](...args);
+            });
+        }
 
         // ========== BITÁCORA EMBEBIDA v15 ==========
 
         /**
-         * Carga datos de bitácora en la tabla embebida
+         * Carga datos de bitácora con paginación v4.1+
+         * @param {boolean} reset - Si true, reinicia página a 1 y limpia datos
          */
-        function loadBitacoraEmbeddedData() {
-            console.log('[loadBitacoraEmbeddedData] 🚀 Iniciando carga...');
-
-            if (BITACORA_EMB_LOADED && BITACORA_DATA.length > 0) {
-                console.log('[loadBitacoraEmbeddedData] Ya cargado, usando datos existentes');
-                renderBitacoraTableEmb();
+        async function loadBitacoraEmbeddedData(reset = false) {
+            // Protección contra doble click
+            if (BITACORA_LOADING) {
+                console.log('[loadBitacoraEmbeddedData] Ya cargando, ignorando.');
                 return;
             }
 
-            google.script.run
-                .withSuccessHandler(function (result) {
-                    console.log('[loadBitacoraEmbeddedData] ✅ Respuesta:', result);
-                    if (result && result.ok && result.data) {
+            if (reset) {
+                BITACORA_PAGE = 1;
+                BITACORA_DATA = [];
+                BITACORA_FILTERED = [];
+                BITACORA_EMB_LOADED = false;
+            }
+
+            console.log('[loadBitacoraEmbeddedData] 🚀 Cargando página', BITACORA_PAGE);
+
+            BITACORA_LOADING = true;
+            toggleLoadMoreButton(false, true); // Ocultar y deshabilitar mientras carga
+
+            const tbody = document.getElementById('bitacoraTableBodyEmb');
+            if (tbody && BITACORA_PAGE === 1) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;"><div class="loader-spinner"></div> Cargando...</td></tr>';
+            }
+
+            try {
+                const result = await runGas('bitacoraGetResumenCiclos', TOKEN, {
+                    page: BITACORA_PAGE,
+                    pageSize: 50
+                });
+
+                console.log('[loadBitacoraEmbeddedData] ✅ Respuesta:', result);
+
+                if (result && result.ok && result.data) {
+                    // Append o replace según sea reset
+                    if (reset || BITACORA_PAGE === 1) {
                         BITACORA_DATA = result.data;
-                        BITACORA_FILTERED = result.data;
-                        BITACORA_EMB_LOADED = true;
-                        renderBitacoraTableEmb();
-                        populateFiltrosEmb();
-                        actualizarKPIsCompromisosPanel(); // Actualizar nuevo panel KPIs
                     } else {
-                        showBitacoraEmbError('No hay datos disponibles');
+                        BITACORA_DATA = [...BITACORA_DATA, ...result.data];
                     }
-                })
-                .withFailureHandler(function (err) {
-                    console.error('[loadBitacoraEmbeddedData] ❌ Error:', err);
-                    showBitacoraEmbError(err.message || 'Error al cargar datos');
-                })
-                .bitacoraGetResumenCiclos(TOKEN); // Función correcta que funciona
+                    BITACORA_FILTERED = BITACORA_DATA;
+                    BITACORA_EMB_LOADED = true;
+                    BITACORA_HAS_MORE = result.pagination?.hasNext || false;
+
+                    renderBitacoraTableEmb();
+                    populateFiltrosEmb();
+                    actualizarKPIsCompromisosPanel();
+                    toggleLoadMoreButton(BITACORA_HAS_MORE, false);
+
+                    console.log(`[loadBitacoraEmbeddedData] Total: ${BITACORA_DATA.length}, hasNext: ${BITACORA_HAS_MORE}`);
+                } else {
+                    showBitacoraEmbError(result?.error || 'No hay datos disponibles');
+                    toggleLoadMoreButton(false, false);
+                }
+            } catch (err) {
+                console.error('[loadBitacoraEmbeddedData] ❌ Error:', err);
+                showBitacoraEmbError(err.message || 'Error al cargar datos');
+                toggleLoadMoreButton(false, false);
+            } finally {
+                BITACORA_LOADING = false;
+            }
+        }
+
+        /**
+         * Carga más resultados (paginación)
+         */
+        function cargarMasBitacora() {
+            if (BITACORA_LOADING || !BITACORA_HAS_MORE) return;
+            BITACORA_PAGE++;
+            loadBitacoraEmbeddedData(false);
+        }
+
+        /**
+         * Muestra/oculta botón "Cargar más" y gestiona estado disabled
+         */
+        function toggleLoadMoreButton(show, loading) {
+            const container = document.getElementById('bitacora-load-more');
+            const btn = document.getElementById('btnCargarMas');
+
+            if (container) {
+                container.style.display = show ? 'block' : 'none';
+            }
+            if (btn) {
+                btn.disabled = loading;
+                btn.textContent = loading ? '⏳ Cargando...' : '📄 Cargar más resultados';
+            }
         }
 
         function showBitacoraEmbError(msg) {
@@ -5695,7 +5772,8 @@
             // 1. PRIMERO: Intentar cargar datos PRE-CARGADOS (más rápido que caché)
             if (!forceRefresh) {
                 try {
-                    const datosPreCargados = '<?!= bitacoraDataPreload ?>';
+                    // FIX: Usar template con escape para evitar que caracteres especiales rompan JS
+                    const datosPreCargados = <?= JSON.stringify(bitacoraDataPreload || '[]') ?>;
 
                     if (datosPreCargados && datosPreCargados !== '' && datosPreCargados !== 'undefined' && datosPreCargados !== '[]') {
                         console.log('[loadBitacoraData] ⚡⚡⚡ Usando datos PRE-CARGADOS (ULTRA-RÁPIDO)');

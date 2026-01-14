@@ -1,0 +1,255 @@
+/**
+ * @fileoverview Configuración segura de secretos en PropertiesService
+ * @version 4.1.0 - Post-auditoría
+ * 
+ * EJECUTAR MANUALMENTE desde Apps Script Editor:
+ * 1. setupSecureProperties() - Primera configuración
+ * 2. rotateApiSecretWithCutover() - Rotar API_SECRET sin tumbar sesiones
+ * 3. removeOldSecret() - Eliminar API_SECRET_OLD después de 24-48h
+ * 4. verifySecureProperties() - Verificar configuración
+ */
+
+// ========== SETUP INICIAL ==========
+
+/**
+ * Configura secretos en PropertiesService
+ * NO sobrescribe si ya existen (protección contra ejecución duplicada)
+ */
+function setupSecureProperties() {
+    const props = PropertiesService.getScriptProperties();
+    let changes = [];
+
+    // 1. API_SECRET - NO sobrescribir si existe
+    const existingSecret = props.getProperty('API_SECRET');
+    if (existingSecret) {
+        console.log('⚠️ API_SECRET ya existe - NO se modificó');
+        console.log('   → Para rotar, usa rotateApiSecretWithCutover()');
+    } else {
+        const newSecret = generateSecureSecret_(64);
+        props.setProperty('API_SECRET', newSecret);
+        console.log('✅ API_SECRET configurado (nuevo)');
+        changes.push('API_SECRET');
+    }
+
+    // 2. BOOTSTRAP_USERS - NO sobrescribir si existe
+    const existingUsers = props.getProperty('BOOTSTRAP_USERS');
+    if (existingUsers) {
+        console.log('⚠️ BOOTSTRAP_USERS ya existe - NO se modificó');
+        console.log('   → Para resetear, usa resetBootstrapUsers()');
+    } else {
+        const users = [
+            { user: 'cobranzas1', password: generateSecurePassword_() },
+            { user: 'cobranzas2', password: generateSecurePassword_() },
+            { user: 'admin', password: generateSecurePassword_() },
+            { user: 'admin1', password: generateSecurePassword_() },
+            { user: 'admin2', password: generateSecurePassword_() },
+            { user: 'admin3', password: generateSecurePassword_() },
+            { user: 'admin4', password: generateSecurePassword_() }
+        ];
+        props.setProperty('BOOTSTRAP_USERS', JSON.stringify(users));
+        console.log('✅ BOOTSTRAP_USERS configurados:');
+        users.forEach(u => console.log(`   - ${u.user}: [GENERATED-TEMP] ← Cambiar tras primer login`));
+        changes.push('BOOTSTRAP_USERS');
+
+        // Retornar passwords SOLO en este caso (setup inicial, ejecución manual)
+        // El usuario necesita las credenciales para el primer login
+        return {
+            ok: true,
+            changes: changes,
+            credentials: users.map(u => ({ user: u.user, password: u.password })),
+            message: '⚠️ GUARDAR CREDENCIALES - Se muestran una sola vez'
+        };
+    }
+
+    console.log('');
+    console.log('📋 Próximos pasos:');
+    console.log('   1. Ejecutar initAuthSystem() para activar usuarios');
+    console.log('   2. Hacer deploy: clasp push && clasp deploy');
+    console.log('   3. Probar login en portal');
+
+    return {
+        ok: true,
+        changes: changes,
+        credentials: null,
+        message: changes.length > 0 ? 'Configuración completada' : 'Sin cambios (ya configurado)'
+    };
+}
+
+// ========== ROTACIÓN CON CUTOVER ==========
+
+/**
+ * Rota API_SECRET sin invalidar sesiones activas
+ * 1. Guarda el actual en API_SECRET_OLD (ventana 24-48h)
+ * 2. Genera nuevo API_SECRET
+ */
+function rotateApiSecretWithCutover() {
+    const props = PropertiesService.getScriptProperties();
+    const current = props.getProperty('API_SECRET');
+
+    if (!current) {
+        console.log('❌ No hay API_SECRET actual - usa setupSecureProperties() primero');
+        return { ok: false, error: 'No API_SECRET to rotate' };
+    }
+
+    // Guardar actual como OLD
+    props.setProperty('API_SECRET_OLD', current);
+    console.log('✅ API_SECRET actual → API_SECRET_OLD');
+
+    // Generar nuevo
+    const newSecret = generateSecureSecret_(64);
+    props.setProperty('API_SECRET', newSecret);
+    console.log('✅ Nuevo API_SECRET generado');
+    console.log('');
+    console.log('⏳ IMPORTANTE:');
+    console.log('   - Ventana de migración activa (tokens antiguos siguen funcionando)');
+    console.log('   - Ejecutar removeOldSecret() en 24-48 horas');
+    console.log('   - Nuevos tokens se firman con nuevo secret');
+
+    return { ok: true, message: 'Rotación completada - eliminar OLD en 24-48h' };
+}
+
+/**
+ * Elimina API_SECRET_OLD - Tokens antiguos dejarán de funcionar
+ */
+function removeOldSecret() {
+    const props = PropertiesService.getScriptProperties();
+    const old = props.getProperty('API_SECRET_OLD');
+
+    if (!old) {
+        console.log('✅ API_SECRET_OLD no existe - sistema limpio');
+        return { ok: true, message: 'Already clean' };
+    }
+
+    props.deleteProperty('API_SECRET_OLD');
+    console.log('✅ API_SECRET_OLD eliminado');
+    console.log('⚠️ Tokens firmados con el secret anterior ya no son válidos');
+    console.log('   (Los usuarios deberán re-loguearse)');
+
+    return { ok: true, message: 'Old secret removed' };
+}
+
+/**
+ * Resetea BOOTSTRAP_USERS con nuevos passwords
+ * Útil para regenerar credenciales o agregar usuarios faltantes
+ */
+function resetBootstrapUsers() {
+    const props = PropertiesService.getScriptProperties();
+
+    const users = [
+        { user: 'cobranzas1', password: generateSecurePassword_() },
+        { user: 'cobranzas2', password: generateSecurePassword_() },
+        { user: 'admin', password: generateSecurePassword_() },
+        { user: 'admin1', password: generateSecurePassword_() },
+        { user: 'admin2', password: generateSecurePassword_() },
+        { user: 'admin3', password: generateSecurePassword_() },
+        { user: 'admin4', password: generateSecurePassword_() }
+    ];
+
+    props.setProperty('BOOTSTRAP_USERS', JSON.stringify(users));
+
+    console.log('✅ BOOTSTRAP_USERS reseteados (7 usuarios):');
+    users.forEach(u => console.log(`   - ${u.user}: [GENERATED]`));
+    console.log('');
+    console.log('⚠️ IMPORTANTE:');
+    console.log('   1. Ejecutar initAuthSystem() para aplicar');
+    console.log('   2. Ejecutar verCredenciales() para ver passwords');
+
+    return { ok: true, usersCreated: users.length };
+}
+
+// ========== VERIFICACIÓN ==========
+
+/**
+ * Verifica configuración de secretos
+ */
+function verifySecureProperties() {
+    const props = PropertiesService.getScriptProperties();
+
+    const checks = {
+        API_SECRET: !!props.getProperty('API_SECRET'),
+        BOOTSTRAP_USERS: !!props.getProperty('BOOTSTRAP_USERS'),
+        API_SECRET_OLD: !!props.getProperty('API_SECRET_OLD')
+    };
+
+    console.log('🔍 Verificación de secretos:');
+    console.log('   API_SECRET:      ' + (checks.API_SECRET ? '✅ Configurado' : '❌ FALTA'));
+    console.log('   BOOTSTRAP_USERS: ' + (checks.BOOTSTRAP_USERS ? '✅ Configurado' : '❌ FALTA'));
+    console.log('   API_SECRET_OLD:  ' + (checks.API_SECRET_OLD ? '⏳ Migración activa' : '✅ Limpio'));
+
+    const ready = checks.API_SECRET && checks.BOOTSTRAP_USERS;
+    console.log('');
+    console.log(ready ? '✅ Sistema listo para producción' : '❌ Faltan configuraciones');
+
+    return {
+        ok: ready,
+        checks: checks,
+        migrationActive: checks.API_SECRET_OLD
+    };
+}
+
+/**
+ * Auditoría rápida - busca secretos hardcoded
+ */
+function auditHardcodedSecrets() {
+    console.log('🔍 Auditoría de secretos hardcoded');
+    console.log('');
+    console.log('Ejecutar en terminal:');
+    console.log('   grep -rn "tr@nsP-2025" gas/');
+    console.log('   grep -rn "Transperuana[0-9]@" gas/');
+    console.log('');
+    console.log('Resultado esperado: 0 coincidencias');
+
+    return { ok: true, message: 'Ejecutar comandos manualmente' };
+}
+
+/**
+ * Ver credenciales de usuarios bootstrap
+ * SOLO ejecutar manualmente cuando sea necesario
+ */
+function verCredenciales() {
+    const props = PropertiesService.getScriptProperties();
+    const usersJson = props.getProperty('BOOTSTRAP_USERS');
+
+    if (!usersJson) {
+        console.log('❌ No hay BOOTSTRAP_USERS configurados');
+        return { ok: false, error: 'No users configured' };
+    }
+
+    const users = JSON.parse(usersJson);
+    console.log('🔐 Credenciales de usuarios bootstrap:');
+    console.log('');
+    users.forEach(u => {
+        console.log(`   Usuario: ${u.user}`);
+        console.log(`   Password: ${u.password}`);
+        console.log('   ---');
+    });
+    console.log('');
+    console.log('⚠️ IMPORTANTE: Cambiar contraseñas después del primer login');
+
+    return { ok: true, users: users.map(u => ({ user: u.user, password: u.password })) };
+}
+
+// ========== HELPERS INTERNOS ==========
+
+/**
+ * Genera secret aleatorio seguro
+ * @private
+ */
+function generateSecureSecret_(len) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
+    let result = '';
+    for (let i = 0; i < len; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+/**
+ * Genera password seguro para bootstrap
+ * Formato: Tp{12 chars aleatorios}!
+ * @private
+ */
+function generateSecurePassword_() {
+    const uuid = Utilities.getUuid().replace(/-/g, '');
+    return 'Tp' + uuid.substring(0, 12) + '!';
+}

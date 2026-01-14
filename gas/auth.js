@@ -24,7 +24,7 @@ const AuthService = {
         return { ok: true, message: 'Sistema ya inicializado' };
       }
 
-      const bootstrap = getConfig('AUTH.BOOTSTRAP_USERS', []);
+      const bootstrap = getBootstrapUsers();
       if (bootstrap.length === 0) {
         throw new Error('No bootstrap users configured');
       }
@@ -450,7 +450,7 @@ const AuthService = {
       const random = Math.random().toString(36).substring(2);
       const payload = `${username}|${timestamp}|${uuid}|${random}`;
 
-      const signature = this._strongHash(payload, getConfig('API.SECRET'));
+      const signature = this._strongHash(payload, getApiSecret());
       return Utilities.base64EncodeWebSafe(payload + '|' + signature);
     } catch (error) {
       Logger.error('AuthService._generateToken', 'Token generation failed', error);

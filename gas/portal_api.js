@@ -1698,8 +1698,14 @@ function sendEmailsNow(items, options, token) {
  * @param {string} token - Token de autenticación
  * @return {Object} { ok, data: [...] }
  */
-function getBitacoraResumen(filtros, token) {
+function getBitacoraResumen(filtros, token, opciones) {
   const context = 'getBitacoraResumen';
+
+  // Normalizar opciones de paginación
+  const paginationOpts = {
+    page: (opciones && opciones.page) || 1,
+    pageSize: Math.min((opciones && opciones.pageSize) || 50, 100)
+  };
 
   // Variable para almacenar el resultado antes del finally
   let resultado = null;
@@ -1711,7 +1717,8 @@ function getBitacoraResumen(filtros, token) {
         return {
           ok: false,
           error: 'AuthService no está disponible en el deployment',
-          data: []
+          data: [],
+          pagination: { page: paginationOpts.page, pageSize: paginationOpts.pageSize, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
         };
       }
       AuthService.validateSession(token);
@@ -1719,10 +1726,10 @@ function getBitacoraResumen(filtros, token) {
       return {
         ok: false,
         error: 'Sesión inválida: ' + authError.message,
-        data: []
+        data: [],
+        pagination: { page: paginationOpts.page, pageSize: paginationOpts.pageSize, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
       };
     }
-
     // IMPORTANTE: Flush bitácora antes de leer
     try {
       if (typeof BitacoraService !== 'undefined' && typeof BitacoraService.flush === 'function') {
@@ -1751,23 +1758,21 @@ function getBitacoraResumen(filtros, token) {
         };
       }
 
-      resumen = BitacoraService.obtenerResumenCiclos(filtros || {});
+      resumen = BitacoraService.obtenerResumenCiclos(filtros || {}, paginationOpts);
     } catch (resumenError) {
       return {
         ok: false,
         error: 'Error al leer gestiones: ' + resumenError.message,
-        data: []
+        data: [],
+        pagination: { page: paginationOpts.page, pageSize: paginationOpts.pageSize, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
       };
     }
 
-    // Asegurar que resumen es un array
-    if (!Array.isArray(resumen)) {
-      resumen = [];
-    }
-
+    // v4.1+: resumen ya viene con formato {data, pagination}
     resultado = {
       ok: true,
-      data: resumen
+      data: resumen.data,
+      pagination: resumen.pagination
     };
 
     return resultado;
@@ -1776,7 +1781,8 @@ function getBitacoraResumen(filtros, token) {
     resultado = {
       ok: false,
       error: 'Error inesperado: ' + (error.message || 'Error desconocido'),
-      data: []
+      data: [],
+      pagination: { page: paginationOpts.page, pageSize: paginationOpts.pageSize, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
     };
 
     return resultado;
@@ -2259,20 +2265,25 @@ function bitacoraGetAllGestiones() {
  * @param {string} token - Token de autenticación
  * @return {Object} { ok, data: [resumen de ciclos] }
  */
-function bitacoraGetResumenCiclos(token) {
+function bitacoraGetResumenCiclos(token, opciones) {
   const context = 'bitacoraGetResumenCiclos';
+
+  const paginationOpts = {
+    page: (opciones && opciones.page) || 1,
+    pageSize: Math.min((opciones && opciones.pageSize) || 50, 100)
+  };
 
   try {
     // Validar sesión
     AuthService.validateSession(token);
 
-    // Obtener resumen de ciclos (última gestión por cada ciclo)
-    const resumen = BitacoraService.obtenerResumenCiclos();
+    // Obtener resumen de ciclos (con paginación v4.1+)
+    const resumen = BitacoraService.obtenerResumenCiclos({}, paginationOpts);
 
-    Logger.info(context, `${resumen.length} ciclos encontrados (última gestión de cada uno)`);
+    Logger.info(context, `Página ${paginationOpts.page}: ${resumen.data.length} de ${resumen.pagination.total} ciclos`);
 
     // Serializar fechas a ISO string
-    const resumenParsed = resumen.map(ciclo => ({
+    const dataParsed = resumen.data.map(ciclo => ({
       ...ciclo,
       fechaEnvioEECC: ciclo.fechaEnvioEECC instanceof Date
         ? ciclo.fechaEnvioEECC.toISOString()
@@ -2287,15 +2298,17 @@ function bitacoraGetResumenCiclos(token) {
 
     return {
       ok: true,
-      data: resumenParsed,
-      total: resumenParsed.length
+      data: dataParsed,
+      pagination: resumen.pagination
     };
 
   } catch (error) {
     Logger.error(context, 'Error al obtener resumen de ciclos', error);
     return {
       ok: false,
-      error: error.message || 'Error desconocido'
+      error: error.message || 'Error desconocido',
+      data: [],
+      pagination: { page: paginationOpts.page, pageSize: paginationOpts.pageSize, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
     };
   }
 }

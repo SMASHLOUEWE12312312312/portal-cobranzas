@@ -177,15 +177,7 @@ const CONFIG = {
     SESSION_SLIDING_EXPIRATION: true,       // Phase 1: renew on activity
     SESSION_TTL_SEC_CLAMP: 21600,           // Phase 1: defensive clamp for cache.put (6h)
     PASSWORD_ITERATIONS: 100,
-    BOOTSTRAP_USERS: [
-      { user: 'cobranzas1', password: 'Transperuana1@2025#' },
-      { user: 'cobranzas2', password: 'Transperuana2@2025#' },
-      { user: 'admin', password: 'Transperuana3@2025#' },
-      { user: 'admin1', password: 'Transperuana4@2025#' },
-      { user: 'admin2', password: 'Transperuana5@2025#' },
-      { user: 'admin3', password: 'Transperuana6@2025#' },
-      { user: 'admin4', password: 'Transperuana7@2025#' }
-    ],
+    BOOTSTRAP_USERS: [],  // Loaded from PropertiesService via getBootstrapUsers()
     WHITELIST_EMAILS: [
       'cobranzas1@transperuana.com',
       'cobranzas2@transperuana.com',
@@ -243,7 +235,7 @@ const CONFIG = {
 
   // ========== ALERTS (Phase 3, Optional) ==========
   ALERTS: {
-    ENABLED: false,                      // OFF by default
+    ENABLED: true,                       // Habilitado tras auditoría v4.1
     ADMIN_EMAILS: [],                    // List of admin emails for alerts
     DEBOUNCE_MINUTES: 60,                // Max 1 alert per hour per type
     QUEUE_STUCK_ALERT_MINUTES: 30        // Trigger alert if stuck > this
@@ -257,7 +249,7 @@ const CONFIG = {
 
   // ========== API ==========
   API: {
-    SECRET: 'tr@nsP-2025_AsegEECC#f49QY7pZ!1LJ'
+    SECRET: ''  // Loaded from PropertiesService via getApiSecret()
   },
 
   // ========== BITÁCORA DE GESTIÓN v3.0 - CICLO DE COBRANZA ==========
@@ -458,4 +450,51 @@ function validateConfig() {
  */
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+// ========== SECURE CONFIG HELPERS (v4.1+) ==========
+
+/**
+ * Obtiene configuración segura desde PropertiesService
+ * @param {string} key - Nombre de la propiedad
+ * @param {*} defaultValue - Valor por defecto
+ * @return {*} Valor de la propiedad o default
+ */
+function getSecureConfig(key, defaultValue = null) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const value = props.getProperty(key);
+    if (value === null || value === undefined) return defaultValue;
+    try { return JSON.parse(value); } catch (e) { return value; }
+  } catch (error) {
+    console.error('getSecureConfig error:', error);
+    return defaultValue;
+  }
+}
+
+/**
+ * Obtiene API_SECRET de forma segura (nuevo)
+ * @return {string} API Secret
+ * @throws {Error} Si no está configurado
+ */
+function getApiSecret() {
+  const secret = getSecureConfig('API_SECRET', '');
+  if (!secret) throw new Error('API_SECRET not configured in PropertiesService');
+  return secret;
+}
+
+/**
+ * Obtiene API_SECRET_OLD para ventana de migración (24-48h)
+ * @return {string|null} Old secret o null si no existe
+ */
+function getApiSecretOld() {
+  return getSecureConfig('API_SECRET_OLD', null);
+}
+
+/**
+ * Obtiene BOOTSTRAP_USERS de forma segura
+ * @return {Array} Lista de usuarios bootstrap
+ */
+function getBootstrapUsers() {
+  return getSecureConfig('BOOTSTRAP_USERS', []);
 }
