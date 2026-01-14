@@ -498,3 +498,83 @@ function getApiSecretOld() {
 function getBootstrapUsers() {
   return getSecureConfig('BOOTSTRAP_USERS', []);
 }
+
+// ========== BFF SERVER-TO-SERVER AUTH (P0-1, P0-2) ==========
+
+/**
+ * Obtiene BFF_SHARED_SECRET para autenticación server-to-server
+ * Separado de API_SECRET (P0-2)
+ * @return {string} BFF Shared Secret
+ */
+function getBffSharedSecret_() {
+  const secret = getSecureConfig('BFF_SHARED_SECRET', '');
+  if (!secret) {
+    console.warn('BFF_SHARED_SECRET not configured - BFF auth disabled');
+  }
+  return secret;
+}
+
+/**
+ * Computa HMAC-SHA256 usando Utilities de GAS
+ * @param {string} algorithm - 'SHA256'
+ * @param {string} key - Secret key
+ * @param {string} data - Data to sign
+ * @return {string} Hex-encoded HMAC
+ * @private
+ */
+function computeHmac_(algorithm, key, data) {
+  const signature = Utilities.computeHmacSha256Signature(data, key);
+  return signature.map(function (byte) {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+  }).join('');
+}
+
+/**
+ * Valida request BFF con HMAC y anti-replay (P0-1)
+ * GAS no expone headers en doPost, por lo que usamos firma en body
+ * 
+ * @param {Object} e - Event object from doPost
+ * @return {Object} { ok: boolean, data?: object, error?: string }
+ */
+function validateBffRequest_(e) {
+  try {
+    if (!e.postData || !e.postData.contents) {
+      return { ok: false, error: 'NO_BODY' };
+    }
+
+    const body = JSON.parse(e.postData.contents);
+    const { payload, signature } = body;
+
+    if (!payload || !signature) {
+      return { ok: false, error: 'MISSING_SIGNATURE' };
+    }
+
+    const secret = getBffSharedSecret_();
+    if (!secret) {
+      // BFF auth disabled - allow passthrough (for backwards compat)
+      const data = JSON.parse(payload);
+      return { ok: true, data };
+    }
+
+    // Parse payload to validate timestamp
+    const data = JSON.parse(payload);
+
+    // Anti-replay: 5 minute window (300000ms)
+    const age = Date.now() - data.timestamp;
+    if (age > 300000 || age < -60000) {
+      return { ok: false, error: 'EXPIRED' };
+    }
+
+    // Verify HMAC signature
+    const expected = computeHmac_('SHA256', secret, payload);
+    if (signature !== expected) {
+      return { ok: false, error: 'INVALID_SIGNATURE' };
+    }
+
+    return { ok: true, data };
+
+  } catch (err) {
+    console.error('validateBffRequest_ error:', err);
+    return { ok: false, error: 'PARSE_ERROR' };
+  }
+}
