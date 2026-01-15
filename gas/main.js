@@ -367,6 +367,109 @@ function doGet(e) {
 }
 
 /**
+ * doPost - Handles BFF API requests with HMAC authentication
+ * This endpoint receives signed requests from the Next.js BFF and routes them
+ * to existing portal functions (loginPassword, logout, etc.)
+ * 
+ * BFF sends: { action, params, token, timestamp, nonce, correlationId }
+ * 
+ * Required for Next.js + Vercel BFF pattern (P0-1)
+ */
+function doPost(e) {
+  const context = 'doPost';
+
+  try {
+    Logger.log('doPost called');
+
+    // Validate BFF request with HMAC signature
+    const validation = validateBffRequest_(e);
+
+    if (!validation.ok) {
+      Logger.log('BFF validation failed: ' + validation.error);
+      return ContentService.createTextOutput(JSON.stringify({
+        ok: false,
+        error: validation.error
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // BFF sends: { action, params, token, timestamp, nonce, correlationId }
+    const { action, params = {}, token } = validation.data;
+    Logger.log('BFF action: ' + action);
+    Logger.log('BFF params: ' + JSON.stringify(params).substring(0, 100));
+
+    let result;
+
+    // Route to appropriate handler
+    switch (action) {
+      case 'login':
+        // Login uses params.username and params.password
+        result = loginPassword(params.username, params.password);
+        break;
+
+      case 'logout':
+        result = AuthService.logout(token);
+        break;
+
+      case 'validateSession':
+        try {
+          const user = AuthService.validateSession(token);
+          result = { ok: true, user };
+        } catch (err) {
+          result = { ok: false, error: err.message };
+        }
+        break;
+
+      case 'ping':
+        result = { ok: true, timestamp: new Date().toISOString(), version: '1.0.0-bff' };
+        break;
+
+      case 'healthCheck':
+        result = healthCheck(token);
+        break;
+
+      case 'getBitacoraResumen':
+        result = getBitacoraResumen(token, params.options);
+        break;
+
+      case 'registrarGestionManualBitacora':
+        result = registrarGestionManualBitacora(
+          token,
+          params.asegurado,
+          params.tipoGestion,
+          params.estadoGestion,
+          params.canalContacto,
+          params.observaciones,
+          params.fechaCompromiso,
+          params.idCiclo,
+          params.gestionData
+        );
+        break;
+
+      case 'getGestionesCiclo':
+        result = getGestionesCiclo(token, params.idCiclo);
+        break;
+
+      default:
+        result = { ok: false, error: 'Unknown action: ' + action };
+    }
+
+    Logger.log('BFF response: ' + JSON.stringify(result).substring(0, 200));
+
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    Logger.log('doPost error: ' + error.toString());
+
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: false,
+      error: 'Server error: ' + error.message
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+
+/**
  * Inicializa el sistema (primera vez o reset)
  */
 function inicializarSistema() {

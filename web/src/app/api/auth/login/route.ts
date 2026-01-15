@@ -43,7 +43,7 @@ export async function POST(request: Request) {
                 email?: string;
             };
             expiresAt: number;
-        }>('loginPassword', {
+        }>('login', {
             username: sanitizedUsername,
             password,
         });

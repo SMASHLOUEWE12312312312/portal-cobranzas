@@ -230,6 +230,132 @@ function verCredenciales() {
     return { ok: true, users: users.map(u => ({ user: u.user, password: u.password })) };
 }
 
+// ========== SETUP COMPLETO (UN SOLO PASO) ==========
+
+/**
+ * 🚀 SETUP COMPLETO - Ejecuta todo en un solo paso
+ * 
+ * Este función hace:
+ * 1. Reset del sistema de auth (borra auth.users.v2)
+ * 2. Regenera BOOTSTRAP_USERS con nuevas contraseñas
+ * 3. Inicializa AuthService con los nuevos usuarios/hashes
+ * 4. Muestra las credenciales en los logs
+ * 
+ * DESPUÉS DE EJECUTAR:
+ * ⚠️ Hacer nuevo deployment de Web App (Deploy > New deployment)
+ */
+function setupCompleto() {
+    console.log('');
+    console.log('╔════════════════════════════════════════════════════════╗');
+    console.log('║        🚀 SETUP COMPLETO DEL SISTEMA DE AUTH           ║');
+    console.log('╚════════════════════════════════════════════════════════╝');
+    console.log('');
+
+    const props = PropertiesService.getScriptProperties();
+
+    // ========== PASO 1: Reset Auth System ==========
+    console.log('📌 PASO 1: Reseteando sistema de autenticación...');
+    try {
+        props.deleteProperty('auth.users.v2');
+        props.deleteProperty('auth.ratelimit');
+        console.log('   ✅ Sistema de auth reseteado (auth.users.v2 eliminado)');
+    } catch (e) {
+        console.log('   ⚠️ Error en reset: ' + e.message);
+    }
+    console.log('');
+
+    // ========== PASO 2: Regenerar Bootstrap Users ==========
+    console.log('📌 PASO 2: Generando nuevos usuarios bootstrap...');
+    const users = [
+        { user: 'cobranzas1', password: generateSecurePassword_() },
+        { user: 'cobranzas2', password: generateSecurePassword_() },
+        { user: 'admin', password: generateSecurePassword_() },
+        { user: 'admin1', password: generateSecurePassword_() },
+        { user: 'admin2', password: generateSecurePassword_() },
+        { user: 'admin3', password: generateSecurePassword_() },
+        { user: 'admin4', password: generateSecurePassword_() }
+    ];
+    props.setProperty('BOOTSTRAP_USERS', JSON.stringify(users));
+    console.log('   ✅ ' + users.length + ' usuarios generados con nuevas contraseñas');
+    console.log('');
+
+    // ========== PASO 3: Inicializar Auth System ==========
+    console.log('📌 PASO 3: Inicializando sistema de autenticación...');
+    try {
+        const result = AuthService.initialize();
+        console.log('   ✅ ' + result.message);
+    } catch (e) {
+        console.log('   ❌ Error al inicializar: ' + e.message);
+        return { ok: false, error: e.message };
+    }
+    console.log('');
+
+    // ========== PASO 4: Mostrar Credenciales ==========
+    console.log('╔════════════════════════════════════════════════════════╗');
+    console.log('║        🔐 CREDENCIALES DE ACCESO                       ║');
+    console.log('╚════════════════════════════════════════════════════════╝');
+    console.log('');
+    users.forEach((u, i) => {
+        console.log(`   ${i + 1}. Usuario:  ${u.user}`);
+        console.log(`      Password: ${u.password}`);
+        console.log('      ────────────────────────────────');
+    });
+    console.log('');
+
+    // ========== RECORDATORIO FINAL ==========
+    console.log('╔════════════════════════════════════════════════════════╗');
+    console.log('║  ⚠️  PASO FINAL REQUERIDO: REDEPLOY WEB APP            ║');
+    console.log('╚════════════════════════════════════════════════════════╝');
+    console.log('');
+    console.log('   Para que los cambios surtan efecto:');
+    console.log('   1. Ve a Deploy > Manage deployments');
+    console.log('   2. Haz clic en el ícono de editar (lápiz)');
+    console.log('   3. Selecciona "New version" en el dropdown');
+    console.log('   4. Haz clic en "Deploy"');
+    console.log('');
+    console.log('   Una vez hecho esto, prueba el login con las credenciales.');
+    console.log('');
+
+    return {
+        ok: true,
+        message: 'Setup completo exitoso',
+        usersCreated: users.length,
+        credentials: users.map(u => ({ user: u.user, password: u.password })),
+        nextStep: 'REDEPLOY WEB APP: Deploy > Manage deployments > Edit > New version > Deploy'
+    };
+}
+
+// ========== FUNCIÓN TEMPORAL ==========
+
+/**
+ * ⚠️ FUNCIÓN TEMPORAL - ELIMINAR DESPUÉS DE USAR
+ * Muestra credenciales directamente en logs para configuración inicial
+ */
+function verCredencialesTemp() {
+    const props = PropertiesService.getScriptProperties();
+    const usersJson = props.getProperty('BOOTSTRAP_USERS');
+
+    if (!usersJson) {
+        console.log('❌ No hay BOOTSTRAP_USERS configurados');
+        return;
+    }
+
+    const users = JSON.parse(usersJson);
+    console.log('');
+    console.log('========================================');
+    console.log('🔐 CREDENCIALES DE USUARIOS BOOTSTRAP');
+    console.log('========================================');
+    console.log('');
+    users.forEach(u => {
+        console.log(`   👤 Usuario:    ${u.user}`);
+        console.log(`   🔑 Password:   ${u.password}`);
+        console.log('   ----------------------------------------');
+    });
+    console.log('');
+    console.log('⚠️ IMPORTANTE: Eliminar esta función después de usar');
+    console.log('⚠️ IMPORTANTE: Cambiar contraseñas después del primer login');
+}
+
 // ========== HELPERS INTERNOS ==========
 
 /**

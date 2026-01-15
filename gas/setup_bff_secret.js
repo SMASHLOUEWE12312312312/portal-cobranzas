@@ -59,6 +59,29 @@ function setupBffSharedSecret() {
 }
 
 /**
+ * ⚠️ FUNCIÓN ESPECIAL: Configura el MISMO secret que ya está en Vercel
+ * Ejecutar esto para sincronizar GAS con Vercel
+ */
+function sincronizarSecretConVercel() {
+    const props = PropertiesService.getScriptProperties();
+
+    // Este es el secret que ya está configurado en Vercel
+    const VERCEL_SECRET = 'yd6j9zNRTRMmAxS+CaRJMDGjuabz4acvo00N9ZxWZ5M=';
+
+    props.setProperty('BFF_SHARED_SECRET', VERCEL_SECRET);
+
+    console.log('✅ BFF_SHARED_SECRET sincronizado con Vercel');
+    console.log('Secret configurado:', VERCEL_SECRET.substring(0, 8) + '...');
+    console.log('');
+    console.log('🎯 Ahora el login debería funcionar');
+
+    return {
+        success: true,
+        message: 'Secret sincronizado con Vercel'
+    };
+}
+
+/**
  * Regenerate BFF_SHARED_SECRET (use with caution - will break existing BFF connections)
  */
 function regenerateBffSharedSecret() {

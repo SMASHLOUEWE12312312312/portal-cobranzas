@@ -233,6 +233,7 @@ export interface GenerateEECCResponse {
 
 export type GASAction =
     | 'ping'
+    | 'login'
     | 'loginPassword'
     | 'logout'
     | 'validateSession'
