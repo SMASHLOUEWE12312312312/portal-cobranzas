@@ -3624,4 +3624,59 @@
     text-align: center;
     color: var(--tp-text-tertiary);
   }
+
+  /* ============================================================================
+     HOTFIX: ESTADOS DE CARGA PARA AUTOCOMPLETE (Race Condition Fix)
+     ============================================================================ */
+
+  .loading-spinner-small {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #f0f0f0;
+    border-top: 2px solid var(--tp-primary, #D32F2F);
+    border-radius: 50%;
+    animation: spin-loading 0.8s linear infinite;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin-loading {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  .loading-state-indicator {
+    color: var(--tp-text-secondary, #666) !important;
+    font-style: italic;
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 12px 16px !important;
+    cursor: default !important;
+    background: var(--tp-surface-overlay, #FAFAFA) !important;
+  }
+
+  .loading-state-indicator:hover {
+    background: var(--tp-surface-overlay, #FAFAFA) !important;
+  }
+
+  .error-state-option {
+    color: var(--tp-error, #C62828) !important;
+    cursor: pointer !important;
+    background: #FFEBEE !important;
+    display: flex !important;
+    align-items: center;
+    padding: 12px 16px !important;
+    transition: background 0.15s ease;
+  }
+
+  .error-state-option:hover {
+    background: #FFCDD2 !important;
+  }
 </style>

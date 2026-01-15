@@ -1706,6 +1706,27 @@
         let BITACORA_MODE = 'asegurado'; // asegurado | grupo
         let MAIL_STATE = { previews: [], currentTab: 'seleccionar', allClientes: [] };
 
+        // HOTFIX: Sistema unificado de estados de carga para evitar race conditions
+        const LOAD_STATE = {
+            asegurados: {
+                loading: false,
+                loaded: false,
+                error: null,
+                retries: 0,
+                lastLoad: null
+            },
+            grupos: {
+                loading: false,
+                loaded: false,
+                error: null,
+                retries: 0,
+                lastLoad: null
+            }
+        };
+
+        const MAX_LOAD_RETRIES = 3;
+        const RETRY_DELAY_MS = 1500;
+
         // Phase 2: Pagination Data Source - CARGA COMPLETA v2.1
         let ASEGURADOS_DS = {
             items: [],
@@ -3100,26 +3121,71 @@
         }
 
         function loadGrupos() {
-            console.log('[loadGrupos] Cargando grupos...');
-
-            // DEBUG: Validate TOKEN before API call
-            if (!TOKEN) {
-                console.error('[loadGrupos] ❌ CRITICAL: TOKEN is null/undefined!');
+            // Si ya está cargando, no hacer nada
+            if (LOAD_STATE.grupos.loading) {
+                console.log('[loadGrupos] ⏳ Ya está cargando, ignorando llamada duplicada');
                 return;
             }
-            console.log('[loadGrupos] 🔑 Using TOKEN:', TOKEN.substring(0, 20) + '...');
+
+            // Si ya está cargado y tiene datos, no recargar (usar cache local)
+            if (LOAD_STATE.grupos.loaded && ALL_GRUPOS.length > 0) {
+                const cacheAge = Date.now() - (LOAD_STATE.grupos.lastLoad || 0);
+                const MAX_CACHE_AGE = 5 * 60 * 1000; // 5 minutos
+                if (cacheAge < MAX_CACHE_AGE) {
+                    console.log('[loadGrupos] ✅ Usando cache local, edad:', Math.round(cacheAge / 1000), 's');
+                    return;
+                }
+            }
+
+            console.log('[loadGrupos] 🔄 Iniciando carga de grupos...');
+
+            // Validar TOKEN
+            if (!TOKEN) {
+                console.error('[loadGrupos] ❌ CRITICAL: TOKEN is null/undefined!');
+                LOAD_STATE.grupos.error = 'Sesión no válida';
+                return;
+            }
+
+            LOAD_STATE.grupos.loading = true;
+            LOAD_STATE.grupos.error = null;
+
+            // Mostrar estado de carga en UI si estamos en modo grupo
+            if (EECC_MODE === 'grupo') {
+                mostrarLoadingEnDropdownEECC('Cargando grupos económicos...');
+            }
+            if (BITACORA_MODE === 'grupo') {
+                mostrarLoadingEnDropdownBitacora('Cargando grupos económicos...');
+            }
 
             google.script.run
-                .withSuccessHandler(response => {
-                    if (response.ok) {
+                .withSuccessHandler(function (response) {
+                    LOAD_STATE.grupos.loading = false;
+
+                    if (response && response.ok && response.data) {
                         ALL_GRUPOS = response.data;
-                        console.log(`[loadGrupos] ✅ ${ALL_GRUPOS.length} grupos cargados`);
+                        LOAD_STATE.grupos.loaded = true;
+                        LOAD_STATE.grupos.retries = 0;
+                        LOAD_STATE.grupos.lastLoad = Date.now();
+                        LOAD_STATE.grupos.error = null;
+
+                        console.log(`[loadGrupos] ✅ ${ALL_GRUPOS.length} grupos cargados exitosamente`);
+
+                        // Actualizar UI si estamos en modo grupo
+                        if (EECC_MODE === 'grupo') {
+                            AUTOCOMPLETE_EECC_OPTIONS = [...ALL_GRUPOS];
+                            renderAutocompleteOptionsEECC();
+                        }
+                        if (BITACORA_MODE === 'grupo') {
+                            AUTOCOMPLETE_OPTIONS = [...ALL_GRUPOS];
+                            renderAutocompleteOptions();
+                        }
                     } else {
-                        console.error('[loadGrupos] Error:', response.error);
+                        handleLoadError_('grupos', response?.error || 'Error desconocido al cargar grupos');
                     }
                 })
-                .withFailureHandler(error => {
-                    console.error('[loadGrupos] Error fatal:', error);
+                .withFailureHandler(function (error) {
+                    LOAD_STATE.grupos.loading = false;
+                    handleLoadError_('grupos', error?.message || error || 'Error de conexión');
                 })
                 .getGrupos_API(TOKEN);
         }
@@ -3132,22 +3198,76 @@
                     break;
                 }
             }
-            console.log('[toggleEECCMode] Modo:', EECC_MODE);
+            console.log('[toggleEECCMode] 🔄 Modo cambiado a:', EECC_MODE);
 
-            // Limpiar y actualizar autocomplete
+            // Limpiar selección actual
             limpiarAutocompleteEECC();
 
-            // Actualizar placeholder
+            // Actualizar placeholder según modo
             const input = document.getElementById('aseguradoSelect');
             if (input) {
-                input.placeholder = EECC_MODE === 'grupo' ? 'Buscar grupo económico...' : 'Escribe o selecciona un cliente...';
+                input.placeholder = EECC_MODE === 'grupo'
+                    ? 'Buscar grupo económico...'
+                    : 'Escribe o selecciona un cliente...';
             }
 
-            // Actualizar opciones disponibles
+            // ========== FIX: Verificar estado de carga y actuar según corresponda ==========
+
             if (EECC_MODE === 'grupo') {
+                // MODO GRUPO
+                if (LOAD_STATE.grupos.loading) {
+                    // Ya está cargando, mostrar loading
+                    mostrarLoadingEnDropdownEECC('Cargando grupos económicos...');
+                    console.log('[toggleEECCMode] ⏳ Grupos ya cargando...');
+                    return;
+                }
+
+                if (!LOAD_STATE.grupos.loaded || ALL_GRUPOS.length === 0) {
+                    // No cargado o vacío, iniciar carga
+                    mostrarLoadingEnDropdownEECC('Cargando grupos económicos...');
+                    console.log('[toggleEECCMode] 🔄 Iniciando carga de grupos...');
+                    loadGrupos();
+                    return;
+                }
+
+                if (LOAD_STATE.grupos.error) {
+                    // Hubo error previo, mostrar error con opción de retry
+                    mostrarErrorEnDropdownEECC(
+                        'Error cargando grupos. Click para reintentar.',
+                        'grupos'
+                    );
+                    return;
+                }
+
+                // Datos disponibles, actualizar opciones
                 AUTOCOMPLETE_EECC_OPTIONS = [...ALL_GRUPOS];
+                console.log('[toggleEECCMode] ✅ Grupos disponibles:', ALL_GRUPOS.length);
+
             } else {
-                AUTOCOMPLETE_EECC_OPTIONS = [...ALL_CLIENTES];
+                // MODO ASEGURADO
+                if (LOAD_STATE.asegurados.loading || ASEGURADOS_DS.loading) {
+                    mostrarLoadingEnDropdownEECC('Cargando asegurados...');
+                    console.log('[toggleEECCMode] ⏳ Asegurados ya cargando...');
+                    return;
+                }
+
+                if (!LOAD_STATE.asegurados.loaded && ALL_CLIENTES.length === 0 && ASEGURADOS_DS.items.length === 0) {
+                    mostrarLoadingEnDropdownEECC('Cargando asegurados...');
+                    console.log('[toggleEECCMode] 🔄 Iniciando carga de asegurados...');
+                    loadAsegurados();
+                    return;
+                }
+
+                // Usar datos disponibles
+                AUTOCOMPLETE_EECC_OPTIONS = ASEGURADOS_DS.items.length > 0
+                    ? [...ASEGURADOS_DS.items]
+                    : [...ALL_CLIENTES];
+                console.log('[toggleEECCMode] ✅ Asegurados disponibles:', AUTOCOMPLETE_EECC_OPTIONS.length);
+            }
+
+            // Renderizar opciones (solo si llegamos aquí con datos)
+            if (AUTOCOMPLETE_EECC_OPTIONS.length > 0) {
+                renderAutocompleteOptionsEECC();
             }
         }
 
@@ -3159,22 +3279,53 @@
                     break;
                 }
             }
-            console.log('[toggleBitacoraMode] Modo:', BITACORA_MODE);
+            console.log('[toggleBitacoraMode] 🔄 Modo cambiado a:', BITACORA_MODE);
 
-            // Limpiar y actualizar autocomplete
+            // Limpiar selección actual
             limpiarAutocomplete();
 
             // Actualizar placeholder
             const input = document.getElementById('gestionAsegurado');
             if (input) {
-                input.placeholder = BITACORA_MODE === 'grupo' ? 'Buscar grupo económico...' : 'Escribe o selecciona un cliente...';
+                input.placeholder = BITACORA_MODE === 'grupo'
+                    ? 'Buscar grupo económico...'
+                    : 'Escribe o selecciona un cliente...';
             }
 
-            // Actualizar opciones disponibles
+            // ========== FIX: Verificar estado de carga ==========
+
             if (BITACORA_MODE === 'grupo') {
+                if (LOAD_STATE.grupos.loading) {
+                    mostrarLoadingEnDropdownBitacora('Cargando grupos económicos...');
+                    return;
+                }
+
+                if (!LOAD_STATE.grupos.loaded || ALL_GRUPOS.length === 0) {
+                    mostrarLoadingEnDropdownBitacora('Cargando grupos económicos...');
+                    loadGrupos();
+                    return;
+                }
+
                 AUTOCOMPLETE_OPTIONS = [...ALL_GRUPOS];
+
             } else {
-                AUTOCOMPLETE_OPTIONS = [...ALL_CLIENTES];
+                // Usar datos de bitácora o clientes
+                const clientes = BITACORA_DATA && BITACORA_DATA.length > 0
+                    ? [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean)
+                    : (ASEGURADOS_DS.items.length > 0 ? [...ASEGURADOS_DS.items] : [...ALL_CLIENTES]);
+
+                if (clientes.length === 0 && !LOAD_STATE.asegurados.loading) {
+                    mostrarLoadingEnDropdownBitacora('Cargando clientes...');
+                    loadAsegurados();
+                    return;
+                }
+
+                AUTOCOMPLETE_OPTIONS = clientes.sort((a, b) => a.localeCompare(b, 'es'));
+            }
+
+            // Renderizar si hay datos
+            if (typeof renderAutocompleteOptions === 'function' && AUTOCOMPLETE_OPTIONS.length > 0) {
+                renderAutocompleteOptions();
             }
         }
 
@@ -5198,7 +5349,7 @@
         function toggleBitacoraModeEmb() {
             const selectedMode = document.querySelector('input[name="bitacoraModeEmb"]:checked')?.value || 'asegurado';
             BITACORA_MODE = selectedMode;
-            console.log('[toggleBitacoraModeEmb] Modo:', BITACORA_MODE);
+            console.log('[toggleBitacoraModeEmb] 🔄 Modo:', BITACORA_MODE);
 
             // Limpiar selección actual
             limpiarAutocompleteEmb();
@@ -5211,7 +5362,7 @@
                     : 'Escribe o selecciona un cliente...';
             }
 
-            // Actualizar estilo de los toggles para reflejar selección activa
+            // Actualizar estilo visual de los toggles
             const radios = document.querySelectorAll('input[name="bitacoraModeEmb"]');
             radios.forEach(radio => {
                 const toggleInner = radio.nextElementSibling;
@@ -5230,8 +5381,8 @@
                 }
             });
 
-            // Recargar opciones según el modo
-            loadClientesAutocompleteEmb();
+            // ========== FIX: Cargar opciones con verificación de estado ==========
+            loadClientesAutocompleteEmbSafe();
         }
 
         /**
@@ -5391,6 +5542,254 @@
                     console.error('[loadClientesAutocompleteEmb] Error:', err);
                 })
                 .bitacoraGetResumenCiclos(TOKEN);
+        }
+
+        // ============================================================
+        // HOTFIX: FUNCIONES HELPER PARA ESTADOS DE CARGA
+        // ============================================================
+
+        /**
+         * Carga opciones para autocomplete embebido con manejo de estados
+         */
+        function loadClientesAutocompleteEmbSafe() {
+            console.log('[loadClientesAutocompleteEmbSafe] Cargando opciones para modo:', BITACORA_MODE);
+
+            // MODO GRUPO ECONÓMICO
+            if (BITACORA_MODE === 'grupo') {
+                // Verificar si ya está cargando
+                if (LOAD_STATE.grupos.loading) {
+                    mostrarLoadingEnDropdownEmb('Cargando grupos económicos...');
+                    return;
+                }
+
+                // Verificar si hay datos disponibles
+                if (ALL_GRUPOS && ALL_GRUPOS.length > 0) {
+                    AUTOCOMPLETE_EMB_OPTIONS = [...ALL_GRUPOS].sort();
+                    console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'grupos disponibles');
+                    renderizarOpcionesEmb();
+                    return;
+                }
+
+                // No hay datos, cargar
+                mostrarLoadingEnDropdownEmb('Cargando grupos económicos...');
+
+                google.script.run
+                    .withSuccessHandler(function (response) {
+                        if (response && response.ok && response.data) {
+                            ALL_GRUPOS = response.data;
+                            LOAD_STATE.grupos.loaded = true;
+                            AUTOCOMPLETE_EMB_OPTIONS = [...ALL_GRUPOS].sort();
+                            console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'grupos cargados');
+                            renderizarOpcionesEmb();
+                        } else {
+                            console.error('[loadClientesAutocompleteEmbSafe] Error:', response?.error);
+                            mostrarErrorEnDropdownEmb('Error cargando grupos. Click para reintentar.');
+                        }
+                    })
+                    .withFailureHandler(function (err) {
+                        console.error('[loadClientesAutocompleteEmbSafe] Error:', err);
+                        mostrarErrorEnDropdownEmb('Error de conexión. Click para reintentar.');
+                    })
+                    .getGrupos_API(TOKEN);
+                return;
+            }
+
+            // MODO INDIVIDUAL (asegurado)
+            // Prioridad 1: Usar BITACORA_DATA si existe
+            if (BITACORA_DATA && BITACORA_DATA.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
+                console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes de BITACORA_DATA');
+                renderizarOpcionesEmb();
+                return;
+            }
+
+            // Prioridad 2: Usar ALL_CLIENTES/ASEGURADOS_DS si existe
+            const clientesDisponibles = ASEGURADOS_DS.items.length > 0 ? ASEGURADOS_DS.items : ALL_CLIENTES;
+            if (clientesDisponibles.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...clientesDisponibles].sort();
+                console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes disponibles');
+                renderizarOpcionesEmb();
+                return;
+            }
+
+            // Prioridad 3: Cargar desde backend
+            if (LOAD_STATE.asegurados.loading || ASEGURADOS_DS.loading) {
+                mostrarLoadingEnDropdownEmb('Cargando clientes...');
+                return;
+            }
+
+            console.log('[loadClientesAutocompleteEmbSafe] Sin datos locales, cargando desde backend...');
+            mostrarLoadingEnDropdownEmb('Cargando clientes...');
+
+            // Usar la función de carga existente
+            loadAsegurados();
+
+            // Suscribirse a cuando termine la carga
+            const checkInterval = setInterval(() => {
+                if (!ASEGURADOS_DS.loading && ASEGURADOS_DS.items.length > 0) {
+                    clearInterval(checkInterval);
+                    AUTOCOMPLETE_EMB_OPTIONS = [...ASEGURADOS_DS.items].sort();
+                    renderizarOpcionesEmb();
+                }
+            }, 500);
+
+            // Timeout de seguridad
+            setTimeout(() => clearInterval(checkInterval), 30000);
+        }
+
+        /**
+         * Muestra loading en dropdown de EECC
+         */
+        function mostrarLoadingEnDropdownEECC(mensaje) {
+            const optionsContainer = document.getElementById('autocompleteOptionsEECC');
+            const dropdown = document.getElementById('autocompleteDropdownEECC');
+
+            if (optionsContainer) {
+                optionsContainer.innerHTML = `
+                    <div class="autocomplete-option disabled loading-state-indicator">
+                        <span class="loading-spinner-small"></span>
+                        <span>${mensaje}</span>
+                    </div>`;
+            }
+            if (dropdown) {
+                dropdown.style.display = 'block';
+            }
+        }
+
+        /**
+         * Muestra loading en dropdown de Bitácora
+         */
+        function mostrarLoadingEnDropdownBitacora(mensaje) {
+            const optionsContainer = document.getElementById('autocompleteOptions');
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            if (optionsContainer) {
+                optionsContainer.innerHTML = `
+                    <div class="autocomplete-option disabled loading-state-indicator">
+                        <span class="loading-spinner-small"></span>
+                        <span>${mensaje}</span>
+                    </div>`;
+            }
+            if (dropdown) {
+                dropdown.style.display = 'block';
+            }
+        }
+
+        /**
+         * Muestra loading en dropdown embebido
+         */
+        function mostrarLoadingEnDropdownEmb(mensaje) {
+            const optionsContainer = document.getElementById('autocompleteOptionsEmb');
+            const dropdown = document.getElementById('autocompleteDropdownEmb');
+
+            if (optionsContainer) {
+                optionsContainer.innerHTML = `
+                    <div class="autocomplete-option disabled loading-state-indicator">
+                        <span class="loading-spinner-small"></span>
+                        <span>${mensaje}</span>
+                    </div>`;
+            }
+            if (dropdown) {
+                dropdown.style.display = 'block';
+            }
+        }
+
+        /**
+         * Muestra error en dropdown de EECC con opción de retry
+         */
+        function mostrarErrorEnDropdownEECC(mensaje, tipo) {
+            const optionsContainer = document.getElementById('autocompleteOptionsEECC');
+            const dropdown = document.getElementById('autocompleteDropdownEECC');
+
+            if (optionsContainer) {
+                optionsContainer.innerHTML = `
+                    <div class="autocomplete-option error-state-option" onclick="reintentarCarga_('${tipo}')">
+                        <span style="margin-right: 8px;">⚠️</span>
+                        <span>${mensaje}</span>
+                    </div>`;
+            }
+            if (dropdown) {
+                dropdown.style.display = 'block';
+            }
+        }
+
+        /**
+         * Muestra error en dropdown embebido
+         */
+        function mostrarErrorEnDropdownEmb(mensaje) {
+            const optionsContainer = document.getElementById('autocompleteOptionsEmb');
+            if (optionsContainer) {
+                optionsContainer.innerHTML = `
+                    <div class="autocomplete-option error-state-option" onclick="loadClientesAutocompleteEmbSafe()">
+                        <span style="margin-right: 8px;">⚠️</span>
+                        <span>${mensaje}</span>
+                    </div>`;
+            }
+        }
+
+        /**
+         * Maneja errores de carga con retry automático
+         */
+        function handleLoadError_(tipo, errorMsg) {
+            const state = LOAD_STATE[tipo];
+            state.error = errorMsg;
+            state.retries++;
+
+            console.warn(`[handleLoadError_] ${tipo} falló (intento ${state.retries}/${MAX_LOAD_RETRIES}):`, errorMsg);
+
+            if (state.retries < MAX_LOAD_RETRIES) {
+                console.log(`[handleLoadError_] Reintentando en ${RETRY_DELAY_MS}ms...`);
+                setTimeout(() => {
+                    if (tipo === 'grupos') loadGrupos();
+                    else if (tipo === 'asegurados') loadAsegurados();
+                }, RETRY_DELAY_MS);
+            } else {
+                // Mostrar error final
+                console.error(`[handleLoadError_] ❌ ${tipo} falló después de ${MAX_LOAD_RETRIES} intentos`);
+
+                if (tipo === 'grupos' && EECC_MODE === 'grupo') {
+                    mostrarErrorEnDropdownEECC('Error cargando grupos. Click para reintentar.', 'grupos');
+                }
+                if (tipo === 'asegurados' && EECC_MODE === 'asegurado') {
+                    mostrarErrorEnDropdownEECC('Error cargando asegurados. Click para reintentar.', 'asegurados');
+                }
+            }
+        }
+
+        /**
+         * Reintentar carga manualmente
+         */
+        function reintentarCarga_(tipo) {
+            console.log('[reintentarCarga_] Reintentando:', tipo);
+            LOAD_STATE[tipo].retries = 0;
+            LOAD_STATE[tipo].error = null;
+
+            if (tipo === 'grupos') {
+                loadGrupos();
+            } else if (tipo === 'asegurados') {
+                loadAsegurados();
+            }
+        }
+
+        /**
+         * Función de test para verificar que los parches funcionan
+         * Ejecutar desde la consola del navegador: testLoadStateFix()
+         */
+        function testLoadStateFix() {
+            console.log('=== TEST LOAD STATE FIX ===');
+            console.log('LOAD_STATE:', JSON.stringify(LOAD_STATE, null, 2));
+            console.log('ALL_GRUPOS:', ALL_GRUPOS.length, 'items');
+            console.log('ALL_CLIENTES:', ALL_CLIENTES.length, 'items');
+            console.log('ASEGURADOS_DS.items:', ASEGURADOS_DS.items.length, 'items');
+            console.log('EECC_MODE:', EECC_MODE);
+            console.log('BITACORA_MODE:', BITACORA_MODE);
+            console.log('TOKEN válido:', !!TOKEN);
+            return 'Estado mostrado en consola';
+        }
+
+        // Exponer test en window para acceso desde consola
+        if (typeof window !== 'undefined') {
+            window.testLoadStateFix = testLoadStateFix;
         }
 
         /**
