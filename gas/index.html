@@ -2104,19 +2104,20 @@
                     btnText.textContent = 'Iniciar sesión';
 
                     if (!response || !response.ok) {
-                        errorEl.textContent = response?.error || 'Error desconocido';
+                        errorEl.textContent = response?.error?.message || response?.error || 'Error desconocido';
                         errorEl.classList.remove('hidden');
                         return;
                     }
 
-                    TOKEN = response.token;
-                    CURRENT_USER = response.user;
+                    // v4.1+: loginPassword retorna {ok, data: {token, user}}
+                    TOKEN = response.data?.token || response.token;
+                    CURRENT_USER = response.data?.user || response.user;
                     document.getElementById('loginSection').classList.add('hidden');
                     document.getElementById('portalSection').classList.remove('hidden');
 
                     // FIX: null-guard para elementos que pueden no existir en v17
                     const userEl = document.getElementById('currentUser');
-                    if (userEl) userEl.textContent = CURRENT_USER;
+                    if (userEl) userEl.textContent = CURRENT_USER?.displayName || CURRENT_USER?.username || CURRENT_USER;
 
                     console.log('[LOGIN] ✅ success, user:', CURRENT_USER);
                     initPortal();
