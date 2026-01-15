@@ -2110,8 +2110,24 @@
                     }
 
                     // v4.1+: loginPassword retorna {ok, data: {token, user}}
-                    TOKEN = response.data?.token || response.token;
-                    CURRENT_USER = response.data?.user || response.user;
+                    // DEBUG: Log full response to diagnose token issues
+                    console.log('[LOGIN] 📦 Full response:', JSON.stringify(response, null, 2));
+
+                    // Extract token from multiple possible locations
+                    TOKEN = response.data?.token || response.token || null;
+                    CURRENT_USER = response.data?.user || response.user || null;
+
+                    // CRITICAL: Validate TOKEN was extracted
+                    if (!TOKEN) {
+                        console.error('[LOGIN] ❌ CRITICAL: Token not found in response!', response);
+                        errorEl.textContent = 'Error interno: Token no recibido del servidor';
+                        errorEl.classList.remove('hidden');
+                        return;
+                    }
+
+                    console.log('[LOGIN] 🔑 TOKEN extracted:', TOKEN ? (TOKEN.substring(0, 20) + '...') : 'NULL');
+                    console.log('[LOGIN] 👤 USER extracted:', CURRENT_USER);
+
                     document.getElementById('loginSection').classList.add('hidden');
                     document.getElementById('portalSection').classList.remove('hidden');
 
@@ -3004,6 +3020,15 @@
 
             console.log(`[fetchPage] search="${search}" cursor=${cursor} reset=${reset}`);
 
+            // DEBUG: Validate TOKEN before API call
+            if (!TOKEN) {
+                console.error('[fetchPage] ❌ CRITICAL: TOKEN is null/undefined!');
+                ASEGURADOS_DS.loading = false;
+                alert('Error: Sesión no válida. Por favor, vuelve a iniciar sesión.');
+                return;
+            }
+            console.log('[fetchPage] 🔑 Using TOKEN:', TOKEN.substring(0, 20) + '...');
+
             google.script.run
                 .withSuccessHandler(res => {
                     if (!res.ok) {
@@ -3076,6 +3101,14 @@
 
         function loadGrupos() {
             console.log('[loadGrupos] Cargando grupos...');
+
+            // DEBUG: Validate TOKEN before API call
+            if (!TOKEN) {
+                console.error('[loadGrupos] ❌ CRITICAL: TOKEN is null/undefined!');
+                return;
+            }
+            console.log('[loadGrupos] 🔑 Using TOKEN:', TOKEN.substring(0, 20) + '...');
+
             google.script.run
                 .withSuccessHandler(response => {
                     if (response.ok) {
