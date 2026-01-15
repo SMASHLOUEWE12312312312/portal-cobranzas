@@ -37,11 +37,17 @@ function testBitacoraSimple() {
  */
 function getDeploymentVersion() {
   return {
-    version: 'v4.0-FINAL-2025-01-15-23:00',
+    version: 'v4.1-BFF-FIX-2025-01-15',
     timestamp: new Date().toISOString(),
     spreadsheetIdConfigured: getConfig('SPREADSHEET_ID', '') ? true : false,
     spreadsheetIdValue: getConfig('SPREADSHEET_ID', '') ? getConfig('SPREADSHEET_ID', '').substring(0, 15) + '...' : 'NO CONFIGURADO',
-    message: 'Deployment actualizado correctamente'
+    message: 'Deployment actualizado - Login BFF corregido',
+    changes: [
+      'loginPassword ahora retorna estructura compatible con BFF',
+      'Agregado campo user como objeto {username, role, displayName}',
+      'Agregado campo expiresAt (timestamp absoluto)',
+      'Datos envueltos en campo data como espera Next.js'
+    ]
   };
 }
 
@@ -309,12 +315,75 @@ function bitacoraGetAllDataV3Final() {
 }
 
 // ========== LOGIN / LOGOUT ==========
+
+/**
+ * Infiere el rol del usuario basado en su nombre de usuario
+ * @param {string} username - Nombre de usuario
+ * @return {string} Rol del usuario (ADMIN, COBRANZAS, LECTURA)
+ */
+function _inferUserRole(username) {
+  const lowerUser = String(username).toLowerCase();
+  if (lowerUser.startsWith('admin')) return 'ADMIN';
+  if (lowerUser.startsWith('cobranzas')) return 'COBRANZAS';
+  if (lowerUser.startsWith('supervisor')) return 'SUPERVISOR';
+  if (lowerUser.startsWith('comercial')) return 'COMERCIAL';
+  return 'LECTURA'; // Default role
+}
+
+/**
+ * Login con transformación de respuesta para BFF
+ * IMPORTANTE: Esta función transforma la respuesta de AuthService.login
+ * al formato esperado por el BFF de Next.js
+ * 
+ * @param {string} username
+ * @param {string} password
+ * @return {Object} { ok, data: { token, user: { username, role }, expiresAt } }
+ */
 function loginPassword(username, password) {
   try {
-    return AuthService.login(username, password);
+    // Llamar al servicio de autenticación original
+    const result = AuthService.login(username, password);
+
+    // Si el login falló, retornar error en formato BFF
+    if (!result.ok) {
+      return {
+        ok: false,
+        data: null,
+        error: {
+          code: 'AUTH_FAILED',
+          message: result.error || 'Credenciales inválidas'
+        }
+      };
+    }
+
+    // Transformar respuesta exitosa al formato esperado por BFF
+    // BFF espera: { ok, data: { token, user: { username, role, displayName }, expiresAt } }
+    const userRole = _inferUserRole(result.user);
+    const expiresAtMs = Date.now() + ((result.expiresIn || 28800) * 1000);
+
+    return {
+      ok: true,
+      data: {
+        token: result.token,
+        user: {
+          username: result.user,
+          role: userRole,
+          displayName: result.user
+        },
+        expiresAt: expiresAtMs
+      }
+    };
+
   } catch (error) {
     Logger.error('loginPassword', 'Failed', error);
-    return { ok: false, error: error.message };
+    return {
+      ok: false,
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Error interno del servidor'
+      }
+    };
   }
 }
 

@@ -412,15 +412,36 @@ function doPost(e) {
 
       case 'validateSession':
         try {
-          const user = AuthService.validateSession(token);
-          result = { ok: true, user };
+          const username = AuthService.validateSession(token);
+          // Inferir rol (función definida en portal_api.js)
+          let userRole = 'LECTURA';
+          if (typeof _inferUserRole === 'function') {
+            userRole = _inferUserRole(username);
+          } else {
+            // Fallback: inferir rol localmente
+            const lowerUser = String(username).toLowerCase();
+            if (lowerUser.startsWith('admin')) userRole = 'ADMIN';
+            else if (lowerUser.startsWith('cobranzas')) userRole = 'COBRANZAS';
+            else if (lowerUser.startsWith('supervisor')) userRole = 'SUPERVISOR';
+          }
+          // Retornar estructura consistente con BFF
+          result = {
+            ok: true,
+            data: {
+              user: {
+                username: username,
+                role: userRole,
+                displayName: username
+              }
+            }
+          };
         } catch (err) {
-          result = { ok: false, error: err.message };
+          result = { ok: false, data: null, error: { code: 'SESSION_INVALID', message: err.message } };
         }
         break;
 
       case 'ping':
-        result = { ok: true, timestamp: new Date().toISOString(), version: '1.0.0-bff' };
+        result = { ok: true, timestamp: new Date().toISOString(), version: 'v4.1-BFF-FIX' };
         break;
 
       case 'healthCheck':
