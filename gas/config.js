@@ -218,7 +218,12 @@ const CONFIG = {
     DARK_MODE_ENABLED: false,            // Dark theme toggle
     KEYBOARD_SHORTCUTS_ENABLED: false,   // Additional keyboard shortcuts
     TEMPLATE_VIEWER_ENABLED: false,      // View mail templates (admin only)
-    HEALTH_CHECK_ENABLED: false          // System health check endpoint
+    HEALTH_CHECK_ENABLED: false,         // System health check endpoint
+    // ========== FASE 1: FUNDAMENTOS CRÍTICOS (2026-01-15) ==========
+    ENABLE_ERROR_HANDLER: true,        // ErrorHandler centralizado con categorización
+    ENABLE_CACHE_HELPER: true,         // CacheHelper con TTL diferenciado
+    ENABLE_AUTO_BACKUP: true,          // BackupService con trigger diario
+    ENABLE_KPI_DASHBOARD: true         // KPIService con métricas de cobranzas
   },
 
   // ========== LOCK ==========
@@ -239,6 +244,23 @@ const CONFIG = {
     ADMIN_EMAILS: [],                    // List of admin emails for alerts
     DEBOUNCE_MINUTES: 60,                // Max 1 alert per hour per type
     QUEUE_STUCK_ALERT_MINUTES: 30        // Trigger alert if stuck > this
+  },
+
+  // ========== BACKUP (Fase 1) ==========
+  BACKUP: {
+    FOLDER_ID: '',                     // ID de carpeta en Drive (se crea automáticamente si vacío)
+    RETENTION_DAYS: 30,                // Días de retención de backups
+    CRITICAL_SHEETS: ['BD', 'Bitacora_Gestiones_EECC', 'Mail_Queue', 'Portal_Accesos'],
+    NOTIFY_ON_COMPLETE: false,         // Notificar por email al completar
+    SCHEDULE_HOUR: 2                   // Hora del trigger automático (2 AM Lima)
+  },
+
+  // ========== KPI (Fase 1) ==========
+  KPI: {
+    CACHE_TTL_SECONDS: 300,            // 5 minutos de cache
+    DSO_BENCHMARK: 35,                 // Días objetivo para DSO
+    VENCIDO_THRESHOLD_WARN: 15,        // % para mostrar warning
+    VENCIDO_THRESHOLD_ERROR: 25        // % para mostrar error/critical
   },
 
   // ========== MAIL QUEUE (Phase 1) ==========
