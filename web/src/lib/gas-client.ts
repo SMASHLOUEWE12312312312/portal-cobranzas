@@ -124,34 +124,18 @@ export async function callGAS<T = unknown>(
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         try {
-            // Initial request with redirect: 'manual' (P0-3)
-            let response = await fetch(GAS_BASE_URL, {
+            // GAS Web Apps return 302 redirects to script.googleusercontent.com/macros/echo
+            // The echo URL contains the pre-computed response and doesn't accept new POSTs
+            // Using redirect: 'follow' lets fetch handle this correctly
+            const response = await fetch(GAS_BASE_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body,
-                redirect: 'manual', // Don't auto-follow redirects
+                redirect: 'follow', // Let fetch handle redirects automatically
                 signal: controller.signal,
             });
-
-            // Handle 302 redirect - GAS Web Apps commonly return these (P0-3)
-            if (response.status === 302 || response.status === 301) {
-                const location = response.headers.get('Location');
-
-                if (location) {
-                    // Retry to the redirect location, preserving method and body
-                    response = await fetch(location, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body, // Preserve original body
-                        redirect: 'follow',
-                        signal: controller.signal,
-                    });
-                }
-            }
 
             clearTimeout(timeoutId);
 
