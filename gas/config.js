@@ -304,6 +304,22 @@ const CONFIG = {
     FORECAST_DAYS_DEFAULT: 30          // Días default para proyección
   },
 
+  // ========== CACHE OPTIMIZATION (Fase 5) ==========
+  CACHE_OPTIMIZATION: {
+    ENABLED: true,
+    STRATEGY: 'LRU',                     // Least Recently Used
+    DEFAULT_TTL: 300,                    // 5 minutos default
+    TTL_BY_TYPE: {
+      KPI: 300,                          // KPIs: 5 min
+      ALERTS: 180,                       // Alertas: 3 min
+      DASHBOARD: 120,                    // Dashboard: 2 min
+      ANALYTICS: 600,                    // Analytics: 10 min
+      STATIC: 3600                       // Datos estáticos: 1 hora
+    },
+    MAX_ENTRIES: 100,                    // Máximo entradas en cache
+    COMPRESSION_THRESHOLD: 5000          // Comprimir si > 5KB
+  },
+
   // ========== REPORT_EXPORT (Fase 4) ==========
   REPORT_EXPORT: {
     FOLDER_NAME: 'Portal_Cobranzas_Exports',
