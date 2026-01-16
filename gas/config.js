@@ -304,8 +304,8 @@ const CONFIG = {
     FORECAST_DAYS_DEFAULT: 30          // Días default para proyección
   },
 
-  // ========== EXPORT (Fase 4) ==========
-  EXPORT: {
+  // ========== REPORT_EXPORT (Fase 4) ==========
+  REPORT_EXPORT: {
     FOLDER_NAME: 'Portal_Cobranzas_Exports',
     RETENTION_DAYS: 30,                // Días de retención de exports
     MAX_ROWS_PDF: 100,                 // Máximo filas en PDF
