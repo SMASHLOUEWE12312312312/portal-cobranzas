@@ -1337,6 +1337,65 @@ function listGrupos(token) {
  * @param {string} token - Token de autenticación
  * @return {Object} { ok, sent, failed, errors, details, metrics }
  */
+/**
+ * Enqueue a batch of emails for background processing
+ * @param {Array} items - List of items { aseguradoId } or { groupId }
+ * @param {Object} options - { mode, fechaCorte, adjuntarPdf, adjuntarXlsx, templateId }
+ * @param {string} token - Session token
+ * @return {Object} { ok, count, correlationId }
+ */
+function queueEmailsBatch_API(items, options, token) {
+  const context = 'queueEmailsBatch_API';
+  try {
+    AuthService.validateSession(token);
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      throw new Error('No items provided');
+    }
+
+    const correlationId = Utilities.getUuid();
+    Logger.info(context, `Queueing batch of ${items.length} emails`, { correlationId });
+
+    // Ensure MailQueueService is available
+    if (typeof MailQueueService === 'undefined') {
+      throw new Error('MailQueueService not initialized');
+    }
+
+    // Direct batch enqueue
+    // Note: options.mode will determine if we resolve groups in the background or here.
+    // For now, assuming items are already resolved to individual targets or MailQueueService handles it.
+    // Based on existing logic, the UI sends individual "aseguradoId" for "perEmpresa" mode.
+    // If "consolidado", it sends "groupId". MailQueueService needs to handle this.
+
+    // For safety, let's map items to the format MailQueueService expects
+    const queueItems = items.map(item => ({
+      aseguradoId: item.id || item.aseguradoId, // Handle both formats
+      type: item.type || 'cliente'
+    }));
+
+    const result = MailQueueService.enqueue(queueItems, options, token, correlationId);
+
+    // Trigger background processing immediately
+    if (result.ok) {
+      try {
+        MailQueueService.jobProcesarCorreos_(); // Try to start processing immediately
+      } catch (e) {
+        Logger.warn(context, 'Could not trigger immediate processing', e);
+      }
+    }
+
+    return result;
+
+  } catch (error) {
+    Logger.error(context, 'Failed to queue batch', error);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
+ * Send emails immediately (legacy/synchronous)
+ * NOW DEPRECATED in favor of queueEmailsBatch_API for bulk operations
+ */
 function sendEmailsNow(items, options, token) {
   const context = 'sendEmailsNow';
   const startTime = Date.now();
