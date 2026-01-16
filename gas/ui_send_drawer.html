@@ -2157,69 +2157,136 @@
                     });
                 }
 
-                // [MEJORA ENVIAR_EECC_CORREO] Nueva función orquestadora de envío (BATCH ASÍNCRONO)
+                // [MEJORA ENVIAR_EECC_CORREO] Nueva función orquestadora de envío
                 function startSendingProcess(items, options) {
-                    const btn = document.getElementById('btnSendNow');
+                    const btn = document.getElementById('btnSendNow'); // FIX: ID correcto
                     if (!btn) {
                         alert('❌ Error: Botón de envío no encontrado');
                         return;
                     }
 
                     btn.disabled = true;
-                    btn.innerHTML = '⏳ Encolando...';
+                    btn.innerHTML = '⏳ Enviando...';
 
-                    logDebug(`📨 Encolando lote de ${items.length} correos...`, { mode: options.mode }, 'info');
+                    let processed = 0;
+                    let errors = 0;
+                    const total = items.length;
 
-                    // Llamada BATCH a la nueva API
-                    google.script.run
-                        .withSuccessHandler(res => {
+                    logDebug(`📨 Iniciando envío de ${total} correos`, { mode: options.mode }, 'info');
+
+                    // Procesar secuencialmente
+                    const processNext = (index) => {
+                        if (index >= total) {
                             btn.disabled = false;
                             btn.innerHTML = '✉️ ENVIAR';
-                            STATE.sending = false;
-
-                            if (res && res.ok) {
-                                // Éxito en encolado
-                                logDebug(`✅ Lote encolado exitosamente`, { count: res.count, correlationId: res.correlationId }, 'success');
-                                showToast(`✅ ${res.count} correos encolados para envío en segundo plano`, 'success');
-
-                                // Actualizar UI masivamente
-                                items.forEach(item => {
-                                    const badge = document.getElementById(`status-${item.id}`);
-                                    if (badge) {
-                                        badge.textContent = '⏳ En Cola';
-                                        badge.className = 'status-badge status-pending';
-                                        badge.style.backgroundColor = '#FFF3E0';
-                                        badge.style.color = '#EF6C00';
-                                        badge.style.border = '1px solid #FFE0B2';
-                                    }
-
-                                    // Deseleccionar checkbox para evitar re-envío accidental
-                                    const checkbox = document.querySelector(`#status-${item.id}`)?.closest('.preview-item')?.querySelector('input[type="checkbox"]');
-                                    if (checkbox) checkbox.checked = false;
-                                });
-
-                                // Refrescar stats del dashboard si es posible (pequeño delay para dar tiempo a que se escriba en Sheet)
-                                setTimeout(() => {
-                                    if (typeof refreshDashboardStats === 'function') refreshDashboardStats();
-                                }, 2000);
-
+                            STATE.sending = false; // FIX: Reset guard
+                            const exitosos = processed - errors;
+                            logDebug(`✅ Proceso finalizado`, { enviados: exitosos, errores: errors }, exitosos > 0 ? 'success' : 'error');
+                            if (errors === 0) {
+                                showToast(`Proceso finalizado. Enviados: ${exitosos}`, 'success');
                             } else {
-                                // Error en encolado
-                                logDebug(`❌ Error al encolar lote`, { error: res?.error }, 'error');
-                                showToast(`❌ Error al iniciar envío: ${res?.error}`, 'error');
-                                alert(`Error al iniciar envío: ${res?.error}`);
+                                showToast(`Finalizado con errores. Enviados: ${exitosos}, Errores: ${errors}`, 'warning');
                             }
-                        })
-                        .withFailureHandler(err => {
-                            btn.disabled = false;
-                            btn.innerHTML = '✉️ ENVIAR';
-                            STATE.sending = false;
+                            return;
+                        }
 
-                            logDebug(`❌ Fallo crítico de red`, { error: err.message }, 'error');
-                            showToast(`❌ Error de conexión: ${err.message}`, 'error');
-                            alert(`Error de conexión: ${err.message}`);
-                        })
-                        .queueEmailsBatch_API(items, options, STATE.token);
+                        const item = items[index];
+                        const badge = document.getElementById(`status-${item.id}`);
+
+                        if (badge) badge.textContent = '⏳ Enviando...';
+                        logDebug(`📧 Enviando correo ${index + 1}/${total}`, { destinatario: item.id, type: item.type }, 'info');
+
+                        // ROUTING: Grupos vs Clientes
+                        if (item.type === 'grupo') {
+                            // Envío consolidado por grupo económico
+                            google.script.run
+                                .withSuccessHandler(res => {
+                                    processed++;
+                                    if (res && res.ok) {
+                                        if (badge) {
+                                            badge.textContent = '✅ Enviado';
+                                            badge.className = 'status-badge status-approved';
+                                        }
+                                        logDebug(`✅ Grupo procesado`, { grupo: item.id }, 'success');
+                                    } else {
+                                        errors++;
+                                        if (badge) {
+                                            badge.textContent = '❌ Error';
+                                            badge.className = 'status-badge status-excluded';
+                                            badge.title = res?.error || 'Error desconocido';
+                                        }
+                                        logDebug(`❌ Error al procesar grupo`, { grupo: item.id, error: res?.error }, 'error');
+                                    }
+                                    processNext(index + 1);
+                                })
+                                .withFailureHandler(err => {
+                                    processed++;
+                                    errors++;
+                                    if (badge) {
+                                        badge.textContent = '❌ Fallo';
+                                        badge.className = 'status-badge status-excluded';
+                                        badge.title = err.message;
+                                    }
+                                    logDebug(`❌ Fallo crítico en grupo`, { grupo: item.id, error: err.message }, 'error');
+                                    processNext(index + 1);
+                                })
+                                .sendEmailsByGrupo_API(item.id, {
+                                    fechaCorte: options.fechaCorte,
+                                    adjuntarPdf: options.adjuntarPdf,
+                                    adjuntarXlsx: options.adjuntarXlsx,
+                                    templateId: options.templateId
+                                }, STATE.token);
+                        } else {
+                            // Envío individual por empresa
+                            google.script.run
+                                .withSuccessHandler(res => {
+                                    processed++;
+                                    if (res && res.ok) {
+                                        if (badge) {
+                                            if (res.queued) {
+                                                badge.textContent = '⏳ En Cola';
+                                                badge.className = 'status-badge status-pending';
+                                                badge.style.backgroundColor = '#FFF3E0';
+                                                badge.style.color = '#EF6C00';
+                                                badge.style.border = '1px solid #FFE0B2';
+                                            } else {
+                                                badge.textContent = '✅ Enviado';
+                                                badge.className = 'status-badge status-approved';
+                                            }
+                                        }
+                                        logDebug(res.queued ? '📨 Encolado' : '✅ Correo enviado', { destinatario: item.id }, 'success');
+                                    } else {
+                                        errors++;
+                                        if (badge) {
+                                            badge.textContent = '❌ Error';
+                                            badge.className = 'status-badge status-excluded';
+                                            badge.title = res?.error || 'Error desconocido';
+                                        }
+                                        logDebug(`❌ Error al enviar`, { destinatario: item.id, error: res?.error }, 'error');
+                                    }
+                                    processNext(index + 1);
+                                })
+                                .withFailureHandler(err => {
+                                    processed++;
+                                    errors++;
+                                    if (badge) {
+                                        badge.textContent = '❌ Fallo';
+                                        badge.className = 'status-badge status-excluded';
+                                        badge.title = err.message;
+                                    }
+                                    logDebug(`❌ Fallo crítico`, { destinatario: item.id, error: err.message }, 'error');
+                                    processNext(index + 1);
+                                })
+                                .sendEmailsNow([{ aseguradoId: item.id }], {
+                                    templateId: options.templateId,
+                                    fechaCorte: options.fechaCorte,
+                                    adjuntarPdf: options.adjuntarPdf,
+                                    adjuntarXlsx: options.adjuntarXlsx
+                                }, STATE.token);
+                        }
+                    };
+
+                    processNext(0);
                 }
 
                 // ========== INITIALIZATION ==========

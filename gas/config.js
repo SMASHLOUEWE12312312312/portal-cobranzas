@@ -202,7 +202,7 @@ const CONFIG = {
     LOGO_CACHE_TTL_SECONDS: 3600,        // 1 hour cache for logo
     // Phase 1 Enterprise Foundations (2026-01-12)
     PIPELINE_ENABLED: true,              // EECC Pipeline with persisted states
-    MAIL_QUEUE_MODE: true,               // Persistent mail queue (vs direct send)
+    MAIL_QUEUE_MODE: false,               // Persistent mail queue (vs direct send)
     // Phase 3 Monitoring & Alerts (2026-01-12)
     DASHBOARD_STATS: true,               // Dashboard analytics widget
     QUEUE_HEALTH_PANEL: true,            // Queue health status panel
