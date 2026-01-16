@@ -167,6 +167,48 @@ const MailQueueService = {
     },
 
     /**
+     * Release items stuck in PROCESSING state for too long (zombies)
+     * @param {number} timeoutMinutes - Minutes after which to reset to PENDING
+     * @return {number} Count of reset items
+     */
+    releaseStuckItems(timeoutMinutes = 15) {
+        const context = 'MailQueueService.releaseStuckItems';
+        try {
+            const sheet = this._ensureSheet();
+            if (!sheet) return 0;
+
+            const data = sheet.getDataRange().getValues();
+            const now = new Date();
+            const resetCount = 0;
+            const updates = [];
+
+            // Check columns
+            const statusColIdx = 1; // B
+            const processedColIdx = 5; // F
+
+            for (let i = 1; i < data.length; i++) {
+                const status = data[i][statusColIdx];
+                if (status === this.STATUS.PROCESSING) {
+                    let processedAt = data[i][processedColIdx];
+                    if (typeof processedAt === 'string') processedAt = new Date(processedAt);
+
+                    // If no date or too old, reset
+                    if (!processedAt || isNaN(processedAt.getTime()) || (now - processedAt) > (timeoutMinutes * 60 * 1000)) {
+                        sheet.getRange(i + 1, statusColIdx + 1).setValue(this.STATUS.PENDING);
+                        sheet.getRange(i + 1, 8).setValue((Number(data[i][7]) || 0) + 1); // Increment retry count
+                        Logger.warn(context, `Resetting stuck item row ${i + 1} to PENDING`);
+                        resetCount++;
+                    }
+                }
+            }
+            return resetCount;
+        } catch (e) {
+            Logger.error(context, 'Failed', e);
+            return 0;
+        }
+    },
+
+    /**
      * Ensure sheet exists
      * @private
      */
@@ -220,6 +262,10 @@ function jobProcesarCorreos_() {
     }
 
     try {
+        // 1. Recover zombies
+        MailQueueService.releaseStuckItems(10); // Reset items > 10 mins old
+
+        // 2. Process pending
         const batchSize = getConfig('MAIL_QUEUE.BATCH_SIZE', 10);
         const pendingItems = MailQueueService.getPending(batchSize);
 
@@ -256,12 +302,29 @@ function jobProcesarCorreos_() {
                     MailQueueService.updateStatus(item.rowIndex, MailQueueService.STATUS.SENT, {
                         messageId: result.details[0]?.messageId
                     });
+
+                    // AUDIT LOG (Phase 4 requirement)
+                    try {
+                        AuditService.log('ENVIO_EECC', 'Exito', item.aseguradoId,
+                            `Correo enviado (QueueID: ${item.queueId.substring(0, 8)})`,
+                            token
+                        );
+                    } catch (e) { /* ignore audit errors */ }
+
                 } else {
                     throw new Error(result.error || result.details[0]?.error || 'Unknown send error');
                 }
 
             } catch (error) {
                 Logger.error(context, 'Item failed', error, { queueId: item.queueId });
+
+                // AUDIT LOG ERROR
+                try {
+                    AuditService.log('ENVIO_EECC', 'Error', item.aseguradoId,
+                        `Fallo envío: ${error.message}`,
+                        token
+                    );
+                } catch (e) { /* ignore */ }
 
                 if (item.retryCount >= getConfig('MAIL_QUEUE.MAX_RETRIES', 3)) {
                     MailQueueService.updateStatus(item.rowIndex, MailQueueService.STATUS.FAILED, {
