@@ -227,7 +227,11 @@ const CONFIG = {
     // ========== FASE 2: CORE DE COBRANZAS (2026-01-16) ==========
     ENABLE_ALERT_SERVICE: true,        // AlertService con alertas automatizadas
     ENABLE_PTP_SERVICE: true,          // PTPService para Promise to Pay
-    ENABLE_COLLECTION_WORKFLOW: true   // CollectionWorkflow con cadencia de contacto
+    ENABLE_COLLECTION_WORKFLOW: true,  // CollectionWorkflow con cadencia de contacto
+    // ========== FASE 3: AUTOMATIZACIÓN (2026-01-16) ==========
+    ENABLE_AUTOMATION_ENGINE: true,    // Motor de automatización y triggers
+    ENABLE_EMAIL_AUTOMATION: true,     // Emails automáticos (recordatorios, alertas)
+    ENABLE_REPORT_SCHEDULER: true      // Reportes diarios y semanales programados
   },
 
   // ========== LOCK ==========
@@ -268,7 +272,6 @@ const CONFIG = {
     VENCIDO_THRESHOLD_ERROR: 25        // % para mostrar error/critical
   },
 
-  // ========== COLLECTION WORKFLOW (Fase 2) ==========
   WORKFLOW: {
     PRIMER_CONTACTO_DIAS: 0,           // Días para primer contacto
     SEGUIMIENTO_1_DIAS: 3,             // Días para primer seguimiento
@@ -276,6 +279,17 @@ const CONFIG = {
     ESCALAMIENTO_SOFT_DIAS: 14,        // Días para escalamiento a supervisor
     ESCALAMIENTO_HARD_DIAS: 21,        // Días para escalamiento a gerencia
     CIERRE_FORZADO_DIAS: 30            // Días para evaluar incobrabilidad
+  },
+
+  // ========== AUTOMATION (Fase 3) ==========
+  AUTOMATION: {
+    ADMIN_EMAILS: [],                  // Emails de administradores para reportes
+    REPLY_TO_EMAIL: '',                // Email de respuesta (opcional)
+    DAILY_SUMMARY_HOUR: 7,             // Hora para resumen diario (7 AM)
+    WEEKLY_REPORT_DAY: 1,              // Día para reporte semanal (1=Lunes)
+    WEEKLY_REPORT_HOUR: 8,             // Hora para reporte semanal (8 AM)
+    MAX_EMAILS_PER_RUN: 50,            // Máximo emails por ejecución
+    PTP_REMINDER_DAYS_BEFORE: 3        // Días antes para recordatorio PTP
   },
 
   // ========== MAIL QUEUE (Phase 1) ==========
