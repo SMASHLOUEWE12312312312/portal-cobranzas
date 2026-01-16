@@ -283,7 +283,7 @@ const CONFIG = {
 
   // ========== AUTOMATION (Fase 3) ==========
   AUTOMATION: {
-    ADMIN_EMAILS: [],                  // Emails de administradores para reportes
+    ADMIN_EMAILS: ['csarapura@transperuana.com.pe'],  // Emails de administradores para reportes
     REPLY_TO_EMAIL: '',                // Email de respuesta (opcional)
     DAILY_SUMMARY_HOUR: 7,             // Hora para resumen diario (7 AM)
     WEEKLY_REPORT_DAY: 1,              // Día para reporte semanal (1=Lunes)
