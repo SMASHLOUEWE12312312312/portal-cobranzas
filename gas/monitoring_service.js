@@ -63,34 +63,49 @@ const MonitoringService = {
             ok: true,
             timestamp: now.toISOString(),
             available: {
-                pipeline: false,
-                queue: false,
-                audit: false
+                bitacora: false,
+                queue: false
             },
             eecc: { today: 0, week: 0, errors24h: 0 },
             mail: { sent24h: 0, queuedNow: 0, failed24h: 0 },
             system: { errors24h: 0, lastActivity: null }
         };
 
-        // === EECC Pipeline Stats ===
+        // === EECC Stats from Bitacora_Gestiones_EECC ===
+        // Count entries where ORIGEN_REGISTRO = 'EECC' (indicates EECC was sent)
         try {
-            const pipelineData = this._readSheetSafe('EECC_Pipeline');
-            if (pipelineData) {
-                result.available.pipeline = true;
-                const statusIdx = pipelineData.headers.indexOf('STATUS');
-                const dateIdx = pipelineData.headers.indexOf('CREATED_AT');
+            const bitacoraData = this._readSheetSafe('Bitacora_Gestiones_EECC');
+            if (bitacoraData) {
+                result.available.bitacora = true;
 
-                pipelineData.rows.forEach(row => {
-                    const createdAt = this._parseDate(row[dateIdx]);
-                    const status = String(row[statusIdx] || '').toUpperCase();
+                // Find column indices (Bitacora headers: ID_CICLO, ID_GESTION, ORIGEN_REGISTRO, FECHA_ENVIO_EECC, FECHA_REGISTRO, ...)
+                const origenIdx = this._findColumnIndex(bitacoraData.headers, ['ORIGEN_REGISTRO', 'ORIGEN']);
+                const fechaEnvioIdx = this._findColumnIndex(bitacoraData.headers, ['FECHA_ENVIO_EECC', 'FECHA_ENVIO']);
+                const fechaRegistroIdx = this._findColumnIndex(bitacoraData.headers, ['FECHA_REGISTRO', 'FECHA']);
 
-                    if (createdAt >= todayStart) result.eecc.today++;
-                    if (createdAt >= weekAgo) result.eecc.week++;
-                    if (status === 'ERROR' && createdAt >= yesterday) result.eecc.errors24h++;
+                let lastActivity = null;
+
+                bitacoraData.rows.forEach(row => {
+                    const origen = String(row[origenIdx] || '').toUpperCase();
+                    const fechaEnvio = this._parseDate(row[fechaEnvioIdx]);
+                    const fechaRegistro = this._parseDate(row[fechaRegistroIdx]);
+
+                    // EECC Stats: Count rows where ORIGEN_REGISTRO = 'EECC' and FECHA_ENVIO_EECC is set
+                    if (origen === 'EECC' && fechaEnvio) {
+                        if (fechaEnvio >= todayStart) result.eecc.today++;
+                        if (fechaEnvio >= weekAgo) result.eecc.week++;
+                    }
+
+                    // Track last activity from any record
+                    if (fechaRegistro && (!lastActivity || fechaRegistro > lastActivity)) {
+                        lastActivity = fechaRegistro;
+                    }
                 });
+
+                result.system.lastActivity = lastActivity ? lastActivity.toISOString() : null;
             }
         } catch (e) {
-            Logger.warn(context, 'EECC_Pipeline read failed (soft-fail)', e);
+            Logger.warn(context, 'Bitacora_Gestiones_EECC read failed (soft-fail)', e);
         }
 
         // === Mail Queue Stats ===
@@ -98,9 +113,9 @@ const MonitoringService = {
             const queueData = this._readSheetSafe('Mail_Queue');
             if (queueData) {
                 result.available.queue = true;
-                const statusIdx = queueData.headers.indexOf('STATUS');
-                const processedIdx = queueData.headers.indexOf('PROCESSED_AT');
-                const createdIdx = queueData.headers.indexOf('CREATED_AT');
+                const statusIdx = this._findColumnIndex(queueData.headers, ['STATUS', 'ESTADO']);
+                const processedIdx = this._findColumnIndex(queueData.headers, ['PROCESSED_AT', 'FECHA_PROCESADO']);
+                const createdIdx = this._findColumnIndex(queueData.headers, ['CREATED_AT', 'FECHA_CREADO', 'TIMESTAMP']);
 
                 queueData.rows.forEach(row => {
                     const status = String(row[statusIdx] || '').toUpperCase();
@@ -116,29 +131,24 @@ const MonitoringService = {
             Logger.warn(context, 'Mail_Queue read failed (soft-fail)', e);
         }
 
-        // === Audit Log Stats ===
-        try {
-            const auditData = this._readSheetSafe('Audit_Log');
-            if (auditData) {
-                result.available.audit = true;
-                const timestampIdx = auditData.headers.indexOf('TIMESTAMP');
-                const typeIdx = auditData.headers.indexOf('TYPE');
-
-                let lastTs = null;
-                auditData.rows.forEach(row => {
-                    const ts = this._parseDate(row[timestampIdx]);
-                    const type = String(row[typeIdx] || '').toUpperCase();
-
-                    if (type === 'ERROR' && ts >= yesterday) result.system.errors24h++;
-                    if (!lastTs || (ts && ts > lastTs)) lastTs = ts;
-                });
-                result.system.lastActivity = lastTs ? lastTs.toISOString() : null;
-            }
-        } catch (e) {
-            Logger.warn(context, 'Audit_Log read failed (soft-fail)', e);
-        }
-
         return result;
+    },
+
+    /**
+     * Find column index by trying multiple possible names
+     * @param {string[]} headers - Array of header names
+     * @param {string[]} possibleNames - Array of possible column names to match
+     * @return {number} Index of first match, or -1 if not found
+     * @private
+     */
+    _findColumnIndex(headers, possibleNames) {
+        for (const name of possibleNames) {
+            const idx = headers.findIndex(h =>
+                String(h).toUpperCase().trim() === name.toUpperCase()
+            );
+            if (idx >= 0) return idx;
+        }
+        return -1;
     },
 
     /**
