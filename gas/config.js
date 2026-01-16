@@ -231,7 +231,11 @@ const CONFIG = {
     // ========== FASE 3: AUTOMATIZACIÓN (2026-01-16) ==========
     ENABLE_AUTOMATION_ENGINE: true,    // Motor de automatización y triggers
     ENABLE_EMAIL_AUTOMATION: true,     // Emails automáticos (recordatorios, alertas)
-    ENABLE_REPORT_SCHEDULER: true      // Reportes diarios y semanales programados
+    ENABLE_REPORT_SCHEDULER: true,     // Reportes diarios y semanales programados
+    // ========== FASE 4: ANALYTICS & REPORTING (2026-01-16) ==========
+    ENABLE_ANALYTICS_SERVICE: true,    // Análisis de tendencias y performance
+    ENABLE_DASHBOARD_SERVICE: true,    // Dashboard ejecutivo con widgets
+    ENABLE_EXPORT_SERVICE: true        // Exportación a Excel, CSV, PDF
   },
 
   // ========== LOCK ==========
@@ -290,6 +294,22 @@ const CONFIG = {
     WEEKLY_REPORT_HOUR: 8,             // Hora para reporte semanal (8 AM)
     MAX_EMAILS_PER_RUN: 50,            // Máximo emails por ejecución
     PTP_REMINDER_DAYS_BEFORE: 3        // Días antes para recordatorio PTP
+  },
+
+  // ========== ANALYTICS (Fase 4) ==========
+  ANALYTICS: {
+    CACHE_TTL_SECONDS: 600,            // 10 minutos de cache para analytics
+    TREND_PERIODS_TO_SHOW: 12,         // Últimos 12 periodos en tendencias
+    PERFORMANCE_MIN_GESTIONES: 10,     // Mínimo gestiones para incluir en ranking
+    FORECAST_DAYS_DEFAULT: 30          // Días default para proyección
+  },
+
+  // ========== EXPORT (Fase 4) ==========
+  EXPORT: {
+    FOLDER_NAME: 'Portal_Cobranzas_Exports',
+    RETENTION_DAYS: 30,                // Días de retención de exports
+    MAX_ROWS_PDF: 100,                 // Máximo filas en PDF
+    MAX_ROWS_EXCEL: 50000              // Máximo filas en Excel
   },
 
   // ========== MAIL QUEUE (Phase 1) ==========
