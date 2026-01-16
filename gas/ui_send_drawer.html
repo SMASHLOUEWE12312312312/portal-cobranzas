@@ -1981,7 +1981,8 @@
                 // ========== PREVIEW ==========
                 function updatePreview() {
                     const container = document.getElementById('previewContainer');
-                    const selectedItems = STATE.items.filter(i => i.selected);
+                    // FIX: Usar STATE.selectedMap (fuente de verdad) en lugar de STATE.items.filter
+                    const selectedItems = Array.from(STATE.selectedMap.values());
 
                     if (selectedItems.length === 0) {
                         container.innerHTML = `
@@ -2013,7 +2014,8 @@
                 }
 
                 function scheduleJob() {
-                    const approved = STATE.items.filter(i => i.selected && i.approved !== false);
+                    // FIX: Usar STATE.selectedMap (fuente de verdad)
+                    const approved = Array.from(STATE.selectedMap.values()).filter(i => i.approved !== false);
                     if (approved.length === 0) {
                         alert('Aprueba al menos un ítem para programar');
                         return;
@@ -2091,7 +2093,8 @@
                 }
 
                 function sendNow() {
-                    const approved = STATE.items.filter(i => i.selected && i.approved !== false);
+                    // FIX: Usar STATE.selectedMap (fuente de verdad)
+                    const approved = Array.from(STATE.selectedMap.values()).filter(i => i.approved !== false);
 
                     if (approved.length === 0) {
                         alert('Aprueba al menos un ítem');
