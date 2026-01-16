@@ -9,7 +9,7 @@
 
 const MonitoringService = {
     CACHE_TTL_SECONDS: 60,
-    CACHE_KEY_STATS: 'MONITORING_DASH_STATS_V1',
+    CACHE_KEY_STATS: 'MONITORING_DASH_STATS_V2',
     CACHE_KEY_QUEUE_HEALTH: 'MONITORING_QUEUE_HEALTH_V1',
 
     /**
@@ -72,13 +72,12 @@ const MonitoringService = {
         };
 
         // === EECC Stats from Bitacora_Gestiones_EECC ===
-        // Count entries where ORIGEN_REGISTRO = 'EECC' (indicates EECC was sent)
         try {
             const bitacoraData = this._readSheetSafe('Bitacora_Gestiones_EECC');
             if (bitacoraData) {
                 result.available.bitacora = true;
 
-                // Find column indices (Bitacora headers: ID_CICLO, ID_GESTION, ORIGEN_REGISTRO, FECHA_ENVIO_EECC, FECHA_REGISTRO, ...)
+                // Find column indices
                 const origenIdx = this._findColumnIndex(bitacoraData.headers, ['ORIGEN_REGISTRO', 'ORIGEN']);
                 const fechaEnvioIdx = this._findColumnIndex(bitacoraData.headers, ['FECHA_ENVIO_EECC', 'FECHA_ENVIO']);
                 const fechaRegistroIdx = this._findColumnIndex(bitacoraData.headers, ['FECHA_REGISTRO', 'FECHA']);
@@ -90,8 +89,10 @@ const MonitoringService = {
                     const fechaEnvio = this._parseDate(row[fechaEnvioIdx]);
                     const fechaRegistro = this._parseDate(row[fechaRegistroIdx]);
 
-                    // EECC Stats: Count rows where ORIGEN_REGISTRO = 'EECC' and FECHA_ENVIO_EECC is set
-                    if (origen === 'EECC' && fechaEnvio) {
+                    // EECC Stats logic: Match 'AUTO_ENVIO', 'MANUAL_PORTAL', or literal 'EECC'
+                    const isEECC = origen.includes('AUTO') || origen.includes('MANUAL') || origen.includes('EECC');
+
+                    if (isEECC && fechaEnvio) {
                         if (fechaEnvio >= todayStart) result.eecc.today++;
                         if (fechaEnvio >= weekAgo) result.eecc.week++;
                     }
@@ -118,13 +119,17 @@ const MonitoringService = {
                 const createdIdx = this._findColumnIndex(queueData.headers, ['CREATED_AT', 'FECHA_CREADO', 'TIMESTAMP']);
 
                 queueData.rows.forEach(row => {
-                    const status = String(row[statusIdx] || '').toUpperCase();
+                    const status = String(row[statusIdx] || '').toUpperCase().trim();
                     const processedAt = this._parseDate(row[processedIdx]);
                     const createdAt = this._parseDate(row[createdIdx]);
 
-                    if (status === 'PENDING') result.mail.queuedNow++;
+                    // PENDING logic
+                    if (status.includes('PENDING') || status === 'RETRY') {
+                        result.mail.queuedNow++;
+                    }
+
                     if (status === 'SENT' && processedAt >= yesterday) result.mail.sent24h++;
-                    if (status === 'FAILED' && createdAt >= yesterday) result.mail.failed24h++;
+                    if ((status === 'FAILED' || status === 'ERROR') && createdAt >= yesterday) result.mail.failed24h++;
                 });
             }
         } catch (e) {
