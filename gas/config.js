@@ -223,7 +223,11 @@ const CONFIG = {
     ENABLE_ERROR_HANDLER: true,        // ErrorHandler centralizado con categorización
     ENABLE_CACHE_HELPER: true,         // CacheHelper con TTL diferenciado
     ENABLE_AUTO_BACKUP: true,          // BackupService con trigger diario
-    ENABLE_KPI_DASHBOARD: true         // KPIService con métricas de cobranzas
+    ENABLE_KPI_DASHBOARD: true,        // KPIService con métricas de cobranzas
+    // ========== FASE 2: CORE DE COBRANZAS (2026-01-16) ==========
+    ENABLE_ALERT_SERVICE: true,        // AlertService con alertas automatizadas
+    ENABLE_PTP_SERVICE: true,          // PTPService para Promise to Pay
+    ENABLE_COLLECTION_WORKFLOW: true   // CollectionWorkflow con cadencia de contacto
   },
 
   // ========== LOCK ==========
@@ -238,12 +242,14 @@ const CONFIG = {
     PROCESSING_STUCK_THRESHOLD: 3        // ERROR if this many items stuck in processing
   },
 
-  // ========== ALERTS (Phase 3, Optional) ==========
   ALERTS: {
     ENABLED: true,                       // Habilitado tras auditoría v4.1
     ADMIN_EMAILS: [],                    // List of admin emails for alerts
     DEBOUNCE_MINUTES: 60,                // Max 1 alert per hour per type
-    QUEUE_STUCK_ALERT_MINUTES: 30        // Trigger alert if stuck > this
+    QUEUE_STUCK_ALERT_MINUTES: 30,       // Trigger alert if stuck > this
+    SIN_GESTION_DIAS: 7,                 // Días sin gestión para generar alerta
+    AGING_CRITICO_THRESHOLD: 5,          // % de cartera en 90+ días para alerta crítica
+    AGING_ALTO_THRESHOLD: 10             // % de cartera en 61-90 días para alerta alta
   },
 
   // ========== BACKUP (Fase 1) ==========
@@ -255,12 +261,21 @@ const CONFIG = {
     SCHEDULE_HOUR: 2                   // Hora del trigger automático (2 AM Lima)
   },
 
-  // ========== KPI (Fase 1) ==========
   KPI: {
     CACHE_TTL_SECONDS: 300,            // 5 minutos de cache
     DSO_BENCHMARK: 35,                 // Días objetivo para DSO
     VENCIDO_THRESHOLD_WARN: 15,        // % para mostrar warning
     VENCIDO_THRESHOLD_ERROR: 25        // % para mostrar error/critical
+  },
+
+  // ========== COLLECTION WORKFLOW (Fase 2) ==========
+  WORKFLOW: {
+    PRIMER_CONTACTO_DIAS: 0,           // Días para primer contacto
+    SEGUIMIENTO_1_DIAS: 3,             // Días para primer seguimiento
+    SEGUIMIENTO_2_DIAS: 7,             // Días para segundo seguimiento
+    ESCALAMIENTO_SOFT_DIAS: 14,        // Días para escalamiento a supervisor
+    ESCALAMIENTO_HARD_DIAS: 21,        // Días para escalamiento a gerencia
+    CIERRE_FORZADO_DIAS: 30            // Días para evaluar incobrabilidad
   },
 
   // ========== MAIL QUEUE (Phase 1) ==========
