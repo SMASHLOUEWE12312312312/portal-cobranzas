@@ -235,7 +235,11 @@ const CONFIG = {
     // ========== FASE 4: ANALYTICS & REPORTING (2026-01-16) ==========
     ENABLE_ANALYTICS_SERVICE: true,    // Análisis de tendencias y performance
     ENABLE_DASHBOARD_SERVICE: true,    // Dashboard ejecutivo con widgets
-    ENABLE_EXPORT_SERVICE: true        // Exportación a Excel, CSV, PDF
+    ENABLE_EXPORT_SERVICE: true,       // Exportación a Excel, CSV, PDF
+    // ========== FASE 5: UX & OPTIMIZACIÓN (2026-01-16) ==========
+    ENABLE_UX_HELPERS: true,           // Helpers de formateo y validación
+    ENABLE_RESPONSE_FORMATTER: true,   // Formateo estandarizado de respuestas
+    ENABLE_PERFORMANCE_MONITOR: true   // Monitoreo de rendimiento
   },
 
   // ========== LOCK ==========
