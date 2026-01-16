@@ -1,10 +1,11 @@
 /**
- * @fileoverview ExportService - Fase 4 Analytics & Reporting
+ * @fileoverview ReportExportService - Fase 4 Analytics & Reporting
  * @version 1.0.0
  * FEATURE FLAG: FEATURES.ENABLE_EXPORT_SERVICE
+ * NOTA: Renombrado a ReportExportService para evitar conflicto con ExportService existente en export.js
  */
 
-const ExportService = {
+const ReportExportService = {
     EXPORTS_FOLDER: 'Portal_Cobranzas_Exports',
     FORMAT: { XLSX: 'XLSX', CSV: 'CSV', PDF: 'PDF' },
     REPORT_TYPE: { CARTERA_COMPLETA: 'CARTERA_COMPLETA', AGING_DETALLE: 'AGING_DETALLE', PTP_PENDIENTES: 'PTP_PENDIENTES', GESTIONES: 'GESTIONES', PERFORMANCE: 'PERFORMANCE', RESUMEN_EJECUTIVO: 'RESUMEN_EJECUTIVO' },
@@ -204,11 +205,12 @@ const ExportService = {
     _formatCurrency(amount) { return 'S/ ' + (amount || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 };
 
-function exportReport_API(options) { return ExportService.exportReport(options || {}); }
-function exportCarteraToExcel_API(filtros) { return ExportService.exportCarteraToExcel(filtros || {}); }
-function exportAgingToExcel_API() { return ExportService.exportAgingToExcel(); }
-function exportPTPsToExcel_API() { return ExportService.exportPTPsToExcel(); }
-function exportGestionesToCSV_API(filtros) { return ExportService.exportGestionesToCSV(filtros || {}); }
-function exportResumenPDF_API() { return ExportService.exportResumenEjecutivoPDF(); }
-function listExportedFiles_API(limit) { return ExportService.listExportedFiles(limit || 20); }
-function cleanupOldExports_API(dias) { return ExportService.cleanupOldExports(dias || 30); }
+function exportReport_API(options) { return ReportExportService.exportReport(options || {}); }
+function exportCarteraToExcel_API(filtros) { return ReportExportService.exportCarteraToExcel(filtros || {}); }
+function exportAgingToExcel_API() { return ReportExportService.exportAgingToExcel(); }
+function exportPTPsToExcel_API() { return ReportExportService.exportPTPsToExcel(); }
+function exportGestionesToCSV_API(filtros) { return ReportExportService.exportGestionesToCSV(filtros || {}); }
+function exportResumenPDF_API() { return ReportExportService.exportResumenEjecutivoPDF(); }
+function listExportedFiles_API(limit) { return ReportExportService.listExportedFiles(limit || 20); }
+function cleanupOldExports_API(dias) { return ReportExportService.cleanupOldExports(dias || 30); }
+

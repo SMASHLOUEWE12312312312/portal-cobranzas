@@ -73,25 +73,25 @@ function runFase4Tests() {
         results.failed++;
     }
 
-    // Test 4: ExportService
-    console.log('\n📋 Test 4: ExportService');
+    // Test 4: ReportExportService
+    console.log('\n📋 Test 4: ReportExportService');
     console.log('─────────────────────────────────────────');
     try {
-        if (typeof ExportService === 'undefined') throw new Error('ExportService no definido');
-        console.log('   ✅ ExportService definido');
+        if (typeof ReportExportService === 'undefined') throw new Error('ReportExportService no definido');
+        console.log('   ✅ ReportExportService definido');
         ['exportReport', 'exportCarteraToExcel', 'exportAgingToExcel', 'listExportedFiles'].forEach(m => {
-            if (typeof ExportService[m] !== 'function') throw new Error(`Método ${m} no encontrado`);
+            if (typeof ReportExportService[m] !== 'function') throw new Error(`Método ${m} no encontrado`);
         });
         console.log('   ✅ Métodos principales presentes');
-        if (!ExportService.FORMAT || !ExportService.FORMAT.XLSX) throw new Error('Formatos no definidos');
+        if (!ReportExportService.FORMAT || !ReportExportService.FORMAT.XLSX) throw new Error('Formatos no definidos');
         console.log('   ✅ Formatos de exportación definidos (XLSX, CSV, PDF)');
-        if (!ExportService.REPORT_TYPE || !ExportService.REPORT_TYPE.CARTERA_COMPLETA) throw new Error('Tipos no definidos');
+        if (!ReportExportService.REPORT_TYPE || !ReportExportService.REPORT_TYPE.CARTERA_COMPLETA) throw new Error('Tipos no definidos');
         console.log('   ✅ Tipos de reporte definidos');
-        results.tests.push({ name: 'ExportService', passed: true });
+        results.tests.push({ name: 'ReportExportService', passed: true });
         results.passed++;
     } catch (e) {
         console.log(`   ❌ Error: ${e.message}`);
-        results.tests.push({ name: 'ExportService', passed: false, error: e.message });
+        results.tests.push({ name: 'ReportExportService', passed: false, error: e.message });
         results.failed++;
     }
 
@@ -167,7 +167,7 @@ function checkFase4Status() {
     return {
         analyticsService: typeof AnalyticsService !== 'undefined',
         dashboardService: typeof DashboardService !== 'undefined',
-        exportService: typeof ExportService !== 'undefined',
+        reportExportService: typeof ReportExportService !== 'undefined',
         flags: {
             analyticsService: getConfig('FEATURES.ENABLE_ANALYTICS_SERVICE', false),
             dashboardService: getConfig('FEATURES.ENABLE_DASHBOARD_SERVICE', false),
