@@ -1831,23 +1831,25 @@
                 }
 
                 window.toggleApproval = function (id, isApproved) {
-                    const item = STATE.items.find(i => i.id === id);
+                    // FIX: Usar STATE.selectedMap
+                    const item = STATE.selectedMap.get(id);
                     if (item) item.approved = isApproved;
 
                     // Update counter
-                    const count = STATE.items.filter(i => i.selected && i.approved).length;
+                    const count = Array.from(STATE.selectedMap.values()).filter(i => i.approved).length;
                     const counterEl = document.getElementById('totalApproved');
                     if (counterEl) counterEl.textContent = count;
                 };
 
                 window.aprobarTodos = function () {
-                    // Approve all selected items in STATE
-                    STATE.items.forEach(item => {
-                        if (item.selected) item.approved = true;
+                    // FIX: Usar STATE.selectedMap en lugar de STATE.items
+                    const selectedItems = Array.from(STATE.selectedMap.values());
+                    selectedItems.forEach(item => {
+                        item.approved = true;
                     });
 
                     // Update checkboxes AND status badges
-                    STATE.items.filter(i => i.selected).forEach(item => {
+                    selectedItems.forEach(item => {
                         // Update checkbox
                         const checkbox = document.querySelector(`#status-${item.id}`)?.closest('.preview-item')?.querySelector('input[type="checkbox"]');
                         if (checkbox) checkbox.checked = true;
@@ -1862,7 +1864,7 @@
                     });
 
                     // Update counter
-                    const count = STATE.items.filter(i => i.selected && i.approved).length;
+                    const count = selectedItems.filter(i => i.approved).length;
                     const counterEl = document.getElementById('totalApproved');
                     if (counterEl) counterEl.textContent = count;
 
@@ -1870,7 +1872,8 @@
                 };
 
                 function handleSendNowAction() {
-                    const toSend = STATE.items.filter(i => i.selected && i.approved !== false);
+                    // FIX: Usar STATE.selectedMap
+                    const toSend = Array.from(STATE.selectedMap.values()).filter(i => i.approved !== false);
                     if (toSend.length === 0) {
                         alert('No hay destinatarios aprobados para enviar.');
                         return;
