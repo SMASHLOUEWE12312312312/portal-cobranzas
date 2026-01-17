@@ -247,6 +247,13 @@ const CONFIG = {
     SEND_EMAIL_TIMEOUT_MS: 30000         // 30 second lock timeout for sendEmailsNow
   },
 
+  // ========== SECURITY (P0-2) ==========
+  SECURITY: {
+    // P0-2: Enforce BFF authentication - reject requests if secret is missing
+    // Set to false ONLY for local development without BFF
+    ENFORCE_BFF_AUTH: true
+  },
+
   // ========== MONITORING (Phase 3) ==========
   MONITORING: {
     QUEUE_STALE_MINUTES: 15,             // WARN if oldest pending > this
@@ -621,9 +628,12 @@ function computeHmac_(algorithm, key, data) {
 }
 
 /**
- * Valida request BFF con HMAC y anti-replay (P0-1)
+ * Valida request BFF con HMAC y anti-replay
  * GAS no expone headers en doPost, por lo que usamos firma en body
- * 
+ *
+ * P0-2 SECURITY: If SECURITY.ENFORCE_BFF_AUTH is true (default), requests
+ * without a configured BFF_SHARED_SECRET will be REJECTED.
+ *
  * @param {Object} e - Event object from doPost
  * @return {Object} { ok: boolean, data?: object, error?: string }
  */
@@ -641,8 +651,16 @@ function validateBffRequest_(e) {
     }
 
     const secret = getBffSharedSecret_();
+    const enforceAuth = getConfig('SECURITY.ENFORCE_BFF_AUTH', true);
+
     if (!secret) {
-      // BFF auth disabled - allow passthrough (for backwards compat)
+      if (enforceAuth) {
+        // P0-2 SECURITY: Reject if enforcement enabled and secret missing
+        console.error('BFF_SHARED_SECRET not configured but ENFORCE_BFF_AUTH is true - REJECTING REQUEST');
+        return { ok: false, error: 'BFF_AUTH_NOT_CONFIGURED' };
+      }
+      // Enforcement disabled (dev mode) - allow passthrough with warning
+      console.warn('BFF auth disabled (ENFORCE_BFF_AUTH=false) - allowing passthrough');
       const data = JSON.parse(payload);
       return { ok: true, data };
     }
