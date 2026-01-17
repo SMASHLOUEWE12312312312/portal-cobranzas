@@ -283,7 +283,8 @@ const ErrorHandler = {
 
     _notifyAdmins(errorRecord) {
         try {
-            const admins = getConfig('ALERTS.ADMIN_EMAILS', []);
+            // P1-2: Use getAlertAdminEmails() for Script Properties support
+            const admins = getAlertAdminEmails();
             if (admins.length === 0) return;
 
             const subject = `[PORTAL ALERTA] Error ${errorRecord.severity}: ${errorRecord.context}`;

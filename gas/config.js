@@ -265,7 +265,9 @@ const CONFIG = {
 
   ALERTS: {
     ENABLED: true,                       // Habilitado tras auditoría v4.1
-    ADMIN_EMAILS: [],                    // List of admin emails for alerts
+    // P1-2: ADMIN_EMAILS now loaded from Script Properties via getAlertAdminEmails()
+    // Set via: PropertiesService.getScriptProperties().setProperty('ALERTS_ADMIN_EMAILS', JSON.stringify(['email@example.com']))
+    ADMIN_EMAILS: [],                    // Fallback if Script Property not set
     DEBOUNCE_MINUTES: 60,                // Max 1 alert per hour per type
     QUEUE_STUCK_ALERT_MINUTES: 30,       // Trigger alert if stuck > this
     SIN_GESTION_DIAS: 7,                 // Días sin gestión para generar alerta
@@ -597,6 +599,39 @@ function getApiSecretOld() {
  */
 function getBootstrapUsers() {
   return getSecureConfig('BOOTSTRAP_USERS', []);
+}
+
+// ========== ADMIN EMAILS (P1-2) ==========
+
+/**
+ * Obtiene lista de emails admin para alertas
+ * Lee de Script Properties (ALERTS_ADMIN_EMAILS) con fallback a CONFIG
+ *
+ * Para configurar:
+ *   PropertiesService.getScriptProperties().setProperty('ALERTS_ADMIN_EMAILS', JSON.stringify(['email@example.com']))
+ *
+ * @return {Array<string>} Lista de emails admin
+ */
+function getAlertAdminEmails() {
+  // Try Script Properties first (secure, not in code)
+  const fromProps = getSecureConfig('ALERTS_ADMIN_EMAILS', null);
+  if (fromProps && Array.isArray(fromProps) && fromProps.length > 0) {
+    return fromProps;
+  }
+
+  // Fallback to CONFIG
+  const fromConfig = getConfig('ALERTS.ADMIN_EMAILS', []);
+  if (fromConfig && fromConfig.length > 0) {
+    return fromConfig;
+  }
+
+  // P1-2: Log warning if no admin emails configured (only once per session)
+  if (!getAlertAdminEmails._warned) {
+    console.warn('P1-2 WARNING: No ALERTS_ADMIN_EMAILS configured - alerts will not be sent');
+    getAlertAdminEmails._warned = true;
+  }
+
+  return [];
 }
 
 // ========== BFF SERVER-TO-SERVER AUTH (P0-1, P0-2) ==========

@@ -262,7 +262,8 @@ const BackupService = {
     },
 
     _notifySuccess(result) {
-        const admins = getConfig('ALERTS.ADMIN_EMAILS', []);
+        // P1-2: Use getAlertAdminEmails() for Script Properties support
+        const admins = getAlertAdminEmails();
         if (admins.length === 0) return;
 
         const subject = '[PORTAL] Backup diario completado ✅';
@@ -287,7 +288,8 @@ ${result.backups.map(b => `- ${b.sheet}: ${b.rows} filas`).join('\n')}
     },
 
     _notifyErrors(result) {
-        const admins = getConfig('ALERTS.ADMIN_EMAILS', []);
+        // P1-2: Use getAlertAdminEmails() for Script Properties support
+        const admins = getAlertAdminEmails();
         if (admins.length === 0) return;
 
         const subject = '[PORTAL ALERTA] Errores en backup diario ⚠️';
