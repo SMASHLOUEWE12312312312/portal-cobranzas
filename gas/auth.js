@@ -523,8 +523,11 @@ const AuthService = {
 
       return true;
     } catch (error) {
-      Logger.error('AuthService._checkRateLimit', 'Check failed', error);
-      return true; // Fail open para evitar bloqueos permanentes
+      // P1-3 SECURITY: Fail-closed on rate limit errors
+      // If we can't check rate limits, deny login for security
+      // This prevents brute-force if PropertiesService fails
+      Logger.error('AuthService._checkRateLimit', 'Check failed - DENYING LOGIN (fail-closed)', error);
+      return false;
     }
   },
 
