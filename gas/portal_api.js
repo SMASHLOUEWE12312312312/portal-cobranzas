@@ -496,15 +496,26 @@ function getFeatureFlag(flagName) {
 
 /**
  * Phase 6: Check if session user is admin
+ *
+ * P1-1 SECURITY: Uses explicit AUTH.ADMIN_USERS list instead of
+ * username-based inference. This prevents "admin_malicious" from
+ * gaining admin access.
+ *
  * @param {string} token - Session token
  * @return {boolean} True if admin
  */
 function isAdminSession_(token) {
   try {
-    const session = AuthService.validateSession(token);
-    const username = session?.user || '';
-    // Simple admin check: username starts with "admin" or contains "@admin"
-    return username.toLowerCase().startsWith('admin') || username.includes('admin');
+    const username = AuthService.validateSession(token);
+    if (!username) return false;
+
+    // P1-1: Check against explicit admin list (case-insensitive)
+    const adminUsers = getConfig('AUTH.ADMIN_USERS', []);
+    const normalizedUsername = username.toLowerCase().trim();
+
+    return adminUsers.some(admin =>
+      admin.toLowerCase().trim() === normalizedUsername
+    );
   } catch (error) {
     return false;
   }

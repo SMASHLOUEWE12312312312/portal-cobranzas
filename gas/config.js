@@ -178,6 +178,8 @@ const CONFIG = {
     SESSION_TTL_SEC_CLAMP: 21600,           // Phase 1: defensive clamp for cache.put (6h)
     PASSWORD_ITERATIONS: 100,
     BOOTSTRAP_USERS: [],  // Loaded from PropertiesService via getBootstrapUsers()
+    // P1-1 SECURITY: Explicit list of admin users (no more username-based inference)
+    ADMIN_USERS: ['admin', 'admin1', 'admin2', 'admin3', 'admin4'],
     WHITELIST_EMAILS: [
       'cobranzas1@transperuana.com',
       'cobranzas2@transperuana.com',
