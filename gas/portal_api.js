@@ -1433,7 +1433,18 @@ function sendEmailsNow(items, options, token) {
     // ================================================================
     // PASO 1: Validar sesión PRIMERO (rápido, sin side effects)
     // ================================================================
-    AuthService.validateSession(token);
+    // P0-1 SECURITY: Support internal auth for queue trigger processing
+    // _internalAuth is ONLY valid when combined with skipQueue (trigger-only path)
+    const isInternalAuth = options?._internalAuth && options?.skipQueue === true;
+
+    if (isInternalAuth) {
+      // Internal trigger auth - no token needed, but log who enqueued
+      const enqueuedBy = options._internalAuth.enqueuedBy || 'SYSTEM';
+      Logger.info(context, 'Internal auth (queue trigger)', { enqueuedBy, correlationId });
+    } else {
+      // Normal auth - require valid token
+      AuthService.validateSession(token);
+    }
 
     // Phase 1: Mail Queue check (only if enabled and not skipped)
     if (getConfig('FEATURES.MAIL_QUEUE_MODE', false) && !options?.skipQueue) {

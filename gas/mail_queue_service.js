@@ -1,9 +1,13 @@
 /**
  * @fileoverview Persistent Mail Queue Service
- * @version 1.0.0 - Phase 1
- * 
+ * @version 1.1.0 - Phase 1 + P0-1 Security Fix
+ *
  * Manages reliable email delivery via persistent queue + trigger.
  * Feature-flagged: Only active if FEATURES.MAIL_QUEUE_MODE = true.
+ *
+ * SECURITY (P0-1): Session tokens are NO LONGER stored in the queue.
+ * Instead, we store only the username (_enqueuedBy) for audit trail.
+ * The trigger uses internal auth to process items.
  */
 
 const MailQueueService = {
@@ -35,10 +39,10 @@ const MailQueueService = {
 
     /**
      * Enqueue items for processing
-     * 
+     *
      * @param {Array} items - List of items { aseguradoId }
      * @param {Object} options - Email options
-     * @param {string} token - Session token
+     * @param {string} token - Session token (validated here, NOT stored)
      * @param {string} correlationId - Correlation ID
      * @return {Object} { ok, count, queueIds }
      */
@@ -46,6 +50,16 @@ const MailQueueService = {
         const context = 'MailQueueService.enqueue';
 
         try {
+            // P0-1 SECURITY: Validate token and extract username NOW, don't store token
+            let enqueuedBy = 'SYSTEM';
+            try {
+                enqueuedBy = AuthService.validateSession(token) || 'SYSTEM';
+            } catch (authErr) {
+                // If token validation fails, reject the enqueue
+                Logger.warn(context, 'Token validation failed at enqueue', { error: authErr.message });
+                return { ok: false, error: 'Sesión inválida para encolar' };
+            }
+
             const sheet = this._ensureSheet();
             if (!sheet) return { ok: false, error: 'Sheet not available' };
 
@@ -55,11 +69,16 @@ const MailQueueService = {
                 const queueId = Utilities.getUuid();
                 queueIds.push(queueId);
 
+                // P0-1 SECURITY: Store _enqueuedBy (username) instead of token
+                const safeOptions = { ...options, _enqueuedBy: enqueuedBy };
+                // Explicitly ensure no token is stored
+                delete safeOptions.token;
+
                 return [
                     queueId,
                     this.STATUS.PENDING,
                     item.aseguradoId,
-                    JSON.stringify({ ...options, token }), // Persist token safely? Ideally regenerate on trigger run, but for now passing through.
+                    JSON.stringify(safeOptions),
                     now,
                     '', // PROCESSED_AT
                     '', // ERROR
@@ -73,7 +92,7 @@ const MailQueueService = {
                 sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
             }
 
-            Logger.info(context, 'Items enqueued', { count: rows.length, correlationId });
+            Logger.info(context, 'Items enqueued', { count: rows.length, correlationId, enqueuedBy });
             return { ok: true, count: rows.length, queueIds };
 
         } catch (error) {
@@ -245,6 +264,9 @@ const MailQueueService = {
 /**
  * Trigger function for processing mail queue
  * Runs periodically if installed
+ *
+ * P0-1 SECURITY: Uses _internalAuth instead of stored tokens.
+ * The trigger runs with script authority and doesn't need user tokens.
  */
 function jobProcesarCorreos_() {
     const context = 'jobProcesarCorreos_';
@@ -278,37 +300,54 @@ function jobProcesarCorreos_() {
 
         // Process each item
         pendingItems.forEach(item => {
-            // NOTE: token is persisted in options. 
-            // In a real production system we'd use a service account key or regenerate token, 
-            // but here we reuse the stored token (assuming TTL valid) or handle error.
-            const { token } = item.options;
+            // P0-1 SECURITY: Extract _enqueuedBy instead of token
+            // Support both new format (_enqueuedBy) and legacy format (token) for backward compat
+            const enqueuedBy = item.options._enqueuedBy || 'LEGACY_QUEUE_ITEM';
+            const hasLegacyToken = !!item.options.token;
 
-            // Call core logic (reusing portal_api's sendEmailsNow but for single item)
-            // Since sendEmailsNow is batch, we wrap single item in array
+            if (hasLegacyToken) {
+                Logger.warn(context, 'Legacy item with token found, processing with backward compat', {
+                    queueId: item.queueId
+                });
+            }
+
             try {
-                // IMPORTANT: Temporarily disable MAIL_QUEUE_MODE to avoid recursive queuing
-                // But sendEmailsNow reads config directly... 
-                // We need a lower-level function or pass a flag to bypass queue.
-                // For Phase 1, we can't easily refactor sendEmailsNow to split logic without risk.
-                // HACK: Pass a special option `skipQueue: true` to sendEmailsNow
+                let result;
 
-                const result = sendEmailsNow(
-                    [{ aseguradoId: item.aseguradoId }],
-                    { ...item.options, skipQueue: true }, // BYPASS QUEUE
-                    token
-                );
+                if (hasLegacyToken) {
+                    // BACKWARD COMPAT: Process legacy items that still have tokens
+                    // These will be phased out as queue clears
+                    result = sendEmailsNow(
+                        [{ aseguradoId: item.aseguradoId }],
+                        { ...item.options, skipQueue: true },
+                        item.options.token
+                    );
+                } else {
+                    // P0-1 SECURITY: Use internal auth (no token needed)
+                    // sendEmailsNow will recognize _internalAuth + skipQueue combo
+                    result = sendEmailsNow(
+                        [{ aseguradoId: item.aseguradoId }],
+                        {
+                            ...item.options,
+                            skipQueue: true,
+                            _internalAuth: { enqueuedBy: enqueuedBy }
+                        },
+                        null // No token - using internal auth
+                    );
+                }
 
                 if (result.ok && result.sent > 0) {
                     MailQueueService.updateStatus(item.rowIndex, MailQueueService.STATUS.SENT, {
                         messageId: result.details[0]?.messageId
                     });
 
-                    // AUDIT LOG (Phase 4 requirement)
+                    // AUDIT LOG (P0-1: use enqueuedBy, not token)
                     try {
-                        AuditService.log('ENVIO_EECC', 'Exito', item.aseguradoId,
-                            `Correo enviado (QueueID: ${item.queueId.substring(0, 8)})`,
-                            token
-                        );
+                        AuditService.log('ENVIO_EECC', item.aseguradoId, {
+                            status: 'Exito',
+                            queueId: item.queueId.substring(0, 8),
+                            enqueuedBy: enqueuedBy
+                        }, item.correlationId);
                     } catch (e) { /* ignore audit errors */ }
 
                 } else {
@@ -318,12 +357,14 @@ function jobProcesarCorreos_() {
             } catch (error) {
                 Logger.error(context, 'Item failed', error, { queueId: item.queueId });
 
-                // AUDIT LOG ERROR
+                // AUDIT LOG ERROR (P0-1: use enqueuedBy, not token)
                 try {
-                    AuditService.log('ENVIO_EECC', 'Error', item.aseguradoId,
-                        `Fallo envío: ${error.message}`,
-                        token
-                    );
+                    AuditService.log('ENVIO_EECC', item.aseguradoId, {
+                        status: 'Error',
+                        error: error.message,
+                        queueId: item.queueId.substring(0, 8),
+                        enqueuedBy: enqueuedBy
+                    }, item.correlationId);
                 } catch (e) { /* ignore */ }
 
                 if (item.retryCount >= getConfig('MAIL_QUEUE.MAX_RETRIES', 3)) {
