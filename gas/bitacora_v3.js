@@ -569,7 +569,7 @@ var BitacoraService = BitacoraService || {
         }
 
         // Leer TODAS las filas en batch
-        const data = sheet.getRange(2, 1, lastRow - 1, 14).getValues();
+        const data = sheet.getRange(2, 1, lastRow - 1, 16).getValues();
 
         // Mapear a objetos
         gestiones = data.map(fila => this._filaToObject(fila));
