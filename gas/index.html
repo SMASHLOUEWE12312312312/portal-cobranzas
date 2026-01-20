@@ -8471,7 +8471,7 @@
                         badge.style.color = 'var(--tp-error)';
                     }
                 })
-                .doPost({ action: 'conciliacion.getStatus' }, TOKEN);
+                .conciliacionGetStatus();
         }
 
         /**
@@ -8559,12 +8559,7 @@
                         showConciliacionStatus('bdSisnetStatus', error.message, 'error');
                         log('❌ Error BD Sisnet: ' + error.message, 'error');
                     })
-                    .doPost({
-                        action: 'conciliacion.uploadBDSisnet',
-                        base64Data: base64,
-                        fileName: file.name,
-                        mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                    }, TOKEN);
+                    .conciliacionUploadBDSisnet(base64, file.name, file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             };
 
             reader.onerror = () => {
@@ -8673,13 +8668,7 @@
                         showConciliacionStatus('conciliacionStatus', error.message, 'error');
                         log('❌ Error EECC: ' + error.message, 'error');
                     })
-                    .doPost({
-                        action: 'conciliacion.process',
-                        insurerKey: insurerKey,
-                        base64Data: base64,
-                        fileName: file.name,
-                        mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                    }, TOKEN);
+                    .conciliacionProcess(insurerKey, base64, file.name, file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             };
 
             reader.onerror = () => {

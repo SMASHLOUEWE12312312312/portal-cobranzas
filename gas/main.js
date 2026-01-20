@@ -1476,3 +1476,67 @@ function getBitacoraHtml() {
     return '<div style="padding: 2rem; text-align: center; color: #999;">Error al cargar bitácora: ' + e.message + '</div>';
   }
 }
+
+// ========== CONCILIACIÓN COBRANZAS API ==========
+// Functions callable via google.script.run from the portal frontend
+
+/**
+ * Upload BD Sisnet file to BD_Cruce sheet
+ * @param {string} base64Data - File content in base64
+ * @param {string} fileName - File name
+ * @param {string} mimeType - File MIME type
+ * @returns {Object} { ok: boolean, rowsLoaded?: number, error?: string }
+ */
+function conciliacionUploadBDSisnet(base64Data, fileName, mimeType) {
+  Logger.log('conciliacionUploadBDSisnet called: ' + fileName);
+  try {
+    return ConciliacionIO.subirBDSisnet(base64Data, fileName, mimeType);
+  } catch (error) {
+    Logger.log('conciliacionUploadBDSisnet ERROR: ' + error.message);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
+ * Process insurer EECC file
+ * @param {string} insurerKey - Insurer key (e.g., 'la_positiva')
+ * @param {string} base64Data - File content in base64
+ * @param {string} fileName - File name
+ * @param {string} mimeType - File MIME type
+ * @returns {Object} { ok: boolean, stats?: Object, cruce?: Object, exports?: Object, error?: string }
+ */
+function conciliacionProcess(insurerKey, base64Data, fileName, mimeType) {
+  Logger.log('conciliacionProcess called: ' + insurerKey + ' / ' + fileName);
+  try {
+    return ConciliacionService.procesarAseguradora(insurerKey, base64Data, fileName, mimeType);
+  } catch (error) {
+    Logger.log('conciliacionProcess ERROR: ' + error.message);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
+ * Get list of enabled insurers
+ * @returns {Object} { ok: boolean, insurers?: Array, error?: string }
+ */
+function conciliacionGetInsurers() {
+  try {
+    return ConciliacionService.getInsurers();
+  } catch (error) {
+    Logger.log('conciliacionGetInsurers ERROR: ' + error.message);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
+ * Get BD_Cruce status (loaded, row count, etc.)
+ * @returns {Object} { ok: boolean, loaded?: boolean, rows?: number, error?: string }
+ */
+function conciliacionGetStatus() {
+  try {
+    return ConciliacionService.getBDCruceStatus();
+  } catch (error) {
+    Logger.log('conciliacionGetStatus ERROR: ' + error.message);
+    return { ok: false, error: error.message };
+  }
+}
