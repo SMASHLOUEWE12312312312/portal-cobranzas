@@ -679,6 +679,14 @@
                                             style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
                                             COMPROM. <span id="sortIndicatorFechaCompromiso"></span>
                                         </th>
+                                        <th onclick="ordenarBitacora('snapshotVencidoPEN')"
+                                            style="padding: 8px 6px; text-align: right; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            VENC. PEN <span id="sortIndicatorSnapshotVencidoPEN"></span>
+                                        </th>
+                                        <th onclick="ordenarBitacora('snapshotVencidoUSD')"
+                                            style="padding: 8px 6px; text-align: right; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            VENC. USD <span id="sortIndicatorSnapshotVencidoUSD"></span>
+                                        </th>
                                         <th style="padding: 8px 6px; text-align: left; font-size: 0.7rem;">PRÓX. ACCIÓN
                                         </th>
                                         <th style="padding: 8px 6px; text-align: center; font-size: 0.7rem;">⚡</th>
@@ -686,7 +694,7 @@
                                 </thead>
                                 <tbody id="bitacoraTableBodyEmb">
                                     <tr>
-                                        <td colspan="9"
+                                        <td colspan="11"
                                             style="text-align: center; padding: 3rem; color: var(--tp-text-secondary);">
                                             <div class="spinner"
                                                 style="width: 40px; height: 40px; border: 3px solid var(--tp-border-light); border-top-color: var(--tp-primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;">
@@ -5015,6 +5023,8 @@
         let BITACORA_PAGE = 1;
         let BITACORA_HAS_MORE = false;
         let BITACORA_LOADING = false;
+        let BITACORA_SORT_FIELD = 'diasDesdeRegistro';
+        let BITACORA_SORT_ORDER = 'desc';
 
         // ========== PROMISE WRAPPER PARA google.script.run (v4.1+) ==========
         function runGas(fnName, ...args) {
@@ -5052,7 +5062,7 @@
 
             const tbody = document.getElementById('bitacoraTableBodyEmb');
             if (tbody && BITACORA_PAGE === 1) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;"><div class="loader-spinner"></div> Cargando...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;"><div class="loader-spinner"></div> Cargando...</td></tr>';
             }
 
             try {
@@ -5121,7 +5131,7 @@
         function showBitacoraEmbError(msg) {
             const tbody = document.getElementById('bitacoraTableBodyEmb');
             if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:#D32F2F;">❌ ' + msg + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:#D32F2F;">❌ ' + msg + '</td></tr>';
             }
         }
 
@@ -5131,7 +5141,7 @@
             if (!tbody) return;
 
             if (!BITACORA_FILTERED || BITACORA_FILTERED.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--tp-text-secondary);">No hay gestiones registradas</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--tp-text-secondary);">No hay gestiones registradas</td></tr>';
                 if (countEl) countEl.textContent = '0';
                 return;
             }
@@ -5167,6 +5177,13 @@
                     '<span style="background:' + diasBg + ';color:' + diasText + ';padding:3px 8px;border-radius:10px;font-size:0.7rem;font-weight:700;">' + dias + '</span>' +
                     '<span style="font-size:0.6rem;color:#9CA3AF;">' + diasLabel + '</span></div></td>';
                 html += '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">' + (g.fechaCompromiso ? formatDate(g.fechaCompromiso) : '<span style="color:#D1D5DB;">—</span>') + '</td>';
+
+                // NUEVO: Columnas de Vencido PEN y USD con formato y color
+                const vencidoPEN = g.snapshotVencidoPEN || 0;
+                const vencidoUSD = g.snapshotVencidoUSD || 0;
+                html += '<td style="padding:8px 6px;font-size:0.75rem;text-align:right;font-weight:500;color:' + (vencidoPEN > 0 ? '#D32F2F' : '#9CA3AF') + ';">' + (vencidoPEN > 0 ? 'S/ ' + formatNumber(vencidoPEN) : '—') + '</td>';
+                html += '<td style="padding:8px 6px;font-size:0.75rem;text-align:right;font-weight:500;color:' + (vencidoUSD > 0 ? '#1565C0' : '#9CA3AF') + ';">' + (vencidoUSD > 0 ? '$ ' + formatNumber(vencidoUSD) : '—') + '</td>';
+
                 html += '<td style="padding:8px 6px;font-size:0.75rem;color:#4B5563;max-width:140px;" title="' + (g.proximaAccion || '') + '">' + proximaAccion + '</td>';
                 html += '<td style="padding:6px;text-align:center;white-space:nowrap;">';
                 html += '<button onclick="verTimelineCiclo(null, \'' + (g.asegurado || '').replace(/'/g, "\\'") + '\')" style="padding:4px 6px;font-size:0.65rem;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;cursor:pointer;margin-right:3px;" title="Ver timeline">📋</button>';
@@ -5197,6 +5214,75 @@
                 const date = new Date(d);
                 return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
             } catch (e) { return '-'; }
+        }
+
+        function formatNumber(num) {
+            if (!num && num !== 0) return '-';
+            return num.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function ordenarBitacora(campo) {
+            // Si es el mismo campo, invertir orden
+            if (BITACORA_SORT_FIELD === campo) {
+                BITACORA_SORT_ORDER = BITACORA_SORT_ORDER === 'asc' ? 'desc' : 'asc';
+            } else {
+                BITACORA_SORT_FIELD = campo;
+                BITACORA_SORT_ORDER = 'desc'; // Por defecto descendente
+            }
+
+            // Limpiar indicadores previos
+            document.querySelectorAll('[id^="sortIndicator"]').forEach(el => el.textContent = '');
+
+            // Mostrar indicador actual
+            const indicator = document.getElementById('sortIndicator' + campo.charAt(0).toUpperCase() + campo.slice(1));
+            if (indicator) {
+                indicator.textContent = BITACORA_SORT_ORDER === 'asc' ? ' ▲' : ' ▼';
+            }
+
+            // Ordenar datos
+            BITACORA_FILTERED.sort((a, b) => {
+                let valA, valB;
+
+                switch (campo) {
+                    case 'asegurado':
+                    case 'estadoGestion':
+                    case 'responsable':
+                    case 'proximaAccion':
+                        valA = (a[campo] || '').toLowerCase();
+                        valB = (b[campo] || '').toLowerCase();
+                        break;
+                    case 'fechaEnvioEECC':
+                    case 'fechaGestion':
+                    case 'fechaRegistro':
+                    case 'fechaCompromiso':
+                        valA = a[campo] ? new Date(a[campo]).getTime() : 0;
+                        valB = b[campo] ? new Date(b[campo]).getTime() : 0;
+                        break;
+                    case 'diasDesde':
+                    case 'diasDesdeRegistro':
+                        valA = a.diasDesdeRegistro || 0;
+                        valB = b.diasDesdeRegistro || 0;
+                        break;
+                    case 'snapshotVencidoPEN':
+                        valA = a.snapshotVencidoPEN || 0;
+                        valB = b.snapshotVencidoPEN || 0;
+                        break;
+                    case 'snapshotVencidoUSD':
+                        valA = a.snapshotVencidoUSD || 0;
+                        valB = b.snapshotVencidoUSD || 0;
+                        break;
+                    default:
+                        valA = a[campo] || '';
+                        valB = b[campo] || '';
+                }
+
+                if (valA < valB) return BITACORA_SORT_ORDER === 'asc' ? -1 : 1;
+                if (valA > valB) return BITACORA_SORT_ORDER === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // Re-renderizar tabla
+            renderBitacoraTableEmb();
         }
 
         function populateFiltrosEmb() {
@@ -7248,28 +7334,41 @@
                 return;
             }
 
-            // Definir columnas
-            const headers = ['Asegurado', 'Estado', 'Tipo', 'Canal', 'Responsable', 'Fecha Gestión', 'Días', 'Fecha Compromiso', 'Próxima Acción', 'Observaciones'];
+            // Definir columnas (corregidas + snapshots)
+            const headers = ['Asegurado', 'Estado', 'Tipo', 'Canal', 'Responsable', 'Fecha Registro', 'Días Desde Registro', 'Fecha Compromiso', 'Próxima Acción', 'Vencido PEN', 'Vencido USD', 'Observaciones'];
 
-            // Construir filas
+            // Helper para escapar campos CSV
+            function escapeCsvField(value) {
+                if (value == null) return '';
+                const str = String(value);
+                // Si contiene comas, comillas o saltos de línea, envolver en comillas y escapar comillas internas
+                if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+                    return '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            }
+
+            // Construir filas con campos corregidos
             const rows = BITACORA_FILTERED.map(item => [
-                item.asegurado || '',
-                item.estadoGestion || '',
-                item.tipoGestion || '',
-                item.canalContacto || '',
-                item.responsable || '',
-                item.fechaGestion || '',
-                item.diasPendientes || '',
-                item.fechaCompromiso || '',
-                item.proximaAccion || '',
-                (item.observaciones || '').replace(/"/g, '""') // Escapar comillas
+                escapeCsvField(item.asegurado),
+                escapeCsvField(item.estadoGestion),
+                escapeCsvField(item.tipoGestion),
+                escapeCsvField(item.canalContacto),
+                escapeCsvField(item.responsable),
+                escapeCsvField(item.fechaRegistro),         // Corregido: era fechaGestion
+                escapeCsvField(item.diasDesdeRegistro),     // Corregido: era diasPendientes
+                escapeCsvField(item.fechaCompromiso),
+                escapeCsvField(item.proximaAccion),
+                escapeCsvField(item.snapshotVencidoPEN),    // NUEVO
+                escapeCsvField(item.snapshotVencidoUSD),    // NUEVO
+                escapeCsvField(item.observaciones)
             ]);
 
             // Construir CSV con BOM para Excel
             const BOM = '\uFEFF';
             let csv = BOM + headers.join(',') + '\n';
             rows.forEach(row => {
-                csv += row.map(cell => `"${cell}"`).join(',') + '\n';
+                csv += row.join(',') + '\n';
             });
 
             // Crear blob y descargar
