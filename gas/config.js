@@ -11,6 +11,31 @@ const CONFIG = {
   // URL: https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit
   SPREADSHEET_ID: '1dmkODoA9BD_5FLBruXnxu2vOXnXrEYCSHl6eyqS22Ok', // ✅ ID VERIFICADO por test - Correcto
 
+  // ========== CONCILIACIÓN COBRANZAS ==========
+  // Módulo para cruce de estados de cuenta vs BD Sisnet
+  CONCILIACION: {
+    // ID del spreadsheet SEPARADO para conciliación
+    SS_ID: '1BNkwkbBG-rAz856wfBP8JCw-cUcGTDb5au5NqrXLYUs',
+
+    // Carpeta para exports (usa DRIVE.OUTPUT_FOLDER_ID si vacío)
+    FOLDER_ID: '',
+
+    // Columna del CUPON en BD_Cruce (1-indexed) - Por defecto H = 8
+    BD_CRUCE_CUPON_COL: 8,
+
+    // Aseguradoras habilitadas
+    INSURERS: {
+      LA_POSITIVA: { key: 'la_positiva', name: 'La Positiva', enabled: true },
+      CRECER_PROTECTA: { key: 'crecer_protecta', name: 'Crecer&Protecta', enabled: true },
+      MAPFRE: { key: 'mapfre', name: 'Mapfre', enabled: true },
+      PACIFICO: { key: 'pacifico', name: 'Pacífico', enabled: true },
+      RIMAC: { key: 'rimac', name: 'Rimac', enabled: true },
+      CHUBB: { key: 'chubb', name: 'CHUBB', enabled: true },
+      QUALITAS: { key: 'qualitas', name: 'Qualitas', enabled: true },
+      CRECER_VLE: { key: 'crecer_vle', name: 'Crecer VLE', enabled: true }
+    }
+  },
+
   // ========== HOJAS ==========
   SHEETS: {
     BASE: 'BD',

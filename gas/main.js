@@ -470,6 +470,38 @@ function doPost(e) {
         result = getGestionesCiclo(token, params.idCiclo);
         break;
 
+      // ========== CONCILIACIÓN COBRANZAS ==========
+
+      case 'conciliacion.uploadBDSisnet':
+        // Upload BD Sisnet to BD_Cruce sheet
+        result = ConciliacionIO.subirBDSisnet(
+          params.base64Data,
+          params.fileName,
+          params.mimeType
+        );
+        break;
+
+      case 'conciliacion.process':
+        // Process insurer EECC
+        result = ConciliacionService.procesarAseguradora(
+          params.insurerKey,
+          params.base64Data,
+          params.fileName,
+          params.mimeType,
+          token
+        );
+        break;
+
+      case 'conciliacion.getInsurers':
+        // Get enabled insurers list
+        result = ConciliacionService.getInsurers();
+        break;
+
+      case 'conciliacion.getStatus':
+        // Get BD_Cruce status
+        result = ConciliacionService.getBDCruceStatus();
+        break;
+
       default:
         result = { ok: false, error: 'Unknown action: ' + action };
     }
