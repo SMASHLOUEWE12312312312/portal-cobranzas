@@ -342,13 +342,15 @@
                             <th>Responsable</th>
                             <th>Estado</th>
                             <th>Última Gestión</th>
-                            <th>Días Transcurridos</th>
+                            <th>Días</th>
+                            <th>Vencido PEN</th>
+                            <th>Vencido USD</th>
                             <th>Próxima Acción</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="6" class="loader">
+                            <td colspan="8" class="loader">
                                 <div class="loader-spinner"></div>
                                 <p>Cargando gestiones...</p>
                             </td>
@@ -473,7 +475,7 @@
             const tbody = document.getElementById('tableBody');
 
             if (FILTERED_DATA.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No hay gestiones para mostrar</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px;">No hay gestiones para mostrar</td></tr>';
                 return;
             }
 
@@ -484,6 +486,12 @@
                     <td><span class="badge ${obtenerClaseBadge(g.estadoGestion)}">${formatearEstado(g.estadoGestion)}</span></td>
                     <td>${formatearFecha(g.fechaRegistro)}</td>
                     <td>${calcularDias(g.fechaRegistro)} días</td>
+                    <td style="text-align:right; font-weight:500; color:${(g.snapshotVencidoPEN || 0) > 0 ? '#D32F2F' : '#666'}">
+                        ${formatearMonto(g.snapshotVencidoPEN || 0, 'S/')}
+                    </td>
+                    <td style="text-align:right; font-weight:500; color:${(g.snapshotVencidoUSD || 0) > 0 ? '#1565C0' : '#666'}">
+                        ${formatearMonto(g.snapshotVencidoUSD || 0, '$')}
+                    </td>
                     <td>${g.proximaAccion || '-'}</td>
                 </tr>
             `).join('');
@@ -577,6 +585,14 @@
         }
 
         // ========== HELPERS ==========
+
+        function formatearMonto(monto, simbolo) {
+            if (!monto || monto === 0) return '-';
+            return simbolo + ' ' + monto.toLocaleString('es-PE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
 
         function formatearFecha(fecha) {
             if (!fecha) return '-';

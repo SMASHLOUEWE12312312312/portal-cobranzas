@@ -2101,7 +2101,9 @@ function registrarGestionManualBitacora(payload, token) {
         idCiclo: resultado.idCiclo,
         diasDesdeRegistro: diasDesdeRegistro,
         asegurado: payload.asegurado,
-        estadoGestion: payload.estadoGestion
+        estadoGestion: payload.estadoGestion,
+        snapshotVencidoPEN: resultado.snapshotVencidoPEN || 0,  // NUEVO
+        snapshotVencidoUSD: resultado.snapshotVencidoUSD || 0   // NUEVO
       },
       duration: duration
     };

@@ -41,7 +41,7 @@ var BitacoraService = BitacoraService || {
   // ========== CONSTANTES ==========
 
   SHEET_NAME: 'Bitacora_Gestiones_EECC',
-  SCHEMA_VERSION: '3.0',  // v3.0: Ciclo de cobranza + 14 headers
+  SCHEMA_VERSION: '3.1',  // v3.1: Agrega campos de snapshot de vencidos
 
   // ========== ZONA HORARIA ==========
 
@@ -68,10 +68,10 @@ var BitacoraService = BitacoraService || {
     return this._dataCacheDuration;
   },
 
-  // ========== HEADERS v3.0 ==========
+  // ========== HEADERS v3.1 ==========
 
   /**
-   * Retorna los 14 headers del esquema v3.0
+   * Retorna los 16 headers del esquema v3.1
    * @private
    */
   _getHeaders() {
@@ -89,7 +89,9 @@ var BitacoraService = BitacoraService || {
       'CANAL_CONTACTO',
       'FECHA_COMPROMISO',
       'PROXIMA_ACCION',
-      'OBSERVACIONES'
+      'OBSERVACIONES',
+      'SNAPSHOT_VENCIDO_PEN',   // NUEVO: Total vencido en Soles al momento del registro
+      'SNAPSHOT_VENCIDO_USD'    // NUEVO: Total vencido en Dólares al momento del registro
     ];
   },
 
@@ -134,12 +136,12 @@ var BitacoraService = BitacoraService || {
           .setWrap(false);
 
         // Anchos de columna
-        const widths = [140, 140, 130, 120, 140, 200, 100, 120, 130, 150, 120, 120, 200, 300];
+        const widths = [140, 140, 130, 120, 140, 200, 100, 120, 130, 150, 120, 120, 200, 300, 120, 120];
         widths.forEach((width, i) => {
           sheet.setColumnWidth(i + 1, width);
         });
 
-        Logger.info(context, 'Headers v3.0 configurados');
+        Logger.info(context, 'Headers v3.1 configurados');
       }
 
       // Congelar primera fila
@@ -197,22 +199,28 @@ var BitacoraService = BitacoraService || {
       // Responsable
       const responsable = datos.responsable || this._obtenerUsuarioActual();
 
-      // Construir fila
+      // ========== NUEVO v3.1: Calcular snapshot de vencidos ==========
+      const esGrupo = datos.esGrupo || GrupoEconomicoService.esGrupo(datos.asegurado);
+      const snapshotVencidos = this._calcularSnapshotVencidos(datos.asegurado, esGrupo);
+
+      // Construir fila (ahora con 16 columnas)
       const fila = [
-        idCiclo,                                    // ID_CICLO
-        idGestion,                                  // ID_GESTION
-        getConfig('BITACORA.ORIGENES.AUTO_ENVIO'), // ORIGEN_REGISTRO
-        fechaEnvioEECC,                            // FECHA_ENVIO_EECC
-        fechaRegistro,                             // FECHA_REGISTRO
-        datos.asegurado,                           // ASEGURADO
-        datos.ruc || '',                           // RUC
-        responsable,                               // RESPONSABLE
-        'ENVIO_EECC',                              // TIPO_GESTION
-        'EN_SEGUIMIENTO',                          // ESTADO_GESTION (inicial)
-        'EMAIL',                                   // CANAL_CONTACTO
-        '',                                        // FECHA_COMPROMISO (vacío inicialmente)
-        'Esperar respuesta del cliente',           // PROXIMA_ACCION
-        datos.observaciones || 'Envío automático de EECC' // OBSERVACIONES
+        idCiclo,                                    // 1. ID_CICLO
+        idGestion,                                  // 2. ID_GESTION
+        getConfig('BITACORA.ORIGENES.AUTO_ENVIO'), // 3. ORIGEN_REGISTRO
+        fechaEnvioEECC,                            // 4. FECHA_ENVIO_EECC
+        fechaRegistro,                             // 5. FECHA_REGISTRO
+        datos.asegurado,                           // 6. ASEGURADO
+        datos.ruc || '',                           // 7. RUC
+        responsable,                               // 8. RESPONSABLE
+        'ENVIO_EECC',                              // 9. TIPO_GESTION
+        'EN_SEGUIMIENTO',                          // 10. ESTADO_GESTION (inicial)
+        'EMAIL',                                   // 11. CANAL_CONTACTO
+        '',                                        // 12. FECHA_COMPROMISO (vacío inicialmente)
+        'Esperar respuesta del cliente',           // 13. PROXIMA_ACCION
+        datos.observaciones || 'Envío automático de EECC', // 14. OBSERVACIONES
+        snapshotVencidos.vencidoPEN,               // 15. SNAPSHOT_VENCIDO_PEN ← NUEVO
+        snapshotVencidos.vencidoUSD                // 16. SNAPSHOT_VENCIDO_USD ← NUEVO
       ];
 
       // Bufferizar
@@ -411,22 +419,35 @@ var BitacoraService = BitacoraService || {
       // Responsable desde sesión
       const responsable = this._obtenerUsuarioActual();
 
-      // Construir fila
+      // ========== NUEVO v3.1: Calcular snapshot de vencidos ==========
+      const esGrupo = datos.esGrupo || GrupoEconomicoService.esGrupo(datos.asegurado);
+      const snapshotVencidos = this._calcularSnapshotVencidos(datos.asegurado, esGrupo);
+
+      Logger.info(context, 'Snapshot de vencidos calculado', {
+        asegurado: datos.asegurado,
+        esGrupo: esGrupo,
+        vencidoPEN: snapshotVencidos.vencidoPEN,
+        vencidoUSD: snapshotVencidos.vencidoUSD
+      });
+
+      // Construir fila (ahora con 16 columnas)
       const fila = [
-        idCiclo,                                           // ID_CICLO (puede ser nuevo o existente)
-        idGestion,                                         // ID_GESTION
-        getConfig('BITACORA.ORIGENES.MANUAL_PORTAL'),     // ORIGEN_REGISTRO
-        fechaEnvioEECC,                                   // FECHA_ENVIO_EECC (del ciclo)
-        fechaRegistro,                                    // FECHA_REGISTRO
-        datos.asegurado,                                  // ASEGURADO
-        datos.ruc || '',                                  // RUC
-        responsable,                                      // RESPONSABLE
-        datos.tipoGestion,                                // TIPO_GESTION
-        datos.estadoGestion,                              // ESTADO_GESTION
-        datos.canalContacto,                              // CANAL_CONTACTO
-        datos.fechaCompromiso || '',                      // FECHA_COMPROMISO
-        datos.proximaAccion,                              // PROXIMA_ACCION
-        datos.observaciones || ''                         // OBSERVACIONES
+        idCiclo,                                           // 1. ID_CICLO (puede ser nuevo o existente)
+        idGestion,                                         // 2. ID_GESTION
+        getConfig('BITACORA.ORIGENES.MANUAL_PORTAL'),     // 3. ORIGEN_REGISTRO
+        fechaEnvioEECC,                                   // 4. FECHA_ENVIO_EECC (del ciclo)
+        fechaRegistro,                                    // 5. FECHA_REGISTRO
+        datos.asegurado,                                  // 6. ASEGURADO
+        datos.ruc || '',                                  // 7. RUC
+        responsable,                                      // 8. RESPONSABLE
+        datos.tipoGestion,                                // 9. TIPO_GESTION
+        datos.estadoGestion,                              // 10. ESTADO_GESTION
+        datos.canalContacto,                              // 11. CANAL_CONTACTO
+        datos.fechaCompromiso || '',                      // 12. FECHA_COMPROMISO
+        datos.proximaAccion,                              // 13. PROXIMA_ACCION
+        datos.observaciones || '',                        // 14. OBSERVACIONES
+        snapshotVencidos.vencidoPEN,                      // 15. SNAPSHOT_VENCIDO_PEN ← NUEVO
+        snapshotVencidos.vencidoUSD                       // 16. SNAPSHOT_VENCIDO_USD ← NUEVO
       ];
 
       // Bufferizar
@@ -454,7 +475,9 @@ var BitacoraService = BitacoraService || {
         idGestion: idGestion,
         idCiclo: idCiclo,
         esNuevoCiclo: esNuevoCiclo,
-        buffered: true
+        buffered: true,
+        snapshotVencidoPEN: snapshotVencidos.vencidoPEN,  // NUEVO
+        snapshotVencidoUSD: snapshotVencidos.vencidoUSD   // NUEVO
       };
 
     } catch (error) {
@@ -748,7 +771,7 @@ var BitacoraService = BitacoraService || {
 
       // UNA SOLA operación batch
       const lastRow = sheet.getLastRow();
-      sheet.getRange(lastRow + 1, 1, rows.length, 14).setValues(rows);
+      sheet.getRange(lastRow + 1, 1, rows.length, 16).setValues(rows);
 
       // Aplicar formatos en batch
       this._applyFormatsBatch(sheet, lastRow + 1, rows.length);
@@ -899,7 +922,9 @@ var BitacoraService = BitacoraService || {
       canalContacto: fila[10],
       fechaCompromiso: fila[11] ? this._parseDate(fila[11]) : null,
       proximaAccion: fila[12],
-      observaciones: fila[13]
+      observaciones: fila[13],
+      snapshotVencidoPEN: this._parseNumber(fila[14]) || 0,  // NUEVO
+      snapshotVencidoUSD: this._parseNumber(fila[15]) || 0   // NUEVO
     };
   },
 
@@ -931,6 +956,167 @@ var BitacoraService = BitacoraService || {
 
     // Fallback: retornar como Date
     return new Date(value);
+  },
+
+  /**
+   * Calcula el total de importes vencidos por moneda para un asegurado o grupo económico.
+   * 
+   * IMPORTANTE: Este cálculo se realiza al momento del registro y se guarda como snapshot.
+   * No debe recalcularse posteriormente.
+   * 
+   * @param {string} asegurado - Nombre del asegurado O nombre del grupo económico
+   * @param {boolean} esGrupo - Indica si el asegurado es un grupo económico
+   * @return {Object} { vencidoPEN: number, vencidoUSD: number }
+   * @private
+   */
+  _calcularSnapshotVencidos(asegurado, esGrupo = false) {
+    const context = 'BitacoraService._calcularSnapshotVencidos';
+
+    try {
+      Logger.info(context, 'Calculando snapshot de vencidos', {
+        asegurado,
+        esGrupo
+      });
+
+      // Obtener lista de asegurados a procesar
+      let aseguradosAProcesar = [];
+
+      if (esGrupo) {
+        // Si es grupo económico, obtener todos los asegurados del grupo
+        aseguradosAProcesar = GrupoEconomicoService.getAsegurados(asegurado);
+
+        if (!aseguradosAProcesar || aseguradosAProcesar.length === 0) {
+          Logger.warn(context, 'Grupo sin asegurados', { grupo: asegurado });
+          return { vencidoPEN: 0, vencidoUSD: 0 };
+        }
+
+        Logger.info(context, 'Procesando grupo económico', {
+          grupo: asegurado,
+          totalAsegurados: aseguradosAProcesar.length
+        });
+      } else {
+        // Si es cliente individual
+        aseguradosAProcesar = [asegurado];
+      }
+
+      // Normalizar nombres para comparación
+      const aseguradosNormalizados = aseguradosAProcesar.map(a => Utils.cleanText(a));
+
+      // Leer hoja BD
+      const bdData = SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
+
+      if (!bdData || !bdData.rows || bdData.rows.length === 0) {
+        Logger.warn(context, 'Hoja BD vacía');
+        return { vencidoPEN: 0, vencidoUSD: 0 };
+      }
+
+      // Obtener índices de columnas
+      const colMap = bdData.columnMap;
+      const aseguradoIdx = colMap['ASEGURADO'] ?? -1;
+      const importeIdx = colMap['IMPORTE'] ?? -1;
+      const monIdx = colMap['MON'] ?? -1;
+      const fecVencIdx = colMap['FEC_VENCIMIENTO_COB'] ?? colMap['FEC_VENCIMIENTO COB'] ?? colMap['FEC VENCIMIENTO COB'] ?? -1;
+
+      // Validar columnas necesarias
+      if (aseguradoIdx === -1 || importeIdx === -1 || fecVencIdx === -1) {
+        Logger.error(context, 'Columnas requeridas no encontradas', {
+          aseguradoIdx,
+          importeIdx,
+          fecVencIdx
+        });
+        return { vencidoPEN: 0, vencidoUSD: 0 };
+      }
+
+      // Fecha de hoy (inicio del día para comparación correcta)
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      // Acumuladores
+      let vencidoPEN = 0;
+      let vencidoUSD = 0;
+      let registrosProcesados = 0;
+      let registrosVencidos = 0;
+
+      // Procesar cada fila de BD
+      for (const row of bdData.rows) {
+        // Obtener nombre del asegurado de la fila
+        const aseguradoFila = Utils.cleanText(String(row[aseguradoIdx] || ''));
+
+        // Verificar si este asegurado está en nuestra lista
+        if (!aseguradosNormalizados.includes(aseguradoFila)) {
+          continue;
+        }
+
+        registrosProcesados++;
+
+        // Obtener fecha de vencimiento
+        const fecVencValue = row[fecVencIdx];
+        const fecVenc = this._parseDate(fecVencValue);
+
+        if (!fecVenc) {
+          continue; // Si no tiene fecha de vencimiento, no se considera
+        }
+
+        // Verificar si está vencido (fecha de vencimiento < hoy)
+        fecVenc.setHours(0, 0, 0, 0);
+        if (fecVenc >= hoy) {
+          continue; // No está vencido
+        }
+
+        registrosVencidos++;
+
+        // Obtener importe
+        const importeRaw = row[importeIdx];
+        const importe = this._parseNumber(importeRaw);
+
+        if (importe <= 0) {
+          continue; // Ignorar importes negativos o cero
+        }
+
+        // Determinar moneda
+        const moneda = String(row[monIdx] || 'PEN').toUpperCase();
+        const esUSD = moneda.includes('USD') || moneda.includes('US$') ||
+          moneda.includes('DOLAR') || moneda.includes('DOLLAR');
+
+        // Acumular según moneda
+        if (esUSD) {
+          vencidoUSD += importe;
+        } else {
+          vencidoPEN += importe;
+        }
+      }
+
+      // Redondear a 2 decimales
+      vencidoPEN = Math.round(vencidoPEN * 100) / 100;
+      vencidoUSD = Math.round(vencidoUSD * 100) / 100;
+
+      Logger.info(context, 'Snapshot calculado exitosamente', {
+        asegurado,
+        esGrupo,
+        registrosProcesados,
+        registrosVencidos,
+        vencidoPEN,
+        vencidoUSD
+      });
+
+      return { vencidoPEN, vencidoUSD };
+
+    } catch (error) {
+      Logger.error(context, 'Error calculando snapshot', error);
+      return { vencidoPEN: 0, vencidoUSD: 0 };
+    }
+  },
+
+  /**
+   * Parsea un valor numérico (maneja strings con formato)
+   * @private
+   */
+  _parseNumber(value) {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    const cleaned = String(value).replace(/[^\d.-]/g, '');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
   },
 
   /**
@@ -984,6 +1170,10 @@ var BitacoraService = BitacoraService || {
 
       sheet.getRange(startRow, 10, numRows, 1).setBackgrounds(backgroundColors);
       sheet.getRange(startRow, 10, numRows, 1).setFontColors(fontColors);
+
+      // v3.1: Formatos de moneda para columnas de snapshot
+      sheet.getRange(startRow, 15, numRows, 1).setNumberFormat('#,##0.00'); // SNAPSHOT_VENCIDO_PEN
+      sheet.getRange(startRow, 16, numRows, 1).setNumberFormat('#,##0.00'); // SNAPSHOT_VENCIDO_USD
 
     } catch (error) {
       Logger.warn('BitacoraService._applyFormatsBatch', 'Error al aplicar formatos', error);
