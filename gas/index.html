@@ -100,6 +100,10 @@
                     <span class="nav-icon">📝</span>
                     <span>Bitácora</span>
                 </div>
+                <div class="nav-item" onclick="switchView('conciliacion')" id="nav-conciliacion">
+                    <span class="nav-icon">🔄</span>
+                    <span>Conciliación</span>
+                </div>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-profile">
@@ -269,6 +273,10 @@
                         <div class="card" onclick="switchView('bitacora')" style="cursor: pointer;">
                             <h3 class="card-title">📝 Bitácora</h3>
                             <p class="text-muted">Gestiona seguimientos</p>
+                        </div>
+                        <div class="card" onclick="switchView('conciliacion')" style="cursor: pointer;">
+                            <h3 class="card-title">🔄 Conciliación</h3>
+                            <p class="text-muted">Cruce EECC vs BD Sisnet</p>
                         </div>
                     </div>
 
@@ -1161,6 +1169,161 @@
                     </div>
                 </div>
 
+                <!-- VIEW: CONCILIACIÓN EECC -->
+                <div id="view-conciliacion" class="view-section">
+                    <h2 class="text-2xl font-bold mb-6">🔄 Conciliación Estados de Cuenta</h2>
+                    <p class="text-muted mb-4" style="font-size: 0.875rem;">
+                        Cruza los estados de cuenta de aseguradoras contra la base de datos de cupones Sisnet
+                    </p>
+
+                    <!-- ESTADO DE BD CRUCE -->
+                    <section class="card" style="margin-bottom: 1.5rem;" id="conciliacionStatusCard">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3
+                                style="margin: 0; font-size: 1rem; color: var(--tp-text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                <span>📋 Estado de BD Cruce</span>
+                                <span id="bdCruceStatusBadge" class="badge"
+                                    style="font-size: 0.7rem; padding: 2px 8px; background: var(--tp-warning-pale); color: var(--tp-warning);">Sin
+                                    cargar</span>
+                            </h3>
+                            <button onclick="refreshConciliacionStatus()" class="btn btn-sm"
+                                style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">🔄 Actualizar</button>
+                        </div>
+                        <div id="bdCruceStatsGrid"
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;">
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-primary);"
+                                    id="statBDCruceLoaded">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Estado</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-info);"
+                                    id="statBDCruceRows">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Registros</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-text-secondary);"
+                                    id="statBDCruceDate">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Última carga</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- PASO 1: CARGAR BD SISNET -->
+                    <section class="card" style="margin-bottom: 1.5rem;" id="paso1Card">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                            <span
+                                style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: var(--tp-primary); color: white; border-radius: 50%; font-size: 0.875rem; font-weight: bold;">1</span>
+                            <h3 style="margin: 0; font-size: 1.125rem; color: var(--tp-text-primary);">Cargar Base de
+                                Datos Sisnet</h3>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="bdSisnetFileInput">Archivo Excel de BD Sisnet</label>
+                            <input type="file" id="bdSisnetFileInput" accept=".xlsx,.xls,.csv" style="width: 100%;">
+                            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8125rem;">
+                                📌 Formato: .xlsx, .xls o .csv. La columna H debe contener el CUPON para el cruce.
+                            </p>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="handleUploadBDSisnet()" id="uploadBDSisnetBtn"
+                            style="width: 100%;">
+                            📤 Cargar BD Sisnet
+                        </button>
+
+                        <div id="bdSisnetStatus" style="margin-top: 1rem;"></div>
+                    </section>
+
+                    <!-- PASO 2: PROCESAR EECC -->
+                    <section class="card" style="margin-bottom: 1.5rem;" id="paso2Card">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                            <span
+                                style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: var(--tp-primary); color: white; border-radius: 50%; font-size: 0.875rem; font-weight: bold;">2</span>
+                            <h3 style="margin: 0; font-size: 1.125rem; color: var(--tp-text-primary);">Procesar Estado
+                                de Cuenta</h3>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="insurerSelect">Seleccionar Aseguradora</label>
+                            <select id="insurerSelect" style="width: 100%;">
+                                <option value="">-- Selecciona una aseguradora --</option>
+                                <option value="la_positiva">La Positiva</option>
+                                <option value="crecer_protecta">Crecer&Protecta</option>
+                                <option value="mapfre">Mapfre</option>
+                                <option value="pacifico">Pacífico</option>
+                                <option value="rimac">Rimac</option>
+                                <option value="chubb">CHUBB</option>
+                                <option value="qualitas">Qualitas</option>
+                                <option value="crecer_vle">Crecer VLE</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="eeccFileInput">Archivo EECC de la Aseguradora</label>
+                            <input type="file" id="eeccFileInput" accept=".xlsx,.xls,.csv" style="width: 100%;">
+                            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8125rem;">
+                                📌 Sube el Estado de Cuenta descargado directamente desde el portal de la aseguradora.
+                            </p>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="handleProcessConciliacion()"
+                            id="processConciliacionBtn" style="width: 100%;" disabled>
+                            ⚙️ Procesar Conciliación
+                        </button>
+
+                        <!-- LOG DE PROCESAMIENTO -->
+                        <div id="conciliacionLog" class="activity-log"
+                            style="margin-top: 1.5rem; max-height: 250px; overflow-y: auto; display: none;">
+                            <h4 style="margin-bottom: 0.75rem; font-size: 0.875rem; color: var(--tp-text-secondary);">📋
+                                Log de Procesamiento:</h4>
+                            <div id="conciliacionLogEntries"></div>
+                        </div>
+
+                        <div id="conciliacionStatus" style="margin-top: 1rem;"></div>
+                    </section>
+
+                    <!-- RESULTADOS -->
+                    <section class="card" id="conciliacionResultsCard" style="display: none;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <span style="font-size: 1.25rem;">📁</span>
+                            <h3 style="margin: 0; font-size: 1.125rem; color: var(--tp-text-primary);">Archivos
+                                Generados</h3>
+                        </div>
+
+                        <div id="conciliacionFiles" style="margin-bottom: 1.5rem;">
+                            <!-- Se llenarán dinámicamente -->
+                        </div>
+
+                        <h4 style="font-size: 0.9375rem; color: var(--tp-text-secondary); margin-bottom: 1rem;">Resumen
+                            del Cruce:</h4>
+                        <div id="conciliacionCruceStats"
+                            style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div
+                                style="background: var(--tp-success-pale); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid var(--tp-success-light);">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: var(--tp-success);"
+                                    id="statRegistrados">0</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-success);">Registrados 🟢</div>
+                            </div>
+                            <div
+                                style="background: var(--tp-warning-pale); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid var(--tp-warning-light);">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: var(--tp-warning);"
+                                    id="statValidar">0</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-warning);">Validar 🟡</div>
+                            </div>
+                            <div
+                                style="background: var(--tp-error-pale); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid var(--tp-error-light);">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: var(--tp-error);"
+                                    id="statNoRegistrados">0</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-error);">No Registrados 🔴</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
                 <!-- FOOTER -->
                 <footer class="portal-footer" style="margin-top: auto; padding-top: 2rem;">
                     <div class="footer-content">
@@ -1897,6 +2060,11 @@
                 loadBitacoraEmbeddedData();
                 // UNIFICADO: Inicializar formulario embebido
                 inicializarFormularioEmbedded();
+            }
+
+            // CONCILIACIÓN: Inicializar módulo cuando se navega
+            if (viewName === 'conciliacion') {
+                initConciliacionModule();
             }
         }
 
@@ -8186,6 +8354,405 @@
         function normalizeText(text) {
             if (!text) return '';
             return text.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+
+        // ============================================================
+        // CONCILIACIÓN MODULE - VARIABLES Y FUNCIONES
+        // ============================================================
+        let CONCILIACION_BD_LOADED = false;
+        let CONCILIACION_LAST_RESULT = null;
+
+        /**
+         * Agrega entrada al log de conciliación
+         */
+        function conciliacionLog(message, type = 'info') {
+            const logContainer = document.getElementById('conciliacionLogEntries');
+            const logSection = document.getElementById('conciliacionLog');
+
+            if (!logContainer) return;
+
+            if (logSection) logSection.style.display = 'block';
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('es-PE', { hour12: false });
+
+            const colors = {
+                info: 'var(--tp-info)',
+                success: 'var(--tp-success)',
+                warning: 'var(--tp-warning)',
+                error: 'var(--tp-error)'
+            };
+
+            const entry = document.createElement('div');
+            entry.style.cssText = `padding: 0.5rem 0.75rem; border-left: 3px solid ${colors[type] || colors.info}; margin-bottom: 0.5rem; font-size: 0.8125rem; color: ${colors[type] || 'var(--tp-text-secondary)'}; background: var(--tp-surface-overlay); border-radius: 0 4px 4px 0;`;
+            entry.innerHTML = `<span style="font-family: monospace; color: var(--tp-text-tertiary); margin-right: 0.5rem;">${timeStr}</span>${message}`;
+
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        /**
+         * Limpia el log de conciliación
+         */
+        function clearConciliacionLog() {
+            const logContainer = document.getElementById('conciliacionLogEntries');
+            const logSection = document.getElementById('conciliacionLog');
+            if (logContainer) logContainer.innerHTML = '';
+            if (logSection) logSection.style.display = 'none';
+        }
+
+        /**
+         * Muestra estado en un contenedor
+         */
+        function showConciliacionStatus(containerId, message, type) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            const colors = { success: 'var(--tp-success)', error: 'var(--tp-error)', warning: 'var(--tp-warning)', info: 'var(--tp-info)' };
+
+            container.innerHTML = `<div style="padding: 0.75rem 1rem; border-radius: 8px; background: ${type === 'success' ? 'var(--tp-success-pale)' : type === 'error' ? 'var(--tp-error-pale)' : 'var(--tp-info-pale)'}; color: ${colors[type]}; font-size: 0.875rem;">${icons[type] || 'ℹ️'} ${message}</div>`;
+        }
+
+        /**
+         * Actualiza el estado de BD Cruce
+         */
+        function refreshConciliacionStatus() {
+            const badge = document.getElementById('bdCruceStatusBadge');
+            const statLoaded = document.getElementById('statBDCruceLoaded');
+            const statRows = document.getElementById('statBDCruceRows');
+            const statDate = document.getElementById('statBDCruceDate');
+
+            if (badge) {
+                badge.textContent = 'Cargando...';
+                badge.style.background = 'var(--tp-info-pale)';
+                badge.style.color = 'var(--tp-info)';
+            }
+
+            google.script.run
+                .withSuccessHandler(result => {
+                    if (result && result.ok) {
+                        CONCILIACION_BD_LOADED = result.loaded;
+
+                        if (result.loaded) {
+                            if (badge) {
+                                badge.textContent = 'Cargada ✓';
+                                badge.style.background = 'var(--tp-success-pale)';
+                                badge.style.color = 'var(--tp-success)';
+                            }
+                            if (statLoaded) statLoaded.textContent = '✅';
+                            if (statRows) statRows.textContent = (result.rows || 0).toLocaleString();
+                            if (statDate) statDate.textContent = 'Hoy';
+                            enablePaso2();
+                        } else {
+                            if (badge) {
+                                badge.textContent = 'Sin cargar';
+                                badge.style.background = 'var(--tp-warning-pale)';
+                                badge.style.color = 'var(--tp-warning)';
+                            }
+                            if (statLoaded) statLoaded.textContent = '❌';
+                            if (statRows) statRows.textContent = '0';
+                            if (statDate) statDate.textContent = '-';
+                            disablePaso2();
+                        }
+                    } else {
+                        if (badge) {
+                            badge.textContent = 'Error';
+                            badge.style.background = 'var(--tp-error-pale)';
+                            badge.style.color = 'var(--tp-error)';
+                        }
+                    }
+                })
+                .withFailureHandler(error => {
+                    console.error('Error al obtener estado BD Cruce:', error);
+                    if (badge) {
+                        badge.textContent = 'Error';
+                        badge.style.background = 'var(--tp-error-pale)';
+                        badge.style.color = 'var(--tp-error)';
+                    }
+                })
+                .doPost({ action: 'conciliacion.getStatus' }, TOKEN);
+        }
+
+        /**
+         * Habilita Paso 2 cuando BD está cargada
+         */
+        function enablePaso2() {
+            const paso2Card = document.getElementById('paso2Card');
+            if (paso2Card) paso2Card.style.opacity = '1';
+            updateProcessBtnState();
+        }
+
+        /**
+         * Deshabilita Paso 2 cuando BD no está cargada
+         */
+        function disablePaso2() {
+            const paso2Card = document.getElementById('paso2Card');
+            const btn = document.getElementById('processConciliacionBtn');
+            if (paso2Card) paso2Card.style.opacity = '0.6';
+            if (btn) btn.disabled = true;
+        }
+
+        /**
+         * Actualiza estado del botón Procesar según selecciones
+         */
+        function updateProcessBtnState() {
+            const btn = document.getElementById('processConciliacionBtn');
+            const insurerSelect = document.getElementById('insurerSelect');
+            const fileInput = document.getElementById('eeccFileInput');
+
+            if (!btn) return;
+
+            const hasInsurer = insurerSelect && insurerSelect.value !== '';
+            const hasFile = fileInput && fileInput.files.length > 0;
+
+            btn.disabled = !CONCILIACION_BD_LOADED || !hasInsurer || !hasFile;
+        }
+
+        /**
+         * Handler: Subir BD Sisnet
+         */
+        function handleUploadBDSisnet() {
+            const fileInput = document.getElementById('bdSisnetFileInput');
+            const btn = document.getElementById('uploadBDSisnetBtn');
+
+            if (!fileInput || !fileInput.files.length) {
+                alert('Por favor selecciona un archivo de BD Sisnet');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:8px;"></span> Cargando...';
+            showLoading(true, 'Cargando BD Sisnet...');
+
+            log('📤 Cargando BD Sisnet: ' + file.name, 'info');
+
+            reader.onload = e => {
+                const base64 = e.target.result.split(',')[1];
+
+                google.script.run
+                    .withSuccessHandler(result => {
+                        showLoading(false);
+                        btn.disabled = false;
+                        btn.textContent = '📤 Cargar BD Sisnet';
+
+                        if (result && result.ok) {
+                            const rows = result.rowsLoaded || 0;
+                            showConciliacionStatus('bdSisnetStatus', 'BD cargada exitosamente. ' + rows.toLocaleString() + ' registros.', 'success');
+                            showToast('BD Sisnet cargada: ' + rows.toLocaleString() + ' registros', 'success');
+                            log('✅ BD Sisnet cargada: ' + rows + ' registros', 'success');
+                            fileInput.value = '';
+                            refreshConciliacionStatus();
+                        } else {
+                            const error = result && result.error ? result.error : 'Error desconocido';
+                            showConciliacionStatus('bdSisnetStatus', error, 'error');
+                            log('❌ Error BD Sisnet: ' + error, 'error');
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        showLoading(false);
+                        btn.disabled = false;
+                        btn.textContent = '📤 Cargar BD Sisnet';
+                        showConciliacionStatus('bdSisnetStatus', error.message, 'error');
+                        log('❌ Error BD Sisnet: ' + error.message, 'error');
+                    })
+                    .doPost({
+                        action: 'conciliacion.uploadBDSisnet',
+                        base64Data: base64,
+                        fileName: file.name,
+                        mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    }, TOKEN);
+            };
+
+            reader.onerror = () => {
+                showLoading(false);
+                btn.disabled = false;
+                btn.textContent = '📤 Cargar BD Sisnet';
+                showConciliacionStatus('bdSisnetStatus', 'Error al leer el archivo', 'error');
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        /**
+         * Handler: Procesar Conciliación
+         */
+        function handleProcessConciliacion() {
+            const insurerSelect = document.getElementById('insurerSelect');
+            const fileInput = document.getElementById('eeccFileInput');
+            const btn = document.getElementById('processConciliacionBtn');
+
+            if (!insurerSelect || !insurerSelect.value) {
+                alert('Por favor selecciona una aseguradora');
+                return;
+            }
+
+            if (!fileInput || !fileInput.files.length) {
+                alert('Por favor selecciona un archivo EECC');
+                return;
+            }
+
+            const insurerKey = insurerSelect.value;
+            const insurerName = insurerSelect.options[insurerSelect.selectedIndex].text;
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:8px;"></span> Procesando...';
+            showLoading(true, 'Procesando ' + insurerName + '...');
+
+            clearConciliacionLog();
+            conciliacionLog('Iniciando procesamiento de ' + insurerName + '...', 'info');
+            conciliacionLog('Archivo: ' + file.name + ' (' + (file.size / 1024).toFixed(2) + ' KB)', 'info');
+
+            log('⚙️ Procesando EECC: ' + insurerName, 'info');
+
+            reader.onload = e => {
+                const base64 = e.target.result.split(',')[1];
+                conciliacionLog('Archivo leído correctamente', 'success');
+                conciliacionLog('Enviando al servidor para procesamiento...', 'info');
+
+                google.script.run
+                    .withSuccessHandler(result => {
+                        showLoading(false);
+                        btn.disabled = false;
+                        btn.textContent = '⚙️ Procesar Conciliación';
+
+                        if (result && result.ok) {
+                            CONCILIACION_LAST_RESULT = result;
+
+                            conciliacionLog('✅ Procesamiento completado para ' + insurerName, 'success');
+
+                            if (result.stats) {
+                                conciliacionLog('📊 Filas cargadas: ' + (result.stats.filasCargadas || 0), 'info');
+                                conciliacionLog('📊 Filas filtradas: ' + (result.stats.filasCancelado || result.stats.filasFiltradas || 0), 'info');
+                                conciliacionLog('📊 Filas escritas en Trama: ' + (result.stats.filasEscritas || 0), 'info');
+                            }
+
+                            if (result.cruce) {
+                                conciliacionLog('🟢 Registrados: ' + (result.cruce.registrado || 0), 'success');
+                                conciliacionLog('🟡 Validar: ' + (result.cruce.validar || 0), 'warning');
+                                conciliacionLog('🔴 No Registrados: ' + (result.cruce.noRegistrado || 0), 'error');
+                            }
+
+                            if (result.exports) {
+                                conciliacionLog('📁 Exportando archivos...', 'info');
+                                if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.ok) {
+                                    conciliacionLog('✅ Trama_Registrados: ' + (result.exports.tramaRegistrados.count || 0) + ' registros', 'success');
+                                }
+                                if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.ok) {
+                                    conciliacionLog('✅ Estado_Cuenta_Pendientes: ' + (result.exports.estadoCuentaPendientes.count || 0) + ' registros', 'success');
+                                }
+                            }
+
+                            showConciliacionStatus('conciliacionStatus', 'Procesamiento completado exitosamente', 'success');
+                            showToast(insurerName + ' procesado exitosamente', 'success');
+                            log('✅ EECC ' + insurerName + ' procesado', 'success');
+
+                            displayConciliacionResults(result, insurerName);
+
+                            fileInput.value = '';
+                            insurerSelect.value = '';
+                            updateProcessBtnState();
+
+                        } else {
+                            const error = result && result.error ? result.error : 'Error desconocido';
+                            conciliacionLog('❌ Error: ' + error, 'error');
+                            showConciliacionStatus('conciliacionStatus', error, 'error');
+                            log('❌ Error EECC: ' + error, 'error');
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        showLoading(false);
+                        btn.disabled = false;
+                        btn.textContent = '⚙️ Procesar Conciliación';
+                        conciliacionLog('❌ Error fatal: ' + error.message, 'error');
+                        showConciliacionStatus('conciliacionStatus', error.message, 'error');
+                        log('❌ Error EECC: ' + error.message, 'error');
+                    })
+                    .doPost({
+                        action: 'conciliacion.process',
+                        insurerKey: insurerKey,
+                        base64Data: base64,
+                        fileName: file.name,
+                        mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    }, TOKEN);
+            };
+
+            reader.onerror = () => {
+                showLoading(false);
+                btn.disabled = false;
+                btn.textContent = '⚙️ Procesar Conciliación';
+                conciliacionLog('Error al leer el archivo', 'error');
+                showConciliacionStatus('conciliacionStatus', 'Error al leer el archivo', 'error');
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        /**
+         * Muestra resultados de conciliación
+         */
+        function displayConciliacionResults(result, insurerName) {
+            const resultsCard = document.getElementById('conciliacionResultsCard');
+            const filesContainer = document.getElementById('conciliacionFiles');
+            const statRegistrados = document.getElementById('statRegistrados');
+            const statValidar = document.getElementById('statValidar');
+            const statNoRegistrados = document.getElementById('statNoRegistrados');
+
+            if (!resultsCard) return;
+
+            resultsCard.style.display = 'block';
+
+            if (filesContainer) filesContainer.innerHTML = '';
+
+            if (result.exports) {
+                if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.url) {
+                    filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;"><span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + (result.exports.tramaRegistrados.fileName || 'Trama_Registrados.xlsx') + '</span><a href="' + result.exports.tramaRegistrados.url + '" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;">⬇️ Abrir</a></div>';
+                }
+
+                if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.url) {
+                    filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;"><span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + (result.exports.estadoCuentaPendientes.fileName || 'Estado_Cuenta_Pendientes.xlsx') + '</span><a href="' + result.exports.estadoCuentaPendientes.url + '" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;">⬇️ Abrir</a></div>';
+                }
+
+                if (!result.exports.tramaRegistrados?.url && !result.exports.estadoCuentaPendientes?.url) {
+                    filesContainer.innerHTML = '<p class="text-muted">No se generaron archivos de exportación.</p>';
+                }
+            }
+
+            if (result.cruce) {
+                if (statRegistrados) statRegistrados.textContent = (result.cruce.registrado || 0).toLocaleString();
+                if (statValidar) statValidar.textContent = (result.cruce.validar || 0).toLocaleString();
+                if (statNoRegistrados) statNoRegistrados.textContent = (result.cruce.noRegistrado || 0).toLocaleString();
+            }
+
+            resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        /**
+         * Inicializa módulo de conciliación
+         */
+        function initConciliacionModule() {
+            const insurerSelect = document.getElementById('insurerSelect');
+            const eeccFileInput = document.getElementById('eeccFileInput');
+
+            if (insurerSelect) {
+                insurerSelect.removeEventListener('change', updateProcessBtnState);
+                insurerSelect.addEventListener('change', updateProcessBtnState);
+            }
+
+            if (eeccFileInput) {
+                eeccFileInput.removeEventListener('change', updateProcessBtnState);
+                eeccFileInput.addEventListener('change', updateProcessBtnState);
+            }
+
+            refreshConciliacionStatus();
+
+            const resultsCard = document.getElementById('conciliacionResultsCard');
+            if (resultsCard) resultsCard.style.display = 'none';
         }
     </script>
     <!-- ═══════════════════════════════════════════════════════════════════════════════
