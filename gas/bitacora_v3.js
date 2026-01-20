@@ -1314,5 +1314,131 @@ var BitacoraService = BitacoraService || {
       Logger.error(context, 'Error al obtener compromisos activos', error);
       return [];
     }
+  },
+
+  /**
+   * FUNCIÓN DE BACKFILL - Solo para uso único
+   * 
+   * Actualiza las gestiones existentes que no tienen snapshot de vencidos,
+   * calculando los valores ACTUALES (de hoy) de la hoja BD.
+   * 
+   * IMPORTANTE: Esta función debe ejecutarse UNA SOLA VEZ después del deploy.
+   * Los valores calculados serán los del momento de ejecución, no los históricos.
+   * 
+   * @param {Object} opciones
+   * @param {boolean} opciones.dryRun - Si true, solo muestra qué se actualizaría sin guardar
+   * @param {number} opciones.limite - Máximo de filas a procesar (default: todas)
+   * @return {Object} { ok, totalProcesadas, totalActualizadas, errores, detalles }
+   */
+  backfillSnapshotsExistentes(opciones = {}) {
+    const context = 'BitacoraService.backfillSnapshotsExistentes';
+    const dryRun = opciones.dryRun || false;
+    const limite = opciones.limite || 9999;
+
+    Logger.info(context, 'Iniciando backfill de snapshots', { dryRun, limite });
+
+    try {
+      const sheet = this._getOrCreateSheetCached();
+      const lastRow = sheet.getLastRow();
+
+      if (lastRow < 2) {
+        return { ok: true, totalProcesadas: 0, totalActualizadas: 0, mensaje: 'No hay gestiones' };
+      }
+
+      // Leer TODAS las filas (16 columnas)
+      const numRows = Math.min(lastRow - 1, limite);
+      const data = sheet.getRange(2, 1, numRows, 16).getValues();
+
+      const detalles = [];
+      let totalActualizadas = 0;
+      const filasParaActualizar = [];
+
+      for (let i = 0; i < data.length; i++) {
+        const fila = data[i];
+        const rowNum = i + 2; // Fila real en la hoja
+
+        // Columnas: 0=ID_CICLO, 5=ASEGURADO, 14=SNAPSHOT_PEN, 15=SNAPSHOT_USD
+        const asegurado = fila[5];
+        const snapshotPEN = fila[14];
+        const snapshotUSD = fila[15];
+
+        // Solo procesar si los snapshots están vacíos o son 0
+        const necesitaActualizar = !snapshotPEN && !snapshotUSD;
+
+        if (!necesitaActualizar) {
+          continue; // Ya tiene snapshot, saltar
+        }
+
+        if (!asegurado) {
+          detalles.push({ fila: rowNum, error: 'Sin asegurado' });
+          continue;
+        }
+
+        // Detectar si es grupo económico
+        const esGrupo = GrupoEconomicoService.esGrupo(asegurado);
+
+        // Calcular snapshot actual
+        const snapshot = this._calcularSnapshotVencidos(asegurado, esGrupo);
+
+        detalles.push({
+          fila: rowNum,
+          asegurado: asegurado,
+          esGrupo: esGrupo,
+          vencidoPEN: snapshot.vencidoPEN,
+          vencidoUSD: snapshot.vencidoUSD
+        });
+
+        // Guardar para actualización batch
+        filasParaActualizar.push({
+          rowNum: rowNum,
+          vencidoPEN: snapshot.vencidoPEN,
+          vencidoUSD: snapshot.vencidoUSD
+        });
+
+        totalActualizadas++;
+      }
+
+      // Si NO es dry run, actualizar las filas
+      if (!dryRun && filasParaActualizar.length > 0) {
+        Logger.info(context, `Actualizando ${filasParaActualizar.length} filas...`);
+
+        // Actualizar en batch por columna para eficiencia
+        for (const item of filasParaActualizar) {
+          // Columna 15 = SNAPSHOT_VENCIDO_PEN (índice 15, columna O)
+          // Columna 16 = SNAPSHOT_VENCIDO_USD (índice 16, columna P)
+          sheet.getRange(item.rowNum, 15).setValue(item.vencidoPEN);
+          sheet.getRange(item.rowNum, 16).setValue(item.vencidoUSD);
+        }
+
+        // Aplicar formatos de moneda
+        for (const item of filasParaActualizar) {
+          sheet.getRange(item.rowNum, 15).setNumberFormat('#,##0.00');
+          sheet.getRange(item.rowNum, 16).setNumberFormat('#,##0.00');
+        }
+
+        SpreadsheetApp.flush();
+        Logger.info(context, 'Backfill completado y guardado');
+      }
+
+      // Limpiar caché
+      this._clearCache();
+
+      const resultado = {
+        ok: true,
+        dryRun: dryRun,
+        totalProcesadas: data.length,
+        totalActualizadas: totalActualizadas,
+        totalSinCambios: data.length - totalActualizadas,
+        detalles: detalles.slice(0, 20) // Solo primeros 20 para no saturar
+      };
+
+      Logger.info(context, 'Backfill finalizado', resultado);
+
+      return resultado;
+
+    } catch (error) {
+      Logger.error(context, 'Error en backfill', error);
+      return { ok: false, error: error.message };
+    }
   }
 };

@@ -2922,3 +2922,65 @@ function scheduleJob_API(jobData, token) {
     return { ok: false, error: error.message };
   }
 }
+
+/**
+ * API para ejecutar backfill de snapshots en gestiones existentes
+ * 
+ * USO DESDE Apps Script Editor:
+ *   ejecutarBackfillSnapshots_API({ dryRun: true })   // Ver qué se actualizaría
+ *   ejecutarBackfillSnapshots_API({ dryRun: false })  // Ejecutar actualización real
+ * 
+ * @param {Object} opciones - { dryRun: boolean, limite: number }
+ * @param {string} token - Token de autenticación (opcional para ejecución directa)
+ * @return {Object} Resultado del backfill
+ */
+function ejecutarBackfillSnapshots_API(opciones, token) {
+  const context = 'ejecutarBackfillSnapshots_API';
+
+  try {
+    // Validar sesión si se proporciona token
+    if (token) {
+      AuthService.validateSession(token);
+    }
+
+    Logger.info(context, 'Ejecutando backfill de snapshots', opciones);
+
+    const resultado = BitacoraService.backfillSnapshotsExistentes(opciones || {});
+
+    Logger.info(context, 'Backfill completado', {
+      totalActualizadas: resultado.totalActualizadas
+    });
+
+    Logger.flush();
+
+    return resultado;
+
+  } catch (error) {
+    Logger.error(context, 'Error en backfill API', error);
+    Logger.flush();
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
+ * Función de prueba directa para ejecutar desde el editor de Apps Script
+ * 
+ * INSTRUCCIONES:
+ * 1. Abrir el editor de Apps Script
+ * 2. Seleccionar esta función en el dropdown
+ * 3. Ejecutar (botón Play)
+ * 4. Ver resultados en View > Logs
+ */
+function TEST_backfillSnapshots_DryRun() {
+  const resultado = ejecutarBackfillSnapshots_API({ dryRun: true });
+  console.log('=== RESULTADO DRY RUN ===');
+  console.log(JSON.stringify(resultado, null, 2));
+  return resultado;
+}
+
+function TEST_backfillSnapshots_EJECUTAR() {
+  const resultado = ejecutarBackfillSnapshots_API({ dryRun: false });
+  console.log('=== RESULTADO EJECUCIÓN REAL ===');
+  console.log(JSON.stringify(resultado, null, 2));
+  return resultado;
+}

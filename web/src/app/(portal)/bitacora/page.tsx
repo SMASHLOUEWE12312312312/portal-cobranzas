@@ -182,6 +182,12 @@ function BitacoraTablePlaceholder() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Días
                     </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Vencido PEN
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Vencido USD
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Responsable
                     </th>
@@ -195,7 +201,7 @@ function BitacoraTablePlaceholder() {
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                         Cargando datos...
                     </td>
                 </tr>

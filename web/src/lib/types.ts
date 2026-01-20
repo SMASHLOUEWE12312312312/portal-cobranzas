@@ -86,6 +86,8 @@ export interface Ciclo {
     proximaAccion?: string;
     observaciones?: string;
     diasDesdeRegistro: number;
+    snapshotVencidoPEN?: number;  // Total vencido PEN al momento del registro
+    snapshotVencidoUSD?: number;  // Total vencido USD al momento del registro
 }
 
 export interface Gestion {
@@ -101,6 +103,8 @@ export interface Gestion {
     fechaCompromiso?: string;
     proximaAccion?: string;
     observaciones?: string;
+    snapshotVencidoPEN?: number;  // Total vencido PEN al momento del registro
+    snapshotVencidoUSD?: number;  // Total vencido USD al momento del registro
 }
 
 export type TipoGestion =
