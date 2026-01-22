@@ -8782,7 +8782,39 @@
         }
 
         /**
-         * Muestra resultados de conciliación
+         * Descarga un archivo desde contenido base64
+         * @param {string} base64 - Contenido en base64
+         * @param {string} fileName - Nombre del archivo
+         * @param {string} mimeType - Tipo MIME
+         */
+        function downloadBase64File(base64, fileName, mimeType) {
+            try {
+                const byteCharacters = atob(base64);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: mimeType || 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+                console.log('Archivo descargado:', fileName);
+                return true;
+            } catch (error) {
+                console.error('Error descargando archivo:', error);
+                return false;
+            }
+        }
+
+        /**
+         * Muestra resultados de conciliación v2.0 - DESCARGA DIRECTA
          */
         function displayConciliacionResults(result, insurerName) {
             const resultsCard = document.getElementById('conciliacionResultsCard');
@@ -8797,17 +8829,60 @@
 
             if (filesContainer) filesContainer.innerHTML = '';
 
+            // Variables para almacenar base64 para descarga manual posterior
+            window._conciliacionExports = window._conciliacionExports || {};
+
             if (result.exports) {
-                if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.url) {
+                // ========== TRAMA REGISTRADOS - DESCARGA DIRECTA ==========
+                if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.base64) {
+                    const tr = result.exports.tramaRegistrados;
+                    window._conciliacionExports.trama = tr;
+
+                    filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;">' +
+                        '<span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + tr.fileName + ' (' + tr.count + ' registros)</span>' +
+                        '<button onclick="downloadBase64File(window._conciliacionExports.trama.base64, window._conciliacionExports.trama.fileName, window._conciliacionExports.trama.mimeType)" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8125rem;">⬇️ Descargar</button>' +
+                        '</div>';
+
+                    // DESCARGA AUTOMÁTICA INMEDIATA
+                    setTimeout(() => {
+                        downloadBase64File(tr.base64, tr.fileName, tr.mimeType);
+                        conciliacionLog('✅ ' + tr.fileName + ' descargado automáticamente', 'success');
+                    }, 500);
+
+                } else if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.message) {
+                    conciliacionLog('ℹ️ Trama: ' + result.exports.tramaRegistrados.message, 'info');
+                } else if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.url) {
+                    // Fallback para compatibilidad con v1
                     filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;"><span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + (result.exports.tramaRegistrados.fileName || 'Trama_Registrados.xlsx') + '</span><a href="' + result.exports.tramaRegistrados.url + '" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;">⬇️ Abrir</a></div>';
                 }
 
-                if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.url) {
+                // ========== ESTADO CUENTA PENDIENTES - DESCARGA DIRECTA ==========
+                if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.base64) {
+                    const ecp = result.exports.estadoCuentaPendientes;
+                    window._conciliacionExports.pendientes = ecp;
+
+                    filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;">' +
+                        '<span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + ecp.fileName + ' (' + ecp.count + ' registros)</span>' +
+                        '<button onclick="downloadBase64File(window._conciliacionExports.pendientes.base64, window._conciliacionExports.pendientes.fileName, window._conciliacionExports.pendientes.mimeType)" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8125rem;">⬇️ Descargar</button>' +
+                        '</div>';
+
+                    // DESCARGA AUTOMÁTICA (con delay para no solapar)
+                    setTimeout(() => {
+                        downloadBase64File(ecp.base64, ecp.fileName, ecp.mimeType);
+                        conciliacionLog('✅ ' + ecp.fileName + ' descargado automáticamente', 'success');
+                    }, 1500);
+
+                } else if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.message) {
+                    conciliacionLog('ℹ️ Pendientes: ' + result.exports.estadoCuentaPendientes.message, 'info');
+                } else if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.url) {
+                    // Fallback para compatibilidad con v1
                     filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;"><span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + (result.exports.estadoCuentaPendientes.fileName || 'Estado_Cuenta_Pendientes.xlsx') + '</span><a href="' + result.exports.estadoCuentaPendientes.url + '" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;">⬇️ Abrir</a></div>';
                 }
 
-                if (!result.exports.tramaRegistrados?.url && !result.exports.estadoCuentaPendientes?.url) {
-                    filesContainer.innerHTML = '<p class="text-muted">No se generaron archivos de exportación.</p>';
+                // Mensaje si no hay archivos
+                if (!result.exports.tramaRegistrados?.base64 && !result.exports.estadoCuentaPendientes?.base64 &&
+                    !result.exports.tramaRegistrados?.url && !result.exports.estadoCuentaPendientes?.url) {
+                    filesContainer.innerHTML = '<p style="text-align: center; color: var(--tp-text-tertiary); padding: 1rem;">No hay archivos para descargar</p>';
                 }
             }
 
