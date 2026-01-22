@@ -154,16 +154,24 @@ const PacificoProcessor = {
         const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 4 });
 
         // Export - only first 3 columns
-        // FIX: Pasar statusColTrama explícito para Pacífico (STATUS está en col 4, no en última)
+        // FIX v1.2: Pasar cuponColsEECC para matchear por E y F + limpiar sufijos (x/y)
         const exportResult = ConciliacionExport.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Pacifico',
             {
                 columnasTrama: 3,
                 startRowEECC: cfg.START_ROW,
-                cuponColEECC: cfg.COL_E,
-                statusColTrama: 4  // FIX: STATUS está en col D (4), no en col E (5)
+                cuponColsEECC: [cfg.COL_E, cfg.COL_F],  // FIX: Matchear por E y F
+                cuponStripParenSuffix: true,            // FIX: Limpiar sufijos (x/y)
+                statusColTrama: 4
             }
         );
+
+        // FIX v1.2: Warning log si hay mismatch entre cruce y export
+        const pendientesCruce = (cruceResult.noRegistrado || 0) + (cruceResult.validar || 0);
+        const pendientesXlsx = (exportResult.estadoCuentaPendientes && exportResult.estadoCuentaPendientes.count) || 0;
+        if (pendientesCruce !== pendientesXlsx) {
+            Logger.log('[WARN] Pendientes mismatch: UI(cruce)=' + pendientesCruce + ' vs XLSX=' + pendientesXlsx + ' | insurer=Pacifico');
+        }
 
         // Cleanup
         ConciliacionCruce.limpiarStatusBDCruce(wsBDCruce);

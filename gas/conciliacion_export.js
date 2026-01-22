@@ -149,13 +149,28 @@ const ConciliacionExport = {
      * Exports Estado_Cuenta_Pendientes with DIRECT DOWNLOAD
      * OPTIMIZED: Batch writes + returns base64
      * FIX v1.1: Detección robusta de columna STATUS
+     * FIX v1.2: Soporte multi-columna para cupón EECC (Pacífico E/F)
      * 
      * @private
      */
     _exportarEstadoCuentaPendientesDirecto(wsTrama, wsEECC, wsBDCruce, insurerKey, timestamp, options) {
         const context = 'ConciliacionExport._exportarEstadoCuentaPendientesDirecto';
         const startRowEECC = options.startRowEECC || 2;
-        const cuponColEECC = options.cuponColEECC || 7;
+
+        // FIX v1.2: Soporte multi-columna sin romper compatibilidad
+        const cuponColsEECC = Array.isArray(options.cuponColsEECC) && options.cuponColsEECC.length
+            ? options.cuponColsEECC
+            : [(options.cuponColEECC || 7)];
+
+        // FIX v1.2: Opción para limpiar sufijos tipo "(x/y)"
+        const stripParenSuffix = options.cuponStripParenSuffix === true;
+        const sanitizeCupon = (v) => {
+            let s = String(v || '').trim();
+            if (stripParenSuffix && s) {
+                s = s.replace(/\([^)]*\)$/, '').trim();
+            }
+            return s;
+        };
 
         // Profiling
         const T = { start: Date.now() };
@@ -169,16 +184,13 @@ const ConciliacionExport = {
         const cuponesPendientes = new Map();
         const lastColTrama = tramaData[0].length;
 
-        // FIX: Determinar columna STATUS de forma robusta
-        // Prioridad: 1) options.statusColTrama, 2) detectar por header 'STATUS', 3) columnasTrama + 1
-        let statusColIndex = null; // índice 0-based
+        // FIX v1.1: Determinar columna STATUS de forma robusta
+        let statusColIndex = null;
 
-        // Opción 1: Pasado explícitamente en options
         if (options.statusColTrama) {
-            statusColIndex = options.statusColTrama - 1; // convertir a 0-based
+            statusColIndex = options.statusColTrama - 1;
         }
 
-        // Opción 2: Detectar por header 'STATUS' en fila 1
         if (statusColIndex === null && tramaData.length > 0) {
             const headers = tramaData[0];
             for (let c = 0; c < headers.length; c++) {
@@ -189,16 +201,14 @@ const ConciliacionExport = {
             }
         }
 
-        // Opción 3: Fallback a columnasTrama (índice 0-based de col statusCol típica)
         if (statusColIndex === null) {
-            statusColIndex = (options.columnasTrama || 3); // índice 0-based de col 4
+            statusColIndex = (options.columnasTrama || 3);
         }
 
-        Logger.log(context + ': Detectado statusColIndex=' + statusColIndex + ' (lastCol=' + lastColTrama + ')');
+        Logger.log(context + ': statusColIndex=' + statusColIndex + ' | cuponColsEECC=' + JSON.stringify(cuponColsEECC) + ' | stripParenSuffix=' + stripParenSuffix);
 
         for (let i = 1; i < tramaData.length; i++) {
             const cupon = String(tramaData[i][0] || '').trim();
-            // FIX: Usar statusColIndex en lugar de lastColTrama - 1
             const status = String(tramaData[i][statusColIndex] || '').trim();
 
             if (cupon && (status === ConciliacionCruce.STATUS.NO_REGISTRADO ||
@@ -228,18 +238,43 @@ const ConciliacionExport = {
         const outputRows = [];
         const highlightInfo = [];
 
+        // FIX v1.2: Contador por columna para logging
+        const matchesByCol = {};
+        cuponColsEECC.forEach(c => matchesByCol[c] = 0);
+
         for (let i = startRowEECC - 1; i < eeccData.length; i++) {
             const row = eeccData[i];
-            const cuponEECC = String(row[cuponColEECC - 1] || '').trim();
-            const cuponNorm = ProcessorBase.normalizarCupon(cuponEECC);
-            const statusEncontrado = cuponesPendientes.get(cuponEECC) || cuponesPendientes.get(cuponNorm);
+
+            let statusEncontrado = null;
+            let matchedCol = null;
+
+            // FIX v1.2: Intentar match por cualquiera de las columnas configuradas (en orden)
+            for (let k = 0; k < cuponColsEECC.length; k++) {
+                const col = cuponColsEECC[k];
+                const cuponRaw = sanitizeCupon(row[col - 1]);
+                if (!cuponRaw) continue;
+
+                const cuponNorm = ProcessorBase.normalizarCupon(cuponRaw);
+                statusEncontrado = cuponesPendientes.get(cuponRaw) || cuponesPendientes.get(cuponNorm);
+
+                if (statusEncontrado) {
+                    matchedCol = col;
+                    break;
+                }
+            }
 
             if (statusEncontrado) {
                 const rowData = [...row, statusEncontrado];
                 outputRows.push(rowData);
                 highlightInfo.push({ rowIdx: outputRows.length - 1, status: statusEncontrado });
+
+                if (matchedCol != null) {
+                    matchesByCol[matchedCol] = (matchesByCol[matchedCol] || 0) + 1;
+                }
             }
         }
+
+        Logger.log(context + ': matchesByCol=' + JSON.stringify(matchesByCol) + ' | exportRows=' + outputRows.length + ' | pendientesMapSize=' + cuponesPendientes.size);
         perfLog('ACCUMULATE');
 
         if (outputRows.length === 0) {
