@@ -70,15 +70,8 @@ const QualitasProcessor = {
         for (let i = cfg.START_ROW - 1; i < srcData.length; i++) {
             const row = srcData[i];
 
-            const numeroCuponRaw = String(row[cfg.COL_CUPON - 1] || '').trim();
-            if (!numeroCuponRaw) continue;
-
-            // Qualitas (EXCLUSIVO): si es numérico, quitar ceros a la izquierda.
-            // Evita tocar cupones no numéricos para no introducir regresiones.
-            let numeroCupon = numeroCuponRaw;
-            if (/^\d+$/.test(numeroCuponRaw)) {
-                numeroCupon = ProcessorBase.quitarCerosIzquierda(numeroCuponRaw);
-            }
+            const numeroCupon = String(row[cfg.COL_CUPON - 1] || '').trim();
+            if (!numeroCupon) continue;
 
             const fechaPago = row[cfg.COL_FECHA - 1];
 
