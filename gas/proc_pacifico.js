@@ -34,6 +34,18 @@ const PacificoProcessor = {
         TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy' }
     },
 
+    /**
+     * FIX: Limpia sufijo (x/y) de cupones Pacífico
+     * Ejemplo: "111891993(5/12)" → "111891993"
+     * @param {string} cupon - Cupón original
+     * @returns {string} Cupón sin sufijo
+     */
+    _limpiarSufijoCupon(cupon) {
+        const str = String(cupon || '').trim();
+        // Quitar todo desde "(" hasta el final si termina en ")"
+        return str.replace(/\([^)]*\)$/, '').trim();
+    },
+
     process(tempFileId, ss) {
         const context = 'PacificoProcessor.process';
         const cfg = this.CONFIG;
@@ -90,8 +102,11 @@ const PacificoProcessor = {
         for (let i = cfg.START_ROW - 1; i < srcData.length; i++) {
             const row = srcData[i];
 
-            const cuponE = String(row[cfg.COL_E - 1] || '').trim();
-            const cuponF = String(row[cfg.COL_F - 1] || '').trim();
+            // FIX: Limpiar sufijo (x/y) de cupones Pacífico antes de procesar
+            const cuponERaw = String(row[cfg.COL_E - 1] || '').trim();
+            const cuponFRaw = String(row[cfg.COL_F - 1] || '').trim();
+            const cuponE = this._limpiarSufijoCupon(cuponERaw);
+            const cuponF = this._limpiarSufijoCupon(cuponFRaw);
             const fechaPago = row[cfg.COL_FECHA - 1];
             const factura = row[cfg.COL_FACTURA - 1];
 
@@ -139,9 +154,15 @@ const PacificoProcessor = {
         const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 4 });
 
         // Export - only first 3 columns
+        // FIX: Pasar statusColTrama explícito para Pacífico (STATUS está en col 4, no en última)
         const exportResult = ConciliacionExport.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Pacifico',
-            { columnasTrama: 3, startRowEECC: cfg.START_ROW, cuponColEECC: cfg.COL_E }
+            {
+                columnasTrama: 3,
+                startRowEECC: cfg.START_ROW,
+                cuponColEECC: cfg.COL_E,
+                statusColTrama: 4  // FIX: STATUS está en col D (4), no en col E (5)
+            }
         );
 
         // Cleanup

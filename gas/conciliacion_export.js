@@ -148,6 +148,7 @@ const ConciliacionExport = {
     /**
      * Exports Estado_Cuenta_Pendientes with DIRECT DOWNLOAD
      * OPTIMIZED: Batch writes + returns base64
+     * FIX v1.1: Detección robusta de columna STATUS
      * 
      * @private
      */
@@ -168,9 +169,37 @@ const ConciliacionExport = {
         const cuponesPendientes = new Map();
         const lastColTrama = tramaData[0].length;
 
+        // FIX: Determinar columna STATUS de forma robusta
+        // Prioridad: 1) options.statusColTrama, 2) detectar por header 'STATUS', 3) columnasTrama + 1
+        let statusColIndex = null; // índice 0-based
+
+        // Opción 1: Pasado explícitamente en options
+        if (options.statusColTrama) {
+            statusColIndex = options.statusColTrama - 1; // convertir a 0-based
+        }
+
+        // Opción 2: Detectar por header 'STATUS' en fila 1
+        if (statusColIndex === null && tramaData.length > 0) {
+            const headers = tramaData[0];
+            for (let c = 0; c < headers.length; c++) {
+                if (String(headers[c]).trim().toUpperCase() === 'STATUS') {
+                    statusColIndex = c;
+                    break;
+                }
+            }
+        }
+
+        // Opción 3: Fallback a columnasTrama (índice 0-based de col statusCol típica)
+        if (statusColIndex === null) {
+            statusColIndex = (options.columnasTrama || 3); // índice 0-based de col 4
+        }
+
+        Logger.log(context + ': Detectado statusColIndex=' + statusColIndex + ' (lastCol=' + lastColTrama + ')');
+
         for (let i = 1; i < tramaData.length; i++) {
             const cupon = String(tramaData[i][0] || '').trim();
-            const status = String(tramaData[i][lastColTrama - 1] || '').trim();
+            // FIX: Usar statusColIndex en lugar de lastColTrama - 1
+            const status = String(tramaData[i][statusColIndex] || '').trim();
 
             if (cupon && (status === ConciliacionCruce.STATUS.NO_REGISTRADO ||
                 status === ConciliacionCruce.STATUS.VALIDAR)) {
@@ -179,6 +208,8 @@ const ConciliacionExport = {
             }
         }
         perfLog('BUILD_MAP');
+
+        Logger.log(context + ': Cupones pendientes encontrados: ' + cuponesPendientes.size);
 
         if (cuponesPendientes.size === 0) {
             return {

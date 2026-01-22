@@ -8849,8 +8849,9 @@
                         conciliacionLog('✅ ' + tr.fileName + ' descargado automáticamente', 'success');
                     }, 500);
 
-                } else if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.message) {
-                    conciliacionLog('ℹ️ Trama: ' + result.exports.tramaRegistrados.message, 'info');
+                    // FIX: NO mostrar mensaje cuando count == 0 (regla absoluta UI/UX)
+                    // } else if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.message) {
+                    //     conciliacionLog('ℹ️ Trama: ' + result.exports.tramaRegistrados.message, 'info');
                 } else if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.url) {
                     // Fallback para compatibilidad con v1
                     filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;"><span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + (result.exports.tramaRegistrados.fileName || 'Trama_Registrados.xlsx') + '</span><a href="' + result.exports.tramaRegistrados.url + '" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;">⬇️ Abrir</a></div>';
@@ -8872,8 +8873,9 @@
                         conciliacionLog('✅ ' + ecp.fileName + ' descargado automáticamente', 'success');
                     }, 1500);
 
-                } else if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.message) {
-                    conciliacionLog('ℹ️ Pendientes: ' + result.exports.estadoCuentaPendientes.message, 'info');
+                    // FIX: NO mostrar mensaje cuando count == 0 (regla absoluta UI/UX)
+                    // } else if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.message) {
+                    //     conciliacionLog('ℹ️ Pendientes: ' + result.exports.estadoCuentaPendientes.message, 'info');
                 } else if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.url) {
                     // Fallback para compatibilidad con v1
                     filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;"><span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + (result.exports.estadoCuentaPendientes.fileName || 'Estado_Cuenta_Pendientes.xlsx') + '</span><a href="' + result.exports.estadoCuentaPendientes.url + '" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;">⬇️ Abrir</a></div>';
