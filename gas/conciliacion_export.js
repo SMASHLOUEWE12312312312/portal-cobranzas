@@ -133,8 +133,8 @@ const ConciliacionExport = {
 
     /**
      * Exports Estado_Cuenta_Pendientes
+     * OPTIMIZED VERSION: Batch writes for performance
      * 
-     * REPLICA EXACTA DE: Sub ExportarEstadoCuentaPendientes()
      * - Coupons from Trama with status "no Registrado" or "Validar Registro"
      * - Coupons from BD_Cruce with Estado = "Pendiente"
      * - OBSERVACION column with status
@@ -144,6 +144,17 @@ const ConciliacionExport = {
         const context = 'ConciliacionExport._exportarEstadoCuentaPendientes';
         const startRowEECC = options.startRowEECC || 2;
         const cuponColEECC = options.cuponColEECC || 7; // Column G by default
+
+        // ========== PROFILING INSTRUMENTATION ==========
+        const T = { start: Date.now() };
+        const perfLog = (label) => {
+            const now = Date.now();
+            const elapsed = now - T.start;
+            const delta = T.last ? now - T.last : elapsed;
+            Logger.log('[PERF] exportPendientes | ' + label + ' | +' + delta + 'ms | total=' + elapsed + 'ms');
+            T.last = now;
+        };
+        perfLog('INIT');
 
         // 1. Get pending coupons from Trama with their status
         const tramaData = wsTrama.getDataRange().getValues();
@@ -162,6 +173,7 @@ const ConciliacionExport = {
                 cuponesPendientes.set(ProcessorBase.normalizarCupon(cupon), status);
             }
         }
+        perfLog('BUILD_PENDING_MAP');
 
         if (cuponesPendientes.size === 0) {
             return { ok: true, message: 'Sin registros pendientes', url: null, count: 0 };
@@ -170,6 +182,7 @@ const ConciliacionExport = {
         // 2. Get EECC rows corresponding to pending coupons
         const eeccData = wsEECC.getDataRange().getValues();
         const eeccHeaders = eeccData[0] || [];
+        perfLog('READ_EECC');
 
         // Create temporary spreadsheet
         const tempSSName = 'Estado_Cuenta_Pendientes_' + insurerKey + '_' + timestamp;
@@ -182,50 +195,68 @@ const ConciliacionExport = {
         wsOut.getRange(1, 1, 1, headersOut.length).setValues([headersOut]);
         wsOut.setFrozenRows(1);
         wsOut.getRange(1, 1, 1, headersOut.length).setFontWeight('bold').setBackground('#D9D9D9');
+        perfLog('CREATE_TEMP_SS');
 
-        // Write pending rows
-        let rowOut = 2;
-        const rowsToHighlight = []; // { row, status }
+        // ========== BATCH ACCUMULATION ==========
+        const outputRows = [];      // Data rows to write
+        const highlightInfo = [];   // { rowIdx, status } for highlighting
 
         for (let i = startRowEECC - 1; i < eeccData.length; i++) {
             const row = eeccData[i];
-
-            // Get coupon from EECC
             const cuponEECC = String(row[cuponColEECC - 1] || '').trim();
             const cuponNorm = ProcessorBase.normalizarCupon(cuponEECC);
-
-            // Check if this coupon is pending
             let statusEncontrado = cuponesPendientes.get(cuponEECC) || cuponesPendientes.get(cuponNorm);
 
             if (statusEncontrado) {
-                // Write row + observation
                 const rowData = [...row, statusEncontrado];
-                wsOut.getRange(rowOut, 1, 1, rowData.length).setValues([rowData]);
-                rowsToHighlight.push({ row: rowOut, status: statusEncontrado });
-                rowOut++;
+                outputRows.push(rowData);
+                highlightInfo.push({ rowIdx: outputRows.length - 1, status: statusEncontrado });
             }
         }
+        perfLog('ACCUMULATE_ROWS');
 
-        // Apply highlighting
-        rowsToHighlight.forEach(item => {
-            let color;
-            switch (item.status) {
-                case ConciliacionCruce.STATUS.NO_REGISTRADO:
-                    color = ConciliacionCruce.COLORS.NO_REGISTRADO;
-                    break;
-                case ConciliacionCruce.STATUS.VALIDAR:
-                    color = ConciliacionCruce.COLORS.VALIDAR;
-                    break;
-                case ConciliacionCruce.STATUS.PENDIENTE_BD:
-                    color = ConciliacionCruce.COLORS.PENDIENTE_BD;
-                    break;
+        // ========== BATCH WRITE DATA ==========
+        let rowOut = 2;
+        if (outputRows.length > 0) {
+            const numCols = outputRows[0].length;
+            wsOut.getRange(2, 1, outputRows.length, numCols).setValues(outputRows);
+            rowOut = 2 + outputRows.length;
+        }
+        perfLog('WRITE_DATA_BATCH');
+
+        // ========== BATCH WRITE BACKGROUNDS ==========
+        if (highlightInfo.length > 0 && wsOut.getLastColumn() >= 7) {
+            // Prepare background arrays for columns E (5) and G (7)
+            const bgColE = [];
+            const bgColG = [];
+
+            for (let i = 0; i < highlightInfo.length; i++) {
+                const item = highlightInfo[i];
+                let color = null;
+
+                switch (item.status) {
+                    case ConciliacionCruce.STATUS.NO_REGISTRADO:
+                        color = ConciliacionCruce.COLORS.NO_REGISTRADO;
+                        break;
+                    case ConciliacionCruce.STATUS.VALIDAR:
+                        color = ConciliacionCruce.COLORS.VALIDAR;
+                        break;
+                    case ConciliacionCruce.STATUS.PENDIENTE_BD:
+                        color = ConciliacionCruce.COLORS.PENDIENTE_BD;
+                        break;
+                    default:
+                        color = null;
+                }
+
+                bgColE.push([color]);
+                bgColG.push([color]);
             }
 
-            if (color && wsOut.getLastColumn() >= 7) {
-                wsOut.getRange(item.row, 5).setBackground(color); // Col E
-                wsOut.getRange(item.row, 7).setBackground(color); // Col G
-            }
-        });
+            // Apply backgrounds in batch
+            wsOut.getRange(2, 5, bgColE.length, 1).setBackgrounds(bgColE);
+            wsOut.getRange(2, 7, bgColG.length, 1).setBackgrounds(bgColG);
+        }
+        perfLog('WRITE_BACKGROUNDS_BATCH');
 
         // Export as XLSX
         const url = 'https://docs.google.com/spreadsheets/d/' + tempSS.getId() + '/export?format=xlsx';
@@ -235,11 +266,13 @@ const ConciliacionExport = {
 
         const fileName = tempSSName + '.xlsx';
         const file = folder.createFile(blob.setName(fileName));
+        perfLog('EXPORT_XLSX');
 
         // Cleanup
         DriveApp.getFileById(tempSS.getId()).setTrashed(true);
 
-        Logger.log(context + ': Exportados ' + (rowOut - 2) + ' registros pendientes');
+        Logger.log(context + ': Exportados ' + (rowOut - 2) + ' registros pendientes (BATCH)');
+        perfLog('COMPLETE');
 
         return {
             ok: true,

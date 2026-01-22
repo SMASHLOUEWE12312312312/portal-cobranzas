@@ -20,6 +20,17 @@ const ConciliacionIO = {
     subirBDSisnet(base64Data, fileName, mimeType) {
         const context = 'ConciliacionIO.subirBDSisnet';
 
+        // ========== PROFILING INSTRUMENTATION ==========
+        const T = { start: Date.now() };
+        const perfLog = (label) => {
+            const now = Date.now();
+            const elapsed = now - T.start;
+            const delta = T.last ? now - T.last : elapsed;
+            Logger.log('[PERF] subirBDSisnet | ' + label + ' | +' + delta + 'ms | total=' + elapsed + 'ms');
+            T.last = now;
+        };
+        perfLog('INIT');
+
         // Get lock to prevent simultaneous executions
         const lock = LockService.getScriptLock();
         if (!lock.tryLock(30000)) {
@@ -43,6 +54,7 @@ const ConciliacionIO = {
             }
 
             const ss = SpreadsheetApp.openById(ssId);
+            perfLog('OPEN_SS');
 
             // 3. Convert base64 to blob
             const bytes = Utilities.base64Decode(base64Data);
@@ -51,6 +63,7 @@ const ConciliacionIO = {
                 mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 fileName
             );
+            perfLog('CREATE_BLOB');
 
             // 4. Upload to Drive and convert to Google Sheet
             const resource = {
@@ -60,11 +73,13 @@ const ConciliacionIO = {
 
             const tempFile = Drive.Files.insert(resource, blob, { convert: true });
             tempFileId = tempFile.id;
+            perfLog('DRIVE_CONVERT');
 
             // 5. Read data from temporary file
             const tempSS = SpreadsheetApp.openById(tempFileId);
             const tempSheet = tempSS.getSheets()[0];
             const data = tempSheet.getDataRange().getValues();
+            perfLog('READ_TEMP_DATA');
 
             // 6. Validate data (minimum 2 rows: header + 1 data)
             if (data.length < 2) {
@@ -79,28 +94,27 @@ const ConciliacionIO = {
 
             // 8. CLEAR sheet completely (replica: wsBDCruce.Cells.Clear)
             bdCruce.clear();
+            perfLog('CLEAR_BD_CRUCE');
 
             // 9. Write data (replica: wsOrigen.UsedRange.Copy wsBDCruce.Range("A1"))
             const numRows = data.length;
             const numCols = data[0].length;
             bdCruce.getRange(1, 1, numRows, numCols).setValues(data);
+            perfLog('WRITE_BD_CRUCE');
 
-            // 10. Apply formatting (exact replica of VBA)
-            // Tab color: RGB(0, 176, 240) = cyan
+            // 10. Apply formatting in batch (optimized)
             bdCruce.setTabColor('#00B0F0');
-
-            // Row 1: Bold + Gray background
-            bdCruce.getRange(1, 1, 1, numCols)
-                .setFontWeight('bold')
-                .setBackground('#D9D9D9');
-
-            // Freeze row 1
             bdCruce.setFrozenRows(1);
+            const headerRange = bdCruce.getRange(1, 1, 1, numCols);
+            headerRange.setFontWeight('bold').setBackground('#D9D9D9');
+            SpreadsheetApp.flush();
+            perfLog('FORMAT_COMPLETE');
 
             // 11. Rows loaded (without header)
             const rowsLoaded = numRows - 1;
 
             Logger.log(context + ': BD Sisnet cargada exitosamente. Registros: ' + rowsLoaded);
+            perfLog('COMPLETE');
 
             return {
                 ok: true,

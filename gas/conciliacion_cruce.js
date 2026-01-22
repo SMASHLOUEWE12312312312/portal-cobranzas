@@ -26,8 +26,7 @@ const ConciliacionCruce = {
 
     /**
      * Executes cross-reference of coupons Trama vs BD_Cruce
-     * 
-     * REPLICA EXACTA DE: Sub CruzarTramaConBDCruce() del VBA
+     * OPTIMIZED VERSION: Batch writes for performance
      * 
      * @param {Sheet} wsTrama - Trama sheet with coupons to validate (Col A)
      * @param {Sheet} wsBDCruce - BD_Cruce sheet (Col H = CUPON)
@@ -39,98 +38,151 @@ const ConciliacionCruce = {
         const statusColTrama = options.statusCol || 4;
         const cuponColBD = getConfig('CONCILIACION.BD_CRUCE_CUPON_COL', 8); // Col H
 
-        Logger.log(context + ': Iniciando cruce');
+        // ========== PROFILING INSTRUMENTATION ==========
+        const T = { start: Date.now() };
+        const perfLog = (label) => {
+            const now = Date.now();
+            const elapsed = now - T.start;
+            const delta = T.last ? now - T.last : elapsed;
+            Logger.log('[PERF] ejecutarCruce | ' + label + ' | +' + delta + 'ms | total=' + elapsed + 'ms');
+            T.last = now;
+        };
+        perfLog('INIT');
 
-        // 1. Load coupons from BD_Cruce into arrays
-        // (replica: arrCuponesBD, arrFilasBD from VBA)
+        Logger.log(context + ': Iniciando cruce (OPTIMIZADO)');
+
+        // ========== FASE 1: CARGA DE DATOS EN MEMORIA ==========
+
+        // 1.1 Load BD_Cruce into Map for O(1) lookup
         const bdData = wsBDCruce.getDataRange().getValues();
-        const cuponesBD = [];
-        const filasBD = [];
+        const lastColBD = bdData[0] ? bdData[0].length : cuponColBD;
+        const colStatusBD = lastColBD + 1; // Nueva columna STATUS
+        perfLog('READ_BD_CRUCE');
+
+        // Map: cupon exacto -> { row, idx }
+        // Map: cupon normalizado -> { row, idx }
+        const bdMapExacto = new Map();
+        const bdMapNorm = new Map();
+        const bdCupones = []; // Para tracking de procesados
 
         for (let i = 1; i < bdData.length; i++) {
             const cupon = String(bdData[i][cuponColBD - 1] || '').trim();
             if (cupon) {
-                cuponesBD.push(cupon);
-                filasBD.push(i + 1); // 1-indexed row
+                const cuponNorm = this._normalizarCupon(cupon);
+                const entry = { row: i + 1, idx: bdCupones.length };
+                bdCupones.push({ cupon, row: i + 1, procesado: false, status: '' });
+
+                // Solo guardar primera ocurrencia (evitar duplicados)
+                if (!bdMapExacto.has(cupon)) {
+                    bdMapExacto.set(cupon, entry);
+                }
+                if (!bdMapNorm.has(cuponNorm)) {
+                    bdMapNorm.set(cuponNorm, entry);
+                }
             }
         }
+        perfLog('BUILD_BD_MAPS');
 
-        Logger.log(context + ': Cupones en BD_Cruce: ' + cuponesBD.length);
+        Logger.log(context + ': Cupones en BD_Cruce: ' + bdCupones.length);
 
-        // 2. Add temporary STATUS column in BD_Cruce
-        // (replica: colStatus = lastColBD + 1)
-        const lastColBD = wsBDCruce.getLastColumn() || cuponColBD;
-        const colStatusBD = lastColBD + 1;
-        wsBDCruce.getRange(1, colStatusBD).setValue('STATUS');
+        // 1.2 Load Trama data
+        const tramaData = wsTrama.getDataRange().getValues();
+        const numFilasTrama = tramaData.length - 1; // Sin header
+        perfLog('READ_TRAMA');
 
-        // 3. Array to mark processed BD coupons
-        const procesadosBD = new Array(cuponesBD.length).fill(false);
+        // ========== FASE 2: PROCESAMIENTO EN MEMORIA ==========
 
-        // 4. Counters
+        // Arrays para batch write
+        const tramaStatusValues = [];  // [[status], [status], ...]
+        const tramaBackgrounds = [];   // [[color], [color], ...]
+
+        // Counters
         let contRegistrado = 0;
         let contValidar = 0;
         let contNoRegistrado = 0;
 
-        // 5. Process each coupon from Trama
-        const tramaData = wsTrama.getDataRange().getValues();
-
+        // 2.1 Process each Trama row in memory
         for (let i = 1; i < tramaData.length; i++) {
             const cuponTrama = String(tramaData[i][0] || '').trim();
-            const filaT = i + 1;
 
-            // Empty coupon → not registered
+            // Cupón vacío → No registrado
             if (!cuponTrama) {
-                wsTrama.getRange(filaT, statusColTrama)
-                    .setValue(this.STATUS.NO_REGISTRADO)
-                    .setBackground(this.COLORS.NO_REGISTRADO);
+                tramaStatusValues.push([this.STATUS.NO_REGISTRADO]);
+                tramaBackgrounds.push([this.COLORS.NO_REGISTRADO]);
                 contNoRegistrado++;
                 continue;
             }
 
-            // Find match
-            const resultado = this._compararCupon(
-                cuponTrama,
-                cuponesBD,
-                filasBD,
-                wsBDCruce,
-                colStatusBD,
-                procesadosBD
+            // Buscar match EXACTO en O(1)
+            let matchEntry = bdMapExacto.get(cuponTrama);
+            let matchType = matchEntry ? 'EXACTO' : null;
+
+            // Si no hay match exacto, buscar NORMALIZADO
+            if (!matchType) {
+                const cuponNorm = this._normalizarCupon(cuponTrama);
+                matchEntry = bdMapNorm.get(cuponNorm);
+                matchType = matchEntry ? 'SIMILAR' : null;
+            }
+
+            // Determinar resultado
+            if (matchType === 'EXACTO') {
+                tramaStatusValues.push([this.STATUS.REGISTRADO]);
+                tramaBackgrounds.push([this.COLORS.REGISTRADO]);
+                contRegistrado++;
+
+                // Marcar BD como procesado
+                if (matchEntry) {
+                    bdCupones[matchEntry.idx].procesado = true;
+                    bdCupones[matchEntry.idx].status = this.STATUS.REGISTRADO;
+                }
+            } else if (matchType === 'SIMILAR') {
+                tramaStatusValues.push([this.STATUS.VALIDAR]);
+                tramaBackgrounds.push([this.COLORS.VALIDAR]);
+                contValidar++;
+
+                // Marcar BD como procesado
+                if (matchEntry) {
+                    bdCupones[matchEntry.idx].procesado = true;
+                    bdCupones[matchEntry.idx].status = this.STATUS.VALIDAR;
+                }
+            } else {
+                // No encontrado
+                tramaStatusValues.push([this.STATUS.NO_REGISTRADO]);
+                tramaBackgrounds.push([this.COLORS.NO_REGISTRADO]);
+                contNoRegistrado++;
+            }
+        }
+        perfLog('PROCESS_TRAMA_LOOP');
+
+        // ========== FASE 3: ESCRITURA BATCH ==========
+
+        // 3.1 Write header STATUS to BD_Cruce
+        wsBDCruce.getRange(1, colStatusBD).setValue('STATUS');
+
+        // 3.2 Write Trama STATUS column in batch
+        if (tramaStatusValues.length > 0) {
+            wsTrama.getRange(2, statusColTrama, tramaStatusValues.length, 1)
+                .setValues(tramaStatusValues);
+            wsTrama.getRange(2, statusColTrama, tramaBackgrounds.length, 1)
+                .setBackgrounds(tramaBackgrounds);
+        }
+        perfLog('WRITE_TRAMA_BATCH');
+
+        // 3.3 Write BD_Cruce STATUS column in batch
+        if (bdCupones.length > 0) {
+            const bdStatusValues = bdCupones.map(c =>
+                [c.status || this.STATUS.NO_REGISTRADO]
             );
-
-            // Apply result
-            switch (resultado) {
-                case 'EXACTO':
-                    wsTrama.getRange(filaT, statusColTrama)
-                        .setValue(this.STATUS.REGISTRADO)
-                        .setBackground(this.COLORS.REGISTRADO);
-                    contRegistrado++;
-                    break;
-
-                case 'SIMILAR':
-                    wsTrama.getRange(filaT, statusColTrama)
-                        .setValue(this.STATUS.VALIDAR)
-                        .setBackground(this.COLORS.VALIDAR);
-                    contValidar++;
-                    break;
-
-                default: // 'NINGUNO'
-                    wsTrama.getRange(filaT, statusColTrama)
-                        .setValue(this.STATUS.NO_REGISTRADO)
-                        .setBackground(this.COLORS.NO_REGISTRADO);
-                    contNoRegistrado++;
-            }
+            wsBDCruce.getRange(2, colStatusBD, bdStatusValues.length, 1)
+                .setValues(bdStatusValues);
         }
+        perfLog('WRITE_BD_BATCH');
 
-        // 6. Mark unprocessed BD coupons
-        // (replica: If Not arrProcesadosBD(i) Then ...)
-        for (let i = 0; i < cuponesBD.length; i++) {
-            if (!procesadosBD[i]) {
-                wsBDCruce.getRange(filasBD[i], colStatusBD)
-                    .setValue(this.STATUS.NO_REGISTRADO);
-            }
-        }
+        // Flush changes
+        SpreadsheetApp.flush();
+        perfLog('FLUSH_COMPLETE');
 
-        Logger.log(context + ': Cruce completado. ' +
+        Logger.log(context + ': Cruce completado (BATCH). ' +
             'Registrado: ' + contRegistrado + ', ' +
             'Validar: ' + contValidar + ', ' +
             'No Registrado: ' + contNoRegistrado);
