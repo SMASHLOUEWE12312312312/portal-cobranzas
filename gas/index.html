@@ -1272,7 +1272,8 @@
 
                         <div class="form-group">
                             <label class="form-label" for="eeccFileInput">Archivo EECC de la Aseguradora</label>
-                            <input type="file" id="eeccFileInput" accept=".xlsx,.xls,.csv" style="width: 100%;">
+                            <input type="file" id="eeccFileInput"
+                                accept=".xlsx,.xls,.xlsm,.xlsb,.xltx,.xltm,.xlt,.xlam,.xla" style="width: 100%;">
                             <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8125rem;">
                                 📌 Sube el Estado de Cuenta descargado directamente desde el portal de la aseguradora.
                             </p>
@@ -8592,6 +8593,61 @@
             if (btn) btn.disabled = true;
         }
 
+        // ===============================
+        // Conciliación — Excel extensions
+        // ===============================
+        const CONCILIACION_EXCEL_EXTS = new Set([
+            'xlsx', 'xls', 'xlsm', 'xlsb',
+            'xltx', 'xltm', 'xlt',
+            'xlam', 'xla'
+        ]);
+
+        function conciliacionGetFileExt(fileName) {
+            if (!fileName) return '';
+            const parts = String(fileName).split('.');
+            if (parts.length < 2) return '';
+            return parts.pop().toLowerCase().trim();
+        }
+
+        function conciliacionIsExcelFile(fileName) {
+            const ext = conciliacionGetFileExt(fileName);
+            return CONCILIACION_EXCEL_EXTS.has(ext);
+        }
+
+        /**
+         * Devuelve un MIME coherente para Drive conversion según extensión.
+         * Si la extensión no es Excel (según set), devuelve ''.
+         */
+        function conciliacionInferExcelMimeType(fileName) {
+            const ext = conciliacionGetFileExt(fileName);
+            if (!CONCILIACION_EXCEL_EXTS.has(ext)) return '';
+
+            switch (ext) {
+                case 'xls':
+                case 'xlt':
+                case 'xla':
+                    return 'application/vnd.ms-excel';
+
+                case 'xlsx':
+                case 'xltx':
+                    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+                case 'xlsm':
+                case 'xltm':
+                    return 'application/vnd.ms-excel.sheet.macroEnabled.12';
+
+                case 'xlsb':
+                    return 'application/vnd.ms-excel.sheet.binary.macroEnabled.12';
+
+                case 'xlam':
+                    return 'application/vnd.ms-excel.addin.macroEnabled.12';
+
+                default:
+                    // fallback conservador
+                    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            }
+        }
+
         /**
          * Actualiza estado del botón Procesar según selecciones
          */
@@ -8767,7 +8823,7 @@
                         showConciliacionStatus('conciliacionStatus', error.message, 'error');
                         log('❌ Error EECC: ' + error.message, 'error');
                     })
-                    .conciliacionProcess(insurerKey, base64, file.name, file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    .conciliacionProcess(insurerKey, base64, file.name, conciliacionInferExcelMimeType(file.name) || file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             };
 
             reader.onerror = () => {
@@ -8911,7 +8967,15 @@
 
             if (eeccFileInput) {
                 eeccFileInput.removeEventListener('change', updateProcessBtnState);
-                eeccFileInput.addEventListener('change', updateProcessBtnState);
+                eeccFileInput.addEventListener('change', () => {
+                    // Validación estricta: Excel siempre (todas las extensiones definidas)
+                    const f = eeccFileInput.files && eeccFileInput.files[0];
+                    if (f && !conciliacionIsExcelFile(f.name)) {
+                        showToast('Archivo no válido. Solo se permiten archivos Excel (.xlsx, .xls, .xlsm, .xlsb, .xltx, .xltm, .xlt, .xlam, .xla).', 'error');
+                        eeccFileInput.value = '';
+                    }
+                    updateProcessBtnState();
+                });
             }
 
             refreshConciliacionStatus();

@@ -1,9 +1,59 @@
 /**
  * @fileoverview Main service dispatcher for Conciliación module
- * @version 1.0.0
+ * @version 1.1.0
  * 
  * Routes requests to appropriate processors and manages workflow.
  */
+
+// ===============================================
+// Conciliación — Excel validation & MIME normalize
+// ===============================================
+const _CONCILIACION_EXCEL_EXTS = {
+    xlsx: true, xls: true, xlsm: true, xlsb: true,
+    xltx: true, xltm: true, xlt: true,
+    xlam: true, xla: true
+};
+
+function _conciliacionGetFileExt_(fileName) {
+    if (!fileName) return '';
+    const parts = String(fileName).split('.');
+    if (parts.length < 2) return '';
+    return parts.pop().toLowerCase().trim();
+}
+
+function _conciliacionIsExcelFile_(fileName) {
+    const ext = _conciliacionGetFileExt_(fileName);
+    return !!_CONCILIACION_EXCEL_EXTS[ext];
+}
+
+function _conciliacionInferExcelMimeType_(fileName) {
+    const ext = _conciliacionGetFileExt_(fileName);
+    if (!_CONCILIACION_EXCEL_EXTS[ext]) return '';
+
+    switch (ext) {
+        case 'xls':
+        case 'xlt':
+        case 'xla':
+            return 'application/vnd.ms-excel';
+
+        case 'xlsx':
+        case 'xltx':
+            return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+        case 'xlsm':
+        case 'xltm':
+            return 'application/vnd.ms-excel.sheet.macroEnabled.12';
+
+        case 'xlsb':
+            return 'application/vnd.ms-excel.sheet.binary.macroEnabled.12';
+
+        case 'xlam':
+            return 'application/vnd.ms-excel.addin.macroEnabled.12';
+
+        default:
+            return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    }
+}
 
 const ConciliacionService = {
     /**
@@ -34,6 +84,16 @@ const ConciliacionService = {
         if (!insurerKey || !base64Data || !fileName) {
             return { ok: false, error: 'Parámetros inválidos' };
         }
+
+        // 2.1 Validate file type — Excel ONLY (all Excel extensions)
+        if (!_conciliacionIsExcelFile_(fileName)) {
+            return { ok: false, error: 'Archivo no válido. Solo se permiten archivos Excel.' };
+        }
+
+        // 2.2 Normalize MIME based on Excel extension (browser may send empty/generic)
+        const inferredMime = _conciliacionInferExcelMimeType_(fileName);
+        const normalizedMime = inferredMime || mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        mimeType = normalizedMime;
 
         // 3. Get lock
         const lock = LockService.getScriptLock();
