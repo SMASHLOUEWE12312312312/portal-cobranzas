@@ -207,14 +207,30 @@ const ConciliacionExport = {
 
         Logger.log(context + ': statusColIndex=' + statusColIndex + ' | cuponColsEECC=' + JSON.stringify(cuponColsEECC) + ' | stripParenSuffix=' + stripParenSuffix);
 
+        // FIX v1.3: Soporte multi-columna para cupón desde Trama (ej. Crecer VLE: NUMERO_CUPON + FACTURA)
+        const cuponColsTrama = Array.isArray(options.cuponColsTrama) && options.cuponColsTrama.length
+            ? options.cuponColsTrama
+            : [1]; // DEFAULT: col 1 (NUMERO_CUPON) — comportamiento actual
+
+        Logger.log(context + ': cuponColsTrama=' + JSON.stringify(cuponColsTrama));
+
         for (let i = 1; i < tramaData.length; i++) {
-            const cupon = String(tramaData[i][0] || '').trim();
             const status = String(tramaData[i][statusColIndex] || '').trim();
 
-            if (cupon && (status === ConciliacionCruce.STATUS.NO_REGISTRADO ||
-                status === ConciliacionCruce.STATUS.VALIDAR)) {
-                cuponesPendientes.set(cupon, status);
-                cuponesPendientes.set(ProcessorBase.normalizarCupon(cupon), status);
+            if (status === ConciliacionCruce.STATUS.NO_REGISTRADO ||
+                status === ConciliacionCruce.STATUS.VALIDAR) {
+                for (let k = 0; k < cuponColsTrama.length; k++) {
+                    const col = cuponColsTrama[k];
+                    const keyRaw = String(tramaData[i][col - 1] || '').trim();
+                    if (!keyRaw) continue;
+
+                    // Regla de prioridad (NO_REGISTRADO gana sobre VALIDAR si colisiona)
+                    const prev = cuponesPendientes.get(keyRaw);
+                    if (!prev || (prev === ConciliacionCruce.STATUS.VALIDAR && status === ConciliacionCruce.STATUS.NO_REGISTRADO)) {
+                        cuponesPendientes.set(keyRaw, status);
+                        cuponesPendientes.set(ProcessorBase.normalizarCupon(keyRaw), status);
+                    }
+                }
             }
         }
         perfLog('BUILD_MAP');

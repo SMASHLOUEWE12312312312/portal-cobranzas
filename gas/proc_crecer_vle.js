@@ -103,9 +103,16 @@ const CrecerVLEProcessor = {
         const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 4 });
 
         // Export
+        // FIX v1.3: cuponColsTrama:[1,3] para matchear por NUMERO_CUPON (col 1) y FACTURA (col 3)
+        // FACTURA tiene el valor original del EECC, permitiendo el match correcto
         const exportResult = ConciliacionExport.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Crecer_VLE',
-            { columnasTrama: 3, startRowEECC: cfg.START_ROW, cuponColEECC: cfg.COL_NRO_COMPROBANTE }
+            {
+                columnasTrama: 3,
+                startRowEECC: cfg.START_ROW,
+                cuponColEECC: cfg.COL_NRO_COMPROBANTE,
+                cuponColsTrama: [1, 3]  // FIX: NUMERO_CUPON + FACTURA para match con EECC
+            }
         );
 
         // Cleanup
