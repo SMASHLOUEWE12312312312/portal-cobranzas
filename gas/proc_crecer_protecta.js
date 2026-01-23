@@ -26,8 +26,9 @@ const CrecerProtectaProcessor = {
         COL_DOCUMENTO: 6,        // F - Documento (for CUPON)
         COL_VIGENCIA: 8,         // H - Vigencia year
         COL_FECHA: 13,           // M - Fecha pago
+        COL_COMPROBANTE: 10,     // J - Comprobante
 
-        TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
+        TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'COMPROBANTE', 'STATUS'],
         TRAMA_FORMAT: {
             1: '@',
             2: 'dd/mm/yyyy'
@@ -100,6 +101,7 @@ const CrecerProtectaProcessor = {
         const colDocumento = cfg.COL_DOCUMENTO + colOffset;
         const colVigencia = cfg.COL_VIGENCIA + colOffset;
         const colFecha = cfg.COL_FECHA + colOffset;
+        const colComprobante = cfg.COL_COMPROBANTE + colOffset;
 
         // Process EECC: filter Vigencia >= 2025
         const eeccData = wsEECC.getDataRange().getValues();
@@ -137,8 +139,12 @@ const CrecerProtectaProcessor = {
                 // Get date
                 const fechaPago = row[colFecha - 1];
 
-                // Add to Trama (FACTURA is empty for this insurer)
-                tramaRows.push([numeroCupon, fechaPago, '', '']);
+                // Get COMPROBANTE from column J (adjusted for offset)
+                // REPLICA EXACTA VBA: comprobanteStr = CStr(wsEstadoCuenta.Cells(i, "J").Value)
+                const comprobante = String(row[colComprobante - 1] || '').trim();
+
+                // Add to Trama
+                tramaRows.push([numeroCupon, fechaPago, comprobante, '']);
             }
         }
 
