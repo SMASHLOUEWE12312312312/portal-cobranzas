@@ -55,7 +55,8 @@ const ChubbProcessor = {
         // Load EECC file
         const tempSS = SpreadsheetApp.openById(tempFileId);
         const tempSheet = tempSS.getSheets()[0];
-        const srcData = tempSheet.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales
+        const srcData = tempSheet.getDataRange().getDisplayValues();
 
         // Copy to EECC
         if (srcData.length > 0) {

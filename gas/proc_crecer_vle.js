@@ -61,7 +61,8 @@ const CrecerVLEProcessor = {
             Logger.log(context + ': Warning - Hoja "Reporte" no encontrada, usando primera hoja');
         }
 
-        const srcData = tempSheet.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales
+        const srcData = tempSheet.getDataRange().getDisplayValues();
 
         // Copy to EECC
         if (srcData.length > 0) {

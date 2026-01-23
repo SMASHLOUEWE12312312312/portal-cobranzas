@@ -70,7 +70,8 @@ const ConciliacionExport = {
             Logger.log('[PERF] exportTramaDirecto | ' + label + ' | ' + (now - T.start) + 'ms');
         };
 
-        const tramaData = wsTrama.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales
+        const tramaData = wsTrama.getDataRange().getDisplayValues();
         const statusCol = columnasTrama + 1;
 
         // Filter only "Cupón Registrado" and without STATUS column
@@ -180,7 +181,8 @@ const ConciliacionExport = {
         };
 
         // 1. Build pending coupons map
-        const tramaData = wsTrama.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales
+        const tramaData = wsTrama.getDataRange().getDisplayValues();
         const cuponesPendientes = new Map();
         const lastColTrama = tramaData[0].length;
 
@@ -248,7 +250,8 @@ const ConciliacionExport = {
         }
 
         // 2. Get EECC data and accumulate rows
-        const eeccData = wsEECC.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales
+        const eeccData = wsEECC.getDataRange().getDisplayValues();
         const eeccHeaders = eeccData[0] || [];
 
         const outputRows = [];

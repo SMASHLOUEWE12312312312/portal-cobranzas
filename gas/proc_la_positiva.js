@@ -76,7 +76,8 @@ const LaPositivaProcessor = {
         // 3. Load EECC file
         const tempSS = SpreadsheetApp.openById(tempFileId);
         const tempSheet = tempSS.getSheets()[0];
-        const srcData = tempSheet.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales (ej: ceros iniciales)
+        const srcData = tempSheet.getDataRange().getDisplayValues();
 
         // Copy from source row 11 to EECC row 11
         if (srcData.length >= cfg.START_ROW) {

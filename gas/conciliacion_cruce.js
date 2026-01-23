@@ -54,7 +54,8 @@ const ConciliacionCruce = {
         // ========== FASE 1: CARGA DE DATOS EN MEMORIA ==========
 
         // 1.1 Load BD_Cruce into Map for O(1) lookup
-        const bdData = wsBDCruce.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales (ej: ceros iniciales en cupones)
+        const bdData = wsBDCruce.getDataRange().getDisplayValues();
         const lastColBD = bdData[0] ? bdData[0].length : cuponColBD;
         const colStatusBD = lastColBD + 1; // Nueva columna STATUS
         perfLog('READ_BD_CRUCE');
@@ -86,7 +87,8 @@ const ConciliacionCruce = {
         Logger.log(context + ': Cupones en BD_Cruce: ' + bdCupones.length);
 
         // 1.2 Load Trama data
-        const tramaData = wsTrama.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales
+        const tramaData = wsTrama.getDataRange().getDisplayValues();
         const numFilasTrama = tramaData.length - 1; // Sin header
         perfLog('READ_TRAMA');
 

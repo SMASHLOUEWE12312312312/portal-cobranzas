@@ -57,7 +57,8 @@ const CrecerProtectaProcessor = {
         // Load EECC file
         const tempSS = SpreadsheetApp.openById(tempFileId);
         const tempSheet = tempSS.getSheets()[0];
-        let srcData = tempSheet.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales
+        let srcData = tempSheet.getDataRange().getDisplayValues();
 
         // Check if column E header is "Estado" and delete it
         // (replica VBA: If header(5) = "Estado" Then delete column)

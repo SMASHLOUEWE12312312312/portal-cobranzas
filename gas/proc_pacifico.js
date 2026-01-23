@@ -64,7 +64,8 @@ const PacificoProcessor = {
         if (!wsBDCruce) throw new Error('Hoja BD_Cruce no encontrada');
 
         // Load BD_Cruce coupons for dual logic
-        const bdData = wsBDCruce.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales
+        const bdData = wsBDCruce.getDataRange().getDisplayValues();
         const cuponesBD = new Set();
         const cuponesBDNorm = new Set();
 
@@ -83,7 +84,8 @@ const PacificoProcessor = {
         // Load EECC file
         const tempSS = SpreadsheetApp.openById(tempFileId);
         const tempSheet = tempSS.getSheets()[0];
-        const srcData = tempSheet.getDataRange().getValues();
+        // FIX: Usar getDisplayValues() para preservar datos originales
+        const srcData = tempSheet.getDataRange().getDisplayValues();
 
         // Copy to EECC
         if (srcData.length > 0) {

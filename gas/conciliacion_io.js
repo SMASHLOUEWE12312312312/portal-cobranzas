@@ -78,30 +78,9 @@ const ConciliacionIO = {
             // 5. Read data from temporary file
             const tempSS = SpreadsheetApp.openById(tempFileId);
             const tempSheet = tempSS.getSheets()[0];
-            const data = tempSheet.getDataRange().getValues();
+            // FIX: Usar getDisplayValues() para preservar datos originales (ej: ceros iniciales)
+            const data = tempSheet.getDataRange().getDisplayValues();
             perfLog('READ_TEMP_DATA');
-
-            // 5.1 Read displayed values (preserve leading zeros as shown in the converted sheet)
-            const displayData = tempSheet.getDataRange().getDisplayValues();
-
-            // 5.2 Force Column H (index 7) to be stored as TEXT by prefixing apostrophe
-            //     Requirement: preserve leading zeros, e.g. 00014033575 must remain with zeros.
-            const COL_H_INDEX = 7; // Column H in 0-based index
-
-            // Safety: ensure dimensions match before applying
-            if (displayData && displayData.length === data.length) {
-                for (let r = 1; r < data.length; r++) { // start at 1 to skip header
-                    const rowDisp = displayData[r];
-                    if (!rowDisp || rowDisp.length <= COL_H_INDEX) continue;
-
-                    const dispH = String(rowDisp[COL_H_INDEX] ?? '').trim();
-                    if (!dispH) continue;
-
-                    // Avoid double apostrophe
-                    data[r][COL_H_INDEX] = dispH.startsWith("'") ? dispH : ("'" + dispH);
-                }
-            }
-            perfLog('FIX_COL_H_LEADING_ZEROS');
 
             // 6. Validate data (minimum 2 rows: header + 1 data)
             if (data.length < 2) {
@@ -248,7 +227,7 @@ const ConciliacionIO = {
             // Read source data
             const tempSS = SpreadsheetApp.openById(tempFileId);
             const tempSheet = tempSS.getSheets()[0];
-            const srcData = tempSheet.getDataRange().getValues();
+            const srcData = tempSheet.getDataRange().getDisplayValues();
 
             // Copy data from startRow
             if (srcData.length >= startRow) {
