@@ -173,9 +173,15 @@ const CrecerProtectaProcessor = {
         });
 
         // Export results
+        // FIX v1.4: Agregar función de transformación para que coincidan los cupones
         const exportResult = ConciliacionExport.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Crecer_Protecta',
-            { columnasTrama: 3, startRowEECC: cfg.START_ROW, cuponColEECC: colDocumento }
+            {
+                columnasTrama: 3,
+                startRowEECC: cfg.START_ROW,
+                cuponColEECC: colDocumento,
+                cuponTransformFn: ProcessorBase.extraerCuponCrecerProtecta
+            }
         );
 
         // Cleanup

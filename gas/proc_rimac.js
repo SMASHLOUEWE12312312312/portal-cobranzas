@@ -120,9 +120,15 @@ const RimacProcessor = {
         const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 4 });
 
         // Export
+        // FIX v1.4: Agregar función de transformación
         const exportResult = ConciliacionExport.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Rimac',
-            { columnasTrama: 3, startRowEECC: cfg.START_ROW, cuponColEECC: cfg.COL_TIPO_DOC }
+            {
+                columnasTrama: 3,
+                startRowEECC: cfg.START_ROW,
+                cuponColEECC: cfg.COL_TIPO_DOC,
+                cuponTransformFn: ProcessorBase.extraerCuponRimac
+            }
         );
 
         // Cleanup

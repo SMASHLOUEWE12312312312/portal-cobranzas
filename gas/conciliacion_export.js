@@ -182,6 +182,18 @@ const ConciliacionExport = {
             return s;
         };
 
+        // =================================================================
+        // FIX v1.4: Función de transformación para comparar cupones EECC
+        // =================================================================
+        // Permite que cada aseguradora defina cómo transformar el documento
+        // del EECC para que coincida con el formato del cupón en la Trama.
+        // Ejemplo: "CC-AC-SCTR-000866016/1" → "866016"
+        // Si no se proporciona, usa el valor tal cual (compatibilidad hacia atrás).
+        // =================================================================
+        const cuponTransformFn = typeof options.cuponTransformFn === 'function'
+            ? options.cuponTransformFn
+            : (v) => v;  // Default: sin transformación (compatibilidad hacia atrás)
+
         // Profiling
         const T = { start: Date.now() };
         const perfLog = (label) => {
@@ -282,8 +294,19 @@ const ConciliacionExport = {
                 const cuponRaw = sanitizeCupon(row[col - 1]);
                 if (!cuponRaw) continue;
 
-                const cuponNorm = ProcessorBase.normalizarCupon(cuponRaw);
-                statusEncontrado = cuponesPendientes.get(cuponRaw) || cuponesPendientes.get(cuponNorm);
+                // =================================================================
+                // FIX v1.4: Aplicar transformación ANTES de buscar en el mapa
+                // =================================================================
+                // Esto convierte "CC-AC-SCTR-000866016/1" → "866016"
+                // para poder encontrarlo en cuponesPendientes
+                // =================================================================
+                const cuponTransformado = cuponTransformFn(cuponRaw);
+                const cuponNorm = ProcessorBase.normalizarCupon(cuponTransformado);
+
+                // Buscar: transformado, normalizado, y raw como fallback
+                statusEncontrado = cuponesPendientes.get(cuponTransformado) ||
+                    cuponesPendientes.get(cuponNorm) ||
+                    cuponesPendientes.get(cuponRaw);
 
                 if (statusEncontrado) {
                     matchedCol = col;

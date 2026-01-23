@@ -118,13 +118,15 @@ const CrecerVLEProcessor = {
         // Export
         // FIX v1.3: cuponColsTrama:[1,3] para matchear por NUMERO_CUPON (col 1) y FACTURA (col 3)
         // FACTURA tiene el valor original del EECC, permitiendo el match correcto
+        // FIX v1.4: Agregar función de transformación
         const exportResult = ConciliacionExport.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Crecer_VLE',
             {
                 columnasTrama: 3,
                 startRowEECC: cfg.START_ROW,
                 cuponColEECC: cfg.COL_NRO_COMPROBANTE,
-                cuponColsTrama: [1, 3]  // FIX: NUMERO_CUPON + FACTURA para match con EECC
+                cuponColsTrama: [1, 3],  // FIX: NUMERO_CUPON + FACTURA para match con EECC
+                cuponTransformFn: ProcessorBase.buildNumeroCuponVLE
             }
         );
 
