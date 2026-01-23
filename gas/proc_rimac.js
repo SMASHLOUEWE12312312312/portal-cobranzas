@@ -14,7 +14,7 @@
  *   - 20-22 chars: Left(10)
  * - Mapping:
  *   - CUPON: Col J (with length rules)
- *   - FEC_EMISION: Col L
+ *   - FEC_EMISION: Col N
  *   - FEC_PAG: Col O
  */
 
@@ -26,7 +26,7 @@ const RimacProcessor = {
 
         COL_TIPO: 7,             // G - Tipo (filter)
         COL_TIPO_DOC: 10,        // J - TIPO.DOC (CUPON)
-        COL_FEC_EMISION: 12,     // L - FEC_EMISION
+        COL_FEC_EMISION: 14,     // N - FEC_EMISION
         COL_FEC_PAG: 15,         // O - FEC_PAG
 
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FEC_EMISION', 'FEC_PAG', 'STATUS'],
