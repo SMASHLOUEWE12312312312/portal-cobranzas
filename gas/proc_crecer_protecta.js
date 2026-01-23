@@ -113,39 +113,46 @@ const CrecerProtectaProcessor = {
         for (let i = cfg.START_ROW - 1; i < eeccData.length; i++) {
             const row = eeccData[i];
 
-            // Check Vigencia >= 2025
+            // =================================================================
+            // FILTRO DE VIGENCIA - REPLICA EXACTA DEL VBA
+            // =================================================================
+            // VBA Logic:
+            // - Si IsDate() Y Year() < 2025 → EXCLUIR
+            // - Si IsDate() Y Year() >= 2025 → PROCESAR
+            // - Si NO IsDate() (vacío, texto, etc.) → PROCESAR
+            // =================================================================
             const vigenciaRaw = row[colVigencia - 1];
-            let vigencia = 0;
+            const anioVigencia = ProcessorBase.extraerAnioDeVigencia(vigenciaRaw);
 
-            if (vigenciaRaw instanceof Date) {
-                vigencia = vigenciaRaw.getFullYear();
-            } else {
-                vigencia = ProcessorBase.parseLongOrZero(vigenciaRaw);
+            // Si es fecha válida con año < 2025, excluir (igual que VBA)
+            if (anioVigencia !== null && anioVigencia < 2025) {
+                continue;  // Skip this row
             }
 
-            if (vigencia >= 2025) {
-                filasValidas++;
+            // Si llegamos aquí, la fila debe procesarse:
+            // - Es fecha válida con año >= 2025, O
+            // - No es fecha válida (VBA no elimina estas filas)
+            filasValidas++;
 
-                // Get and transform DOCUMENTO
-                const documento = String(row[colDocumento - 1] || '').trim();
-                if (!documento) {
-                    filasOmitidas++;
-                    continue;
-                }
-
-                // Transform DOCUMENTO → CUPON
-                const numeroCupon = ProcessorBase.extraerCuponCrecerProtecta(documento);
-
-                // Get date
-                const fechaPago = row[colFecha - 1];
-
-                // Get COMPROBANTE from column J (adjusted for offset)
-                // REPLICA EXACTA VBA: comprobanteStr = CStr(wsEstadoCuenta.Cells(i, "J").Value)
-                const comprobante = String(row[colComprobante - 1] || '').trim();
-
-                // Add to Trama
-                tramaRows.push([numeroCupon, fechaPago, comprobante, '']);
+            // Get and transform DOCUMENTO
+            const documento = String(row[colDocumento - 1] || '').trim();
+            if (!documento) {
+                filasOmitidas++;
+                continue;
             }
+
+            // Transform DOCUMENTO → CUPON
+            const numeroCupon = ProcessorBase.extraerCuponCrecerProtecta(documento);
+
+            // Get date
+            const fechaPago = row[colFecha - 1];
+
+            // Get COMPROBANTE from column J (adjusted for offset)
+            // REPLICA EXACTA VBA: comprobanteStr = CStr(wsEstadoCuenta.Cells(i, "J").Value)
+            const comprobante = String(row[colComprobante - 1] || '').trim();
+
+            // Add to Trama
+            tramaRows.push([numeroCupon, fechaPago, comprobante, '']);
         }
 
         // Write Trama

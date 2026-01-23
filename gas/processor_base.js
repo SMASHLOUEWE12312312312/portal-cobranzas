@@ -27,6 +27,64 @@ const ProcessorBase = {
     },
 
     /**
+     * Extracts year from a date value (Date object, string, or serial number)
+     * REPLICA EXACTA: VBA Year(CDate(valor)) behavior
+     * 
+     * @param {*} valor - Date value (can be Date, string "dd/mm/yyyy", or Excel serial)
+     * @returns {number|null} Year if valid date, null otherwise
+     */
+    extraerAnioDeVigencia(valor) {
+        // Si es vacío o null, retornar null (VBA: IsDate() = False)
+        if (valor === null || valor === undefined || valor === '') {
+            return null;
+        }
+
+        // Si ya es Date, extraer año directamente
+        if (valor instanceof Date) {
+            return valor.getFullYear();
+        }
+
+        // Convertir a string para procesar
+        const str = String(valor).trim();
+        if (!str) return null;
+
+        // Intentar parsear como dd/mm/yyyy o dd-mm-yyyy
+        const regexDMY = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
+        const matchDMY = str.match(regexDMY);
+        if (matchDMY) {
+            const anio = parseInt(matchDMY[3], 10);
+            if (anio >= 1900 && anio <= 2100) {
+                return anio;
+            }
+        }
+
+        // Intentar parsear como yyyy-mm-dd (ISO)
+        const regexISO = /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/;
+        const matchISO = str.match(regexISO);
+        if (matchISO) {
+            const anio = parseInt(matchISO[1], 10);
+            if (anio >= 1900 && anio <= 2100) {
+                return anio;
+            }
+        }
+
+        // Intentar como número (serial de Excel)
+        const num = parseFloat(str);
+        if (!isNaN(num) && num > 1 && num < 100000) {
+            // Convertir serial de Excel a fecha
+            // Excel usa 1/1/1900 como día 1 (con bug del año bisiesto 1900)
+            const excelEpoch = new Date(1899, 11, 30);
+            const fecha = new Date(excelEpoch.getTime() + num * 86400000);
+            if (!isNaN(fecha.getTime())) {
+                return fecha.getFullYear();
+            }
+        }
+
+        // No es una fecha válida
+        return null;
+    },
+
+    /**
      * Removes leading zeros from a string
      * @param {string} str - String to process
      * @returns {string}
