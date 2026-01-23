@@ -103,16 +103,25 @@ const ConciliacionExport = {
         sheet.setName('Trama_Registrados');
         perfLog('CREATE_TEMP_SS');
 
-        // BATCH write data
-        sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+        // FIX v2.0: BATCH write data with text format to preserve original values
+        const numRows = rows.length;
+        const numCols = rows[0].length;
+
+        // CRITICAL: Set text format on data rows BEFORE writing (skip header)
+        if (numRows > 1) {
+            sheet.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
+        }
+
+        // Now write values - they will be preserved as text
+        sheet.getRange(1, 1, numRows, numCols).setValues(rows);
 
         // BATCH format
         sheet.setFrozenRows(1);
-        sheet.getRange(1, 1, 1, rows[0].length).setFontWeight('bold').setBackground('#D9D9D9');
+        sheet.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
 
-        // Format date column (col B)
-        if (rows.length > 1) {
-            sheet.getRange(2, 2, rows.length - 1, 1).setNumberFormat('dd/mm/yyyy');
+        // Format date column (col B) - this overrides text format for dates
+        if (numRows > 1) {
+            sheet.getRange(2, 2, numRows - 1, 1).setNumberFormat('dd/mm/yyyy');
         }
 
         SpreadsheetApp.flush();
@@ -319,9 +328,15 @@ const ConciliacionExport = {
         wsOut.setFrozenRows(1);
         wsOut.getRange(1, 1, 1, headersOut.length).setFontWeight('bold').setBackground('#D9D9D9');
 
-        // 5. BATCH write data
+        // 5. FIX v2.0: BATCH write data with text format to preserve original values
         const numCols = outputRows[0].length;
-        wsOut.getRange(2, 1, outputRows.length, numCols).setValues(outputRows);
+        const numDataRows = outputRows.length;
+
+        // CRITICAL: Set text format on data range BEFORE writing
+        wsOut.getRange(2, 1, numDataRows, numCols).setNumberFormat('@');
+
+        // Now write values - they will be preserved as text
+        wsOut.getRange(2, 1, numDataRows, numCols).setValues(outputRows);
         perfLog('WRITE_DATA');
 
         // 6. BATCH write backgrounds for columns E and G

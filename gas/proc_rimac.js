@@ -60,10 +60,22 @@ const RimacProcessor = {
         const srcData = tempSheet.getDataRange().getDisplayValues();
 
         // Copy to EECC
+        // FIX v2.0: Apply text format BEFORE writing to preserve original values
         if (srcData.length > 0) {
-            wsEECC.getRange(1, 1, srcData.length, srcData[0].length).setValues(srcData);
+            const numRows = srcData.length;
+            const numCols = srcData[0].length;
+            const eeccRange = wsEECC.getRange(1, 1, numRows, numCols);
+
+            // CRITICAL: Set text format on data rows (row 2 onwards)
+            if (numRows > 1) {
+                wsEECC.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
+            }
+
+            // Now write values
+            eeccRange.setValues(srcData);
+
             wsEECC.setFrozenRows(1);
-            wsEECC.getRange(1, 1, 1, srcData[0].length).setFontWeight('bold').setBackground('#D9D9D9');
+            wsEECC.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
         }
 
         const filasCargadas = srcData.length - 1;

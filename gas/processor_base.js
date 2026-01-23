@@ -101,6 +101,7 @@ const ProcessorBase = {
 
     /**
      * Writes data to Trama with formatting
+     * FIX v2.0: Apply text format BEFORE writing to preserve original values
      * @param {Sheet} sheet - Trama sheet
      * @param {Array<Array>} rows - Data rows
      * @param {Object} formatConfig - Format config by column {col: format}
@@ -109,9 +110,16 @@ const ProcessorBase = {
         if (!rows || rows.length === 0) return;
 
         const numCols = rows[0].length;
-        sheet.getRange(2, 1, rows.length, numCols).setValues(rows);
+        const range = sheet.getRange(2, 1, rows.length, numCols);
 
-        // Apply formats
+        // FIX v2.0: Apply text format BEFORE writing to prevent numeric conversion
+        // This ensures values like "0002673426" are not converted to 2673426
+        range.setNumberFormat('@');
+
+        // Now write values - they will be preserved as text
+        range.setValues(rows);
+
+        // Apply specific formats AFTER (overrides text format where needed)
         if (formatConfig) {
             Object.keys(formatConfig).forEach(colStr => {
                 const col = parseInt(colStr, 10);
@@ -119,6 +127,43 @@ const ProcessorBase = {
                 sheet.getRange(2, col, rows.length, 1).setNumberFormat(format);
             });
         }
+    },
+
+    /**
+     * Writes data preserving original values (prevents numeric conversion)
+     * CRITICAL: This function MUST be used for all data writes in Conciliación
+     * 
+     * @param {Sheet} sheet - Target sheet
+     * @param {number} startRow - Starting row (1-indexed)
+     * @param {number} startCol - Starting column (1-indexed)  
+     * @param {Array<Array>} data - 2D array of data to write
+     * @param {Object} options - Optional settings
+     *   - formatAsText: boolean (default: true) - Force all cells as text
+     *   - skipHeader: boolean (default: false) - Skip first row for text format
+     */
+    writeDataPreservingFormat(sheet, startRow, startCol, data, options = {}) {
+        if (!data || data.length === 0) return;
+
+        const formatAsText = options.formatAsText !== false;
+        const skipHeader = options.skipHeader === true;
+
+        const numRows = data.length;
+        const numCols = data[0].length;
+        const range = sheet.getRange(startRow, startCol, numRows, numCols);
+
+        if (formatAsText) {
+            // CRITICAL: Apply text format BEFORE writing values
+            // This prevents Google Sheets from converting "0002673426" to 2673426
+            if (skipHeader && numRows > 1) {
+                // Apply text format only to data rows (skip header)
+                sheet.getRange(startRow + 1, startCol, numRows - 1, numCols).setNumberFormat('@');
+            } else {
+                range.setNumberFormat('@');
+            }
+        }
+
+        // Now write values - they will be preserved as text
+        range.setValues(data);
     },
 
     /**

@@ -98,9 +98,18 @@ const ConciliacionIO = {
             perfLog('CLEAR_BD_CRUCE');
 
             // 9. Write data (replica: wsOrigen.UsedRange.Copy wsBDCruce.Range("A1"))
+            // FIX v2.0: Apply text format BEFORE writing to preserve original values
             const numRows = data.length;
             const numCols = data[0].length;
-            bdCruce.getRange(1, 1, numRows, numCols).setValues(data);
+            const dataRange = bdCruce.getRange(1, 1, numRows, numCols);
+
+            // CRITICAL: Set text format on data rows (skip header row)
+            if (numRows > 1) {
+                bdCruce.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
+            }
+
+            // Now write values - they will be preserved as text
+            dataRange.setValues(data);
             perfLog('WRITE_BD_CRUCE');
 
             // 10. Apply formatting in batch (optimized)
@@ -230,11 +239,19 @@ const ConciliacionIO = {
             const srcData = tempSheet.getDataRange().getDisplayValues();
 
             // Copy data from startRow
+            // FIX v2.0: Apply text format BEFORE writing to preserve original values
             if (srcData.length >= startRow) {
                 const dataRows = srcData.slice(startRow - 1);
                 if (dataRows.length > 0) {
-                    wsEECC.getRange(startRow, 1, dataRows.length, dataRows[0].length)
-                        .setValues(dataRows);
+                    const numRows = dataRows.length;
+                    const numCols = dataRows[0].length;
+                    const targetRange = wsEECC.getRange(startRow, 1, numRows, numCols);
+
+                    // CRITICAL: Set text format BEFORE writing
+                    targetRange.setNumberFormat('@');
+
+                    // Now write values
+                    targetRange.setValues(dataRows);
                 }
                 return { ok: true, rowsCopied: dataRows.length };
             }

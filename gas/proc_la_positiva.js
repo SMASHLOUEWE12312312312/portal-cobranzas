@@ -80,11 +80,19 @@ const LaPositivaProcessor = {
         const srcData = tempSheet.getDataRange().getDisplayValues();
 
         // Copy from source row 11 to EECC row 11
+        // FIX v2.0: Apply text format BEFORE writing to preserve original values
         if (srcData.length >= cfg.START_ROW) {
             const dataRows = srcData.slice(cfg.START_ROW - 1);
             if (dataRows.length > 0) {
-                wsEECC.getRange(cfg.START_ROW, 1, dataRows.length, dataRows[0].length)
-                    .setValues(dataRows);
+                const numRows = dataRows.length;
+                const numCols = dataRows[0].length;
+                const targetRange = wsEECC.getRange(cfg.START_ROW, 1, numRows, numCols);
+
+                // CRITICAL: Set text format BEFORE writing
+                targetRange.setNumberFormat('@');
+
+                // Now write values
+                targetRange.setValues(dataRows);
             }
         }
 
