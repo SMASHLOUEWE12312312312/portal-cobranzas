@@ -272,7 +272,8 @@ const ConciliacionExport = {
 
         // 2. Get EECC data and accumulate rows
         // FIX: Usar getDisplayValues() para preservar datos originales
-        const eeccData = wsEECC.getDataRange().getDisplayValues();
+        const eeccRange = wsEECC.getDataRange();
+        const eeccData = eeccRange.getDisplayValues();
         const eeccHeaders = eeccData[0] || [];
 
         const outputRows = [];
@@ -282,7 +283,20 @@ const ConciliacionExport = {
         const matchesByCol = {};
         cuponColsEECC.forEach(c => matchesByCol[c] = 0);
 
-        for (let i = startRowEECC - 1; i < eeccData.length; i++) {
+        // =================================================================
+        // FIX v1.5: Calcular índice de inicio CORRECTO
+        // =================================================================
+        // El problema: getDataRange() devuelve solo las filas con datos.
+        // Si wsEECC tiene datos desde fila 8, eeccData[0] = fila 8.
+        // Pero startRowEECC asume que eeccData[0] = fila 1.
+        // Solución: Ajustar el índice basándose en la fila real de inicio.
+        // =================================================================
+        const dataStartRow = eeccRange.getRow();
+        const adjustedStartIndex = Math.max(0, startRowEECC - dataStartRow);
+
+        Logger.log(context + ': dataStartRow=' + dataStartRow + ' | startRowEECC=' + startRowEECC + ' | adjustedStartIndex=' + adjustedStartIndex);
+
+        for (let i = adjustedStartIndex; i < eeccData.length; i++) {
             const row = eeccData[i];
 
             let statusEncontrado = null;
