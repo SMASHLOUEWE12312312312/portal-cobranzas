@@ -135,15 +135,9 @@ const ConciliacionServiceV2 = {
         const normalizedMime = _conciliacionInferExcelMimeType_(fileName) || mimeType ||
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-        // === [R4] SHEETJS CHECK: Log availability but DO NOT fail ===
-        // V3 FIX: Removed STRICT guard that was blocking ALL processing
-        // SheetJS is preferred but Drive fallback MUST work
-        const sheetJSAvailable = typeof XLSX !== 'undefined';
-        if (!sheetJSAvailable) {
-            Logger.log('[PERF-V2][SHEETJS_FALLBACK] XLSX not available - using Drive conversion (slower)');
-        } else {
-            Logger.log('[PERF-V2][SHEETJS_OK] XLSX available - using direct parsing');
-        }
+        // V4 FIX: Always use Drive API for file conversion
+        // SheetJS was causing hangs on large files in Apps Script environment
+        Logger.log('[PERF-V2][DRIVE_API] Using Drive API for reliable file conversion');
 
         // Get lock - using Document lock instead of Script lock for better granularity
         const lock = LockService.getScriptLock();
@@ -172,8 +166,8 @@ const ConciliacionServiceV2 = {
                 return { ok: false, error: 'Error al convertir archivo: ' + (convertResult.error || 'Error desconocido'), errorCode: convertResult.errorCode || 'CONVERT_FAILED' };
             }
             
-            tempFileId = convertResult.fileId;  // null if SheetJS used
-            perfLog('CONVERT_COMPLETE', convertResult.useSheetJS ? 'SHEETJS' : 'DRIVE');
+            tempFileId = convertResult.fileId;
+            perfLog('CONVERT_COMPLETE');
 
             // Get spreadsheet (cached)
             const ss = ConciliacionIOV2.getConciliacionSpreadsheet();

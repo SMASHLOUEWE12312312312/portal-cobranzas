@@ -98,57 +98,48 @@ const ConciliacionIOV2 = {
             }
             perfLog('OPEN_SS_CACHED');
 
-            // Try SheetJS first if available
+            // V4 FIX: ALWAYS use Drive API for file conversion
+            // SheetJS hangs on large files (>2MB) in Apps Script environment
+            // Drive API is slower but more reliable for production use
             let data;
-            const sheetJSAvailable = typeof XLSX !== 'undefined';
             
-            if (sheetJSAvailable) {
-                try {
-                    data = this._parseXLSXWithSheetJS(base64Data);
-                    perfLog('PARSE_SHEETJS', { rows: data ? data.length : 0 });
-                } catch (sheetJSError) {
-                    Logger.log('[WARN][' + runId + '] SheetJS parsing failed: ' + sheetJSError.message + ' - falling back to Drive');
-                    data = null; // Force Drive fallback
-                }
-            }
+            // Calculate file size (base64 is ~33% larger than original)
+            const estimatedFileSizeMB = (base64Data.length * 0.75) / (1024 * 1024);
+            Logger.log('[FLOW][' + runId + '] File size estimate: ' + estimatedFileSizeMB.toFixed(2) + ' MB');
             
-            // V3 FIX: Robust Drive fallback when SheetJS unavailable or fails
-            if (!data) {
-                perfLog('DRIVE_FALLBACK_START');
+            // Use Drive API for conversion (reliable for all file sizes)
+            try {
+                const bytes = this._safeBase64Decode(base64Data);
+                perfLog('BASE64_DECODED', { byteLength: bytes.length });
                 
-                try {
-                    const bytes = this._safeBase64Decode(base64Data);
-                    perfLog('BASE64_DECODED', { byteLength: bytes.length });
-                    
-                    const effectiveMime = mimeType || 
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-                    const blob = Utilities.newBlob(bytes, effectiveMime, fileName);
-                    perfLog('BLOB_CREATED');
+                const effectiveMime = mimeType || 
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                const blob = Utilities.newBlob(bytes, effectiveMime, fileName);
+                perfLog('BLOB_CREATED');
 
-                    const resource = {
-                        title: 'TMP_BD_SISNET_' + runId,
-                        mimeType: 'application/vnd.google-apps.spreadsheet'
-                    };
+                const resource = {
+                    title: 'TMP_BD_SISNET_' + runId,
+                    mimeType: 'application/vnd.google-apps.spreadsheet'
+                };
 
-                    // Drive conversion - this is the slow step
-                    perfLog('DRIVE_INSERT_START');
-                    const tempFile = Drive.Files.insert(resource, blob, { convert: true });
-                    tempFileId = tempFile.id;
-                    perfLog('DRIVE_INSERT_COMPLETE', { tempFileId: tempFileId });
+                // Drive conversion - this is the slow step but reliable
+                perfLog('DRIVE_INSERT_START');
+                const tempFile = Drive.Files.insert(resource, blob, { convert: true });
+                tempFileId = tempFile.id;
+                perfLog('DRIVE_INSERT_COMPLETE', { tempFileId: tempFileId });
 
-                    const tempSS = SpreadsheetApp.openById(tempFileId);
-                    const tempSheet = tempSS.getSheets()[0];
-                    data = tempSheet.getDataRange().getDisplayValues();
-                    perfLog('READ_TEMP_DATA', { rows: data.length, cols: data[0] ? data[0].length : 0 });
-                    
-                } catch (driveError) {
-                    Logger.log('[ERR][' + runId + '] Drive conversion failed: ' + driveError.message);
-                    return { 
-                        ok: false, 
-                        error: 'Error al convertir archivo Excel: ' + driveError.message, 
-                        errorCode: 'DRIVE_CONVERT_FAILED' 
-                    };
-                }
+                const tempSS = SpreadsheetApp.openById(tempFileId);
+                const tempSheet = tempSS.getSheets()[0];
+                data = tempSheet.getDataRange().getDisplayValues();
+                perfLog('READ_TEMP_DATA', { rows: data.length, cols: data[0] ? data[0].length : 0 });
+                
+            } catch (driveError) {
+                Logger.log('[ERR][' + runId + '] Drive conversion failed: ' + driveError.message);
+                return { 
+                    ok: false, 
+                    error: 'Error al convertir archivo Excel: ' + driveError.message, 
+                    errorCode: 'DRIVE_CONVERT_FAILED' 
+                };
             }
 
             // Validate data
@@ -310,32 +301,11 @@ const ConciliacionIOV2 = {
         try {
             Logger.log('[FLOW][' + runId + '] convertirXLSXaSheet START | file: ' + fileName);
             
-            // Try SheetJS first if available
-            if (typeof XLSX !== 'undefined') {
-                try {
-                    Logger.log('[FLOW][' + runId + '] Attempting SheetJS parsing...');
-                    const data = this._parseXLSXWithSheetJS(base64Data);
-                    
-                    if (data && data.length > 0) {
-                        Logger.log('[FLOW][' + runId + '] SheetJS SUCCESS | rows: ' + data.length + ' | ' + (Date.now() - T.start) + 'ms');
-                        return {
-                            ok: true,
-                            fileId: null,  // No temp file created
-                            data: data,    // Data ready to use
-                            useSheetJS: true
-                        };
-                    } else {
-                        Logger.log('[WARN][' + runId + '] SheetJS returned empty data, falling back to Drive');
-                    }
-                } catch (sheetJSError) {
-                    Logger.log('[WARN][' + runId + '] SheetJS failed: ' + sheetJSError.message + ' - using Drive fallback');
-                }
-            } else {
-                Logger.log('[FLOW][' + runId + '] SheetJS not available - using Drive conversion');
-            }
-
-            // Fallback to Drive conversion
-            Logger.log('[FLOW][' + runId + '] Starting Drive conversion...');
+            // V4 FIX: ALWAYS use Drive API for conversion
+            // SheetJS hangs on large files in Apps Script environment
+            // Drive API is slower but reliable for production use
+            
+            Logger.log('[FLOW][' + runId + '] Using Drive API conversion (reliable method)...');
             const bytes = this._safeBase64Decode(base64Data);
             Logger.log('[FLOW][' + runId + '] Base64 decoded | bytes: ' + bytes.length);
             
@@ -350,7 +320,7 @@ const ConciliacionIOV2 = {
             const file = Drive.Files.insert(resource, blob, { convert: true });
             Logger.log('[FLOW][' + runId + '] Drive conversion SUCCESS | fileId: ' + file.id + ' | ' + (Date.now() - T.start) + 'ms');
             
-            // V3 FIX: Also read the data here so processor doesn't have to re-open
+            // Read the data so processor doesn't have to re-open
             const tempSS = SpreadsheetApp.openById(file.id);
             const tempSheet = tempSS.getSheets()[0];
             const data = tempSheet.getDataRange().getDisplayValues();
@@ -359,7 +329,7 @@ const ConciliacionIOV2 = {
             return { 
                 ok: true, 
                 fileId: file.id, 
-                data: data,  // V3: Also return data to avoid re-reading
+                data: data,
                 useSheetJS: false 
             };
 
