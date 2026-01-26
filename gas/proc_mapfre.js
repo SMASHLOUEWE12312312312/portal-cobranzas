@@ -94,10 +94,21 @@ const MapfreProcessorV2 = {
             const numeroCupon = String(row[cfg.COL_NUM_RECIBO - 1] || '').trim();
             if (!numeroCupon) continue;
 
-            // FIX: Remove time portion from date (e.g., "01/27/2025 00:00:00" → "01/27/2025")
+            // FIX: Format date as DD/MM/YYYY
             let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
+            
+            // Remove time portion if present (e.g., "01/27/2025 00:00:00" → "01/27/2025")
             if (fechaPago.includes(' ')) {
-                fechaPago = fechaPago.split(' ')[0];  // Keep only date part
+                fechaPago = fechaPago.split(' ')[0];
+            }
+            
+            // Convert MM/DD/YYYY → DD/MM/YYYY
+            if (fechaPago && fechaPago.includes('/')) {
+                const parts = fechaPago.split('/');
+                if (parts.length === 3) {
+                    // parts[0]=MM, parts[1]=DD, parts[2]=YYYY → DD/MM/YYYY
+                    fechaPago = parts[1] + '/' + parts[0] + '/' + parts[2];
+                }
             }
 
             tramaRows.push([numeroCupon, fechaPago, '', '']);
