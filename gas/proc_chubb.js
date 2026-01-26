@@ -111,17 +111,17 @@ const ChubbProcessorV2 = {
                 const anio = fechaPago.getFullYear();
                 fechaPago = dia + '/' + mes + '/' + anio;
             } else {
-                // If string, convert from MM/DD/YYYY → DD/MM/YYYY
+                // If string, just remove leading zeros (keep original order)
                 fechaPago = String(fechaPago || '').trim();
                 if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
                 if (fechaPago && fechaPago.includes('/')) {
                     const parts = fechaPago.split('/');
                     if (parts.length === 3) {
-                        // parts[0]=mes, parts[1]=día, parts[2]=año → día/mes/año
-                        const dia = parseInt(parts[1], 10);
-                        const mes = parseInt(parts[0], 10);
-                        const anio = parts[2];
-                        fechaPago = dia + '/' + mes + '/' + anio;
+                        // Keep original order, just remove leading zeros
+                        const p1 = parseInt(parts[0], 10);
+                        const p2 = parseInt(parts[1], 10);
+                        const p3 = parts[2];
+                        fechaPago = p1 + '/' + p2 + '/' + p3;
                     }
                 }
             }

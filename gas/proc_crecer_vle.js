@@ -109,18 +109,18 @@ const CrecerVLEProcessorV2 = {
             // Apply BuildNumeroCupon transformation
             const numeroCupon = ProcessorBase.buildNumeroCuponVLE(nroComprobante);
             
-            // FIX 2026-01-26: Convert MM/DD/YYYY → DD/MM/YYYY without leading zeros
-            // Example: "9/25/2025" → "25/9/2025" (Sisnet compatible)
+            // FIX 2026-01-26: Remove leading zeros from date (keep original order)
+            // Example: "25/09/2025" → "25/9/2025" (Sisnet compatible)
             let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
             if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
             if (fechaPago && fechaPago.includes('/')) {
                 const parts = fechaPago.split('/');
                 if (parts.length === 3) {
-                    // parts[0]=mes, parts[1]=día, parts[2]=año → día/mes/año
-                    const dia = parseInt(parts[1], 10);
-                    const mes = parseInt(parts[0], 10);
-                    const anio = parts[2];
-                    fechaPago = dia + '/' + mes + '/' + anio;
+                    // Keep original order, just remove leading zeros
+                    const p1 = parseInt(parts[0], 10);
+                    const p2 = parseInt(parts[1], 10);
+                    const p3 = parts[2];
+                    fechaPago = p1 + '/' + p2 + '/' + p3;
                 }
             }
 
