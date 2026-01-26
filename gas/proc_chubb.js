@@ -95,13 +95,28 @@ const ChubbProcessorV2 = {
             const convenio = String(row[cfg.COL_CONVENIO - 1] || '').trim();
             if (!convenio) continue;
 
-            // Parse Spanish date ("04 ago. 25")
+            // Parse Spanish date ("04 ago. 25") and convert to DD/MM/YYYY without leading zeros
             let fechaPago = row[cfg.COL_FECHA - 1];
 
             // SheetJS often parses dates correctly already if cellDates: true, but just in case:
             if (!(fechaPago instanceof Date)) {
                 const parsed = ProcessorBase.parsearFechaEspanol(fechaPago);
                 if (parsed) fechaPago = parsed;
+            }
+            
+            // Format date as DD/MM/YYYY without leading zeros (Sisnet compatible)
+            if (fechaPago instanceof Date) {
+                fechaPago = fechaPago.getDate() + '/' + (fechaPago.getMonth() + 1) + '/' + fechaPago.getFullYear();
+            } else {
+                // If string, try to convert
+                fechaPago = String(fechaPago || '').trim();
+                if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
+                if (fechaPago && fechaPago.includes('/')) {
+                    const parts = fechaPago.split('/');
+                    if (parts.length === 3) {
+                        fechaPago = parseInt(parts[1], 10) + '/' + parseInt(parts[0], 10) + '/' + parts[2];
+                    }
+                }
             }
 
             // Transform factura (insert hyphen logic)

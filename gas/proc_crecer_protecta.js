@@ -133,7 +133,17 @@ const CrecerProtectaProcessorV2 = {
             }
 
             const numeroCupon = ProcessorBase.extraerCuponCrecerProtecta(documento);
-            const fechaPago = row[colFecha - 1];
+            
+            // Convert date to DD/MM/YYYY without leading zeros (Sisnet compatible)
+            let fechaPago = String(row[colFecha - 1] || '').trim();
+            if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
+            if (fechaPago && fechaPago.includes('/')) {
+                const parts = fechaPago.split('/');
+                if (parts.length === 3) {
+                    fechaPago = parseInt(parts[1], 10) + '/' + parseInt(parts[0], 10) + '/' + parts[2];
+                }
+            }
+            
             const comprobante = String(row[colComprobante - 1] || '').trim();
 
             tramaRows.push([numeroCupon, fechaPago, comprobante, '']);

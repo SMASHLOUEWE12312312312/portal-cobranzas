@@ -108,7 +108,16 @@ const CrecerVLEProcessorV2 = {
 
             // Apply BuildNumeroCupon transformation
             const numeroCupon = ProcessorBase.buildNumeroCuponVLE(nroComprobante);
-            const fechaPago = row[cfg.COL_FECHA - 1];
+            
+            // Convert date to DD/MM/YYYY without leading zeros (Sisnet compatible)
+            let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
+            if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
+            if (fechaPago && fechaPago.includes('/')) {
+                const parts = fechaPago.split('/');
+                if (parts.length === 3) {
+                    fechaPago = parseInt(parts[1], 10) + '/' + parseInt(parts[0], 10) + '/' + parts[2];
+                }
+            }
 
             // FACTURA is the NRO_COMPROBANTE as-is
             tramaRows.push([numeroCupon, fechaPago, nroComprobante, '']);

@@ -127,7 +127,17 @@ const RimacProcessorV2 = {
                 // FIX: Correct column mapping per user requirement
                 // - FECHA_PAGO (col B) = Column N (FEC_EMISION)
                 // - FACTURA (col C) = Column O (has the invoice code like "FA-F581 0007375086")
-                const fechaPago = row[cfg.COL_FEC_EMISION - 1];  // Col N → FECHA_PAGO
+                
+                // Convert date to DD/MM/YYYY without leading zeros (Sisnet compatible)
+                let fechaPago = String(row[cfg.COL_FEC_EMISION - 1] || '').trim();
+                if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
+                if (fechaPago && fechaPago.includes('/')) {
+                    const parts = fechaPago.split('/');
+                    if (parts.length === 3) {
+                        fechaPago = parseInt(parts[1], 10) + '/' + parseInt(parts[0], 10) + '/' + parts[2];
+                    }
+                }
+                
                 const factura = row[cfg.COL_FEC_PAG - 1];        // Col O → FACTURA
 
                 tramaRows.push([numeroCupon, fechaPago, factura, '']);

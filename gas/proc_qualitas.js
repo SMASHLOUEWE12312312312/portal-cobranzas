@@ -107,7 +107,15 @@ const QualitasProcessorV2 = {
                 const numeroCupon = String(row[cfg.COL_CUPON - 1] || '').trim();
                 if (!numeroCupon) continue;
 
-                const fechaPago = row[cfg.COL_FECHA - 1];
+                // Convert date to DD/MM/YYYY without leading zeros (Sisnet compatible)
+                let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
+                if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
+                if (fechaPago && fechaPago.includes('/')) {
+                    const parts = fechaPago.split('/');
+                    if (parts.length === 3) {
+                        fechaPago = parseInt(parts[1], 10) + '/' + parseInt(parts[0], 10) + '/' + parts[2];
+                    }
+                }
 
                 // Standard 3 columns + STATUS (FACTURA empty)
                 tramaRows.push([numeroCupon, fechaPago, '', '']);
