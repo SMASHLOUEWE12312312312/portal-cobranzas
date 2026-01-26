@@ -134,7 +134,7 @@ const LaPositivaProcessorV2 = {
         // Execute cross-reference with pre-loaded BD_Cruce data
         const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
             statusCol: 4,
-            bdCruceData: dataContext.bdCruceData  // Use cached data
+            bdCruceCupones: dataContext.bdCruceCupones  // Use cached data
         });
         perfLog('CRUCE_COMPLETE');
 

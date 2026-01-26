@@ -121,7 +121,7 @@ const ChubbProcessorV2 = {
         // Execute cross-reference
         const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
             statusCol: 4,
-            bdCruceData: dataContext.bdCruceData
+            bdCruceCupones: dataContext.bdCruceCupones
         });
         perfLog('CRUCE_COMPLETE');
 

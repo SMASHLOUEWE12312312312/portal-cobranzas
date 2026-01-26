@@ -183,8 +183,25 @@ const ConciliacionServiceV2 = {
                 return { ok: false, error: 'Hoja BD_Cruce no encontrada. Primero sube la BD Sisnet.' };
             }
             this._dataContext.bdCruceSheet = wsBDCruce;
-            this._dataContext.bdCruceData = wsBDCruce.getDataRange().getDisplayValues();
-            perfLog('BD_CRUCE_LOADED');
+            
+            // V6 OPTIMIZATION: Read only the CUPON column (H) instead of all 23 columns
+            // This reduces data transfer from ~1.4M cells to ~61k cells (95% reduction)
+            const bdLastRow = wsBDCruce.getLastRow();
+            const cuponCol = getConfig('CONCILIACION.BD_CRUCE_CUPON_COL', 8); // Column H
+            
+            if (bdLastRow > 1) {
+                // Read only column H (cupones) - MUCH faster than reading all columns
+                const cuponData = wsBDCruce.getRange(1, cuponCol, bdLastRow, 1).getDisplayValues();
+                this._dataContext.bdCruceCupones = cuponData.map(row => row[0]);
+                this._dataContext.bdCruceRowCount = bdLastRow;
+            } else {
+                this._dataContext.bdCruceCupones = [];
+                this._dataContext.bdCruceRowCount = 0;
+            }
+            
+            // Full data only loaded on demand by processors that need it
+            this._dataContext.bdCruceData = null;
+            perfLog('BD_CRUCE_LOADED | rows: ' + bdLastRow);
 
             // Get processor
             const processor = this._getProcessor(insurerKey);

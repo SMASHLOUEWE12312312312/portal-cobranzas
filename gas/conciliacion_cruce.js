@@ -89,19 +89,37 @@ const ConciliacionCruceV2 = {
 
         // ========== FASE 1: USAR DATOS PRE-CARGADOS O LEER ==========
 
-        // BD_Cruce data - use pre-loaded if available
-        const bdData = options.bdCruceData || wsBDCruce.getDataRange().getDisplayValues();
-        const lastColBD = bdData[0] ? bdData[0].length : cuponColBD;
+        // V6 OPTIMIZATION: Use pre-loaded cupones array if available (much faster)
+        let bdCuponesArray;
+        let lastColBD;
+        
+        if (options.bdCruceCupones && options.bdCruceCupones.length > 0) {
+            // Use optimized pre-loaded cupones (just column H)
+            bdCuponesArray = options.bdCruceCupones;
+            lastColBD = wsBDCruce.getLastColumn();
+            perfLog('BD_CUPONES_FROM_CACHE | count: ' + bdCuponesArray.length);
+        } else if (options.bdCruceData) {
+            // Fallback to full data if provided
+            bdCuponesArray = options.bdCruceData.map(row => row[cuponColBD - 1]);
+            lastColBD = options.bdCruceData[0] ? options.bdCruceData[0].length : cuponColBD;
+            perfLog('BD_DATA_FROM_OPTIONS');
+        } else {
+            // Last resort: read from sheet (slowest)
+            const bdData = wsBDCruce.getDataRange().getDisplayValues();
+            bdCuponesArray = bdData.map(row => row[cuponColBD - 1]);
+            lastColBD = bdData[0] ? bdData[0].length : cuponColBD;
+            perfLog('BD_DATA_FROM_SHEET');
+        }
+        
         const colStatusBD = lastColBD + 1;
-        perfLog('BD_DATA_READY');
 
         // Build lookup maps with memoized normalization
         const bdMapExacto = new Map();
         const bdMapNorm = new Map();
         const bdCupones = [];
 
-        for (let i = 1; i < bdData.length; i++) {
-            const cupon = String(bdData[i][cuponColBD - 1] || '').trim();
+        for (let i = 1; i < bdCuponesArray.length; i++) {
+            const cupon = String(bdCuponesArray[i] || '').trim();
             if (cupon) {
                 const cuponNorm = this._normalizarCuponCached(cupon);
                 const entry = { row: i + 1, idx: bdCupones.length };
@@ -115,7 +133,7 @@ const ConciliacionCruceV2 = {
                 }
             }
         }
-        perfLog('BD_MAPS_BUILT');
+        perfLog('BD_MAPS_BUILT | entries: ' + bdCupones.length);
 
         // Trama data - use pre-loaded if available
         const tramaData = options.tramaData || wsTrama.getDataRange().getDisplayValues();
