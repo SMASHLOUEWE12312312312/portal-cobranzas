@@ -210,8 +210,7 @@ const ConciliacionIOV2 = {
                 ok: true,
                 rowsLoaded: rowsLoaded,
                 message: 'BD Sisnet cargada exitosamente. Registros: ' + rowsLoaded,
-                perfMs: totalTime,
-                usedSheetJS: sheetJSAvailable
+                perfMs: totalTime
             };
 
         } catch (error) {
