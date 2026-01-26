@@ -100,11 +100,14 @@ const ConciliacionExportV2 = {
      * Exports Trama_Registrados using SheetJS (NO TEMP SPREADSHEET)
      * OPTIMIZED: ~2000-3000ms faster than v1
      * 
+     * FIX v6: Convert date strings to Date objects for proper Excel formatting
+     * 
      * @private
      */
     _exportarTramaSheetJS(tramaData, insurerKey, timestamp, columnasTrama, options) {
         const context = 'ConciliacionExportV2._exportarTramaSheetJS';
         const statusCol = options.statusColTrama || (columnasTrama + 1);
+        const dateCol = 2; // Column B is date (1-indexed)
 
         // Filter only "Cupón Registrado" rows
         const rows = [];
@@ -113,7 +116,21 @@ const ConciliacionExportV2 = {
         for (let i = 1; i < tramaData.length; i++) {
             const status = String(tramaData[i][statusCol - 1] || '').trim();
             if (status === ConciliacionCruce.STATUS.REGISTRADO) {
-                rows.push(tramaData[i].slice(0, columnasTrama));
+                const rowData = tramaData[i].slice(0, columnasTrama);
+                
+                // FIX v6: Convert date string in column B to Date object
+                if (rowData[dateCol - 1]) {
+                    const dateVal = rowData[dateCol - 1];
+                    // If it's already a Date, keep it
+                    if (!(dateVal instanceof Date)) {
+                        const parsed = ProcessorBase.parseToDate(dateVal);
+                        if (parsed instanceof Date && !isNaN(parsed.getTime())) {
+                            rowData[dateCol - 1] = parsed;
+                        }
+                    }
+                }
+                
+                rows.push(rowData);
             }
         }
 
@@ -133,7 +150,7 @@ const ConciliacionExportV2 = {
 
         // Generate XLSX directly with SheetJS
         const xlsxResult = this._generateXLSXWithSheetJS(rows, 'Trama_Registrados', {
-            dateColumn: 2  // Column B is date
+            dateColumn: dateCol  // Column B is date
         });
 
         const fileName = 'Trama_Registrados_' + insurerKey + '_' + timestamp + '.xlsx';
@@ -295,10 +312,9 @@ const ConciliacionExportV2 = {
      * Generates XLSX directly in memory using SheetJS
      * NO SPREADSHEET CREATION, NO DRIVE OPERATIONS
      * 
-     * V3 FIXES:
-     * - Robust error handling with automatic fallback
-     * - Detailed logging for debugging
-     * - Catches SheetJS exceptions and uses legacy method
+     * V6 FIXES:
+     * - Proper handling of Date objects for date columns
+     * - cellDates: true to preserve date values
      * 
      * @param {Array<Array>} data - 2D array of data
      * @param {string} sheetName - Sheet name
@@ -321,8 +337,8 @@ const ConciliacionExportV2 = {
             // Create workbook
             const wb = XLSX.utils.book_new();
 
-            // Create worksheet from data
-            const ws = XLSX.utils.aoa_to_sheet(data);
+            // Create worksheet from data with cellDates option
+            const ws = XLSX.utils.aoa_to_sheet(data, { cellDates: true });
 
             // Apply column widths (auto-fit simulation)
             const colWidths = [];
@@ -330,8 +346,11 @@ const ConciliacionExportV2 = {
             for (let c = 0; c < numCols; c++) {
                 let maxLen = 10;
                 for (let r = 0; r < Math.min(data.length, 100); r++) {
-                    const cellVal = String(data[r][c] || '');
-                    maxLen = Math.max(maxLen, cellVal.length);
+                    const cellVal = data[r][c];
+                    const strVal = cellVal instanceof Date 
+                        ? '00/00/0000' 
+                        : String(cellVal || '');
+                    maxLen = Math.max(maxLen, strVal.length);
                 }
                 colWidths.push({ wch: Math.min(maxLen + 2, 50) });
             }
@@ -343,15 +362,12 @@ const ConciliacionExportV2 = {
                 for (let r = 1; r < data.length; r++) {
                     const cellRef = XLSX.utils.encode_cell({ r: r, c: col });
                     if (ws[cellRef]) {
-                        ws[cellRef].z = 'dd/mm/yyyy';
+                        // Ensure cell is marked as date type with format
+                        ws[cellRef].t = 'd';  // Date type
+                        ws[cellRef].z = 'dd/mm/yyyy';  // Date format
+                        Logger.log('[EXPORT] Cell ' + cellRef + ' type: ' + ws[cellRef].t + ' value: ' + ws[cellRef].v);
                     }
                 }
-            }
-
-            // Apply highlighting if specified
-            if (options.highlightColumn && options.highlightColors) {
-                // Note: SheetJS community edition has limited styling
-                // For full styling, consider xlsx-style or similar
             }
 
             // Add worksheet to workbook
@@ -361,7 +377,7 @@ const ConciliacionExportV2 = {
             const xlsxArray = XLSX.write(wb, {
                 type: 'array',
                 bookType: 'xlsx',
-                cellStyles: true
+                cellDates: true
             });
 
             // Convert to base64
@@ -385,10 +401,9 @@ const ConciliacionExportV2 = {
      * Legacy export method (fallback if SheetJS not available)
      * Uses SpreadsheetApp.create() - SLOW but reliable
      * 
-     * V3 FIXES:
-     * - Better error handling
-     * - Guaranteed cleanup even on error
-     * - Performance logging
+     * V6 FIXES:
+     * - Proper handling of date columns (don't apply text format)
+     * - Date column gets dd/mm/yyyy format
      * 
      * @private
      */
@@ -396,9 +411,10 @@ const ConciliacionExportV2 = {
         const context = '_generateXLSXLegacy';
         const T = { start: Date.now() };
         let tempSSId = null;
+        const dateColumn = options.dateColumn || 2; // Default column B
         
         try {
-            Logger.log('[PERF-V2][EXPORT] Starting legacy export | rows: ' + data.length);
+            Logger.log('[PERF-V2][EXPORT] Starting legacy export | rows: ' + data.length + ' | dateCol: ' + dateColumn);
             
             const tempSS = SpreadsheetApp.create('TMP_' + sheetName + '_' + Date.now());
             tempSSId = tempSS.getId();
@@ -411,10 +427,24 @@ const ConciliacionExportV2 = {
                 const numRows = data.length;
                 const numCols = data[0].length;
 
+                // FIX v6: Apply text format ONLY to non-date columns
                 if (numRows > 1) {
-                    sheet.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
+                    for (let col = 1; col <= numCols; col++) {
+                        if (col !== dateColumn) {
+                            // Apply text format to non-date columns
+                            sheet.getRange(2, col, numRows - 1, 1).setNumberFormat('@');
+                        }
+                    }
                 }
+                
+                // Write all values
                 sheet.getRange(1, 1, numRows, numCols).setValues(data);
+                
+                // FIX v6: Apply date format to date column AFTER writing
+                if (numRows > 1 && dateColumn <= numCols) {
+                    sheet.getRange(2, dateColumn, numRows - 1, 1).setNumberFormat('dd/mm/yyyy');
+                    Logger.log('[PERF-V2][EXPORT] Applied date format to column ' + dateColumn);
+                }
 
                 sheet.setFrozenRows(1);
                 sheet.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
