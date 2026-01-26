@@ -213,13 +213,14 @@ const ConciliacionIOV2 = {
             
             Logger.log('[SUCCESS][' + runId + '] BD Sisnet cargada. Registros: ' + rowsLoaded + ' | Tiempo: ' + totalTime + 'ms');
 
+            // V3 FIX: DO NOT return data array - it's too large for google.script.run response
+            // Data is already written to BD_Cruce sheet, no need to return it
             return {
                 ok: true,
                 rowsLoaded: rowsLoaded,
-                data: data,  // Return data for caching (optional - can be large)
                 message: 'BD Sisnet cargada exitosamente. Registros: ' + rowsLoaded,
                 perfMs: totalTime,
-                usedSheetJS: sheetJSAvailable && data !== null
+                usedSheetJS: sheetJSAvailable
             };
 
         } catch (error) {
@@ -455,10 +456,11 @@ const ConciliacionIOV2 = {
                     targetRange.setNumberFormat('@');
                     targetRange.setValues(dataRows);
                 }
-                return { ok: true, rowsCopied: dataRows.length, data: srcData };
+                // V3 FIX: DO NOT return data - it's too large and causes timeout
+                return { ok: true, rowsCopied: dataRows.length };
             }
 
-            return { ok: true, rowsCopied: 0, data: srcData };
+            return { ok: true, rowsCopied: 0 };
 
         } catch (error) {
             Logger.log(context + ': ERROR - ' + error.message);

@@ -207,13 +207,14 @@ const ConciliacionCruceV2 = {
         Logger.log('[SUCCESS][' + runId + '] Cruce completado. Reg: ' + contRegistrado +
             ', Val: ' + contValidar + ', No: ' + contNoRegistrado + ' | ' + totalTime + 'ms');
 
+        // V3 FIX: DO NOT return tramaData - it's too large for google.script.run response
+        // The export function reads data directly from the sheet, not from this result
         return {
             registrado: contRegistrado,
             validar: contValidar,
             noRegistrado: contNoRegistrado,
             total: contRegistrado + contValidar + contNoRegistrado,
-            tramaData: tramaData,  // Return for use in export
-            perfMetrics: perfMetrics  // V3: Return performance metrics
+            perfMs: totalTime
         };
     },
 
