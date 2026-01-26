@@ -25,7 +25,7 @@ const QualitasProcessorV2 = {
 
         // Standard 4 columns
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: '@' }
+        TRAMA_FORMAT: { 1: '@', 2: '@', 3: '@' }  // All text to preserve exact format
     },
 
     /**

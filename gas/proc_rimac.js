@@ -28,7 +28,7 @@ const RimacProcessorV2 = {
         COL_FEC_PAG: 15,         // O - FEC_PAG
 
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: '@' }
+        TRAMA_FORMAT: { 1: '@', 2: '@', 3: '@' }  // All text to preserve exact format
     },
 
     /**

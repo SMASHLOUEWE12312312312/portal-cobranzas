@@ -23,7 +23,7 @@ const MapfreProcessorV2 = {
         COL_FECHA: 17,           // Q - FEC_SITUACION
 
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy' }
+        TRAMA_FORMAT: { 1: '@', 2: '@', 3: '@' }  // All text to preserve exact format
     },
 
     /**

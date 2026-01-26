@@ -27,7 +27,7 @@ const CrecerProtectaProcessorV2 = {
         COL_COMPROBANTE: 10,     // J - Comprobante
 
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy' }
+        TRAMA_FORMAT: { 1: '@', 2: '@', 3: '@' }  // All text to preserve exact format
     },
 
     processOptimized(convertResult, ss, dataContext) {

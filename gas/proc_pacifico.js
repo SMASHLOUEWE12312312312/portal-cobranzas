@@ -29,7 +29,7 @@ const PacificoProcessorV2 = {
 
         // Trama has 5 columns including ORIGEN_CUPON
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS', 'ORIGEN_CUPON'],
-        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy' }
+        TRAMA_FORMAT: { 1: '@', 2: '@', 3: '@' }  // All text to preserve exact format
     },
 
     /**
