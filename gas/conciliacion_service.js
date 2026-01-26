@@ -139,10 +139,35 @@ const ConciliacionServiceV2 = {
         // SheetJS was causing hangs on large files in Apps Script environment
         Logger.log('[PERF-V2][DRIVE_API] Using Drive API for reliable file conversion');
 
-        // Get lock - using Document lock instead of Script lock for better granularity
-        const lock = LockService.getScriptLock();
-        if (!lock.tryLock(60000)) {
-            return { ok: false, error: 'Proceso en ejecución, intenta más tarde' };
+        // V7 FIX: Use Document lock (per-spreadsheet) instead of Script lock (global)
+        // This allows BD upload and insurer processing to run concurrently
+        const ssId = getConfig('CONCILIACION.SS_ID', '');
+        const lock = LockService.getDocumentLock();
+        
+        // V7: Retry logic with exponential backoff for lock acquisition
+        const maxRetries = 3;
+        const baseTimeout = 30000; // 30 seconds
+        let lockAcquired = false;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            const timeout = baseTimeout * attempt; // 30s, 60s, 90s
+            lockAcquired = lock.tryLock(timeout);
+            if (lockAcquired) {
+                Logger.log('[LOCK] Acquired on attempt ' + attempt + ' (timeout: ' + timeout + 'ms)');
+                break;
+            }
+            Logger.log('[LOCK] Attempt ' + attempt + ' failed, retrying...');
+            if (attempt < maxRetries) {
+                Utilities.sleep(1000 * attempt); // 1s, 2s wait between retries
+            }
+        }
+        
+        if (!lockAcquired) {
+            return { 
+                ok: false, 
+                error: 'El sistema está ocupado procesando otra solicitud. Por favor, espera unos segundos e intenta nuevamente.',
+                errorCode: 'LOCK_BUSY'
+            };
         }
 
         let tempFileId = null;

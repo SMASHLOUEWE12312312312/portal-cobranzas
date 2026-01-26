@@ -74,11 +74,35 @@ const ConciliacionIOV2 = {
         };
         perfLog('INIT', { fileName: fileName, base64Len: base64Data ? base64Data.length : 0 });
 
-        // V3 FIX: Extended lock timeout to 300 seconds (5 min) for large files
-        const lock = LockService.getScriptLock();
-        if (!lock.tryLock(300000)) {
-            Logger.log('[ERR][' + runId + '] Lock timeout - another process is running');
-            return { ok: false, error: 'Proceso en ejecución, intenta más tarde', errorCode: 'LOCK_TIMEOUT' };
+        // V7 FIX: Use Document lock with retry logic
+        // Document lock allows insurer processing to run while BD is uploading
+        const lock = LockService.getDocumentLock();
+        
+        // Retry logic with exponential backoff
+        const maxRetries = 3;
+        const baseTimeout = 60000; // 60 seconds base (BD upload is slow)
+        let lockAcquired = false;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            const timeout = baseTimeout * attempt; // 60s, 120s, 180s
+            lockAcquired = lock.tryLock(timeout);
+            if (lockAcquired) {
+                Logger.log('[LOCK][' + runId + '] Acquired on attempt ' + attempt);
+                break;
+            }
+            Logger.log('[LOCK][' + runId + '] Attempt ' + attempt + ' failed');
+            if (attempt < maxRetries) {
+                Utilities.sleep(2000 * attempt); // 2s, 4s wait between retries
+            }
+        }
+        
+        if (!lockAcquired) {
+            Logger.log('[ERR][' + runId + '] Lock timeout after ' + maxRetries + ' attempts');
+            return { 
+                ok: false, 
+                error: 'El sistema está ocupado. Por favor, espera unos segundos e intenta nuevamente.', 
+                errorCode: 'LOCK_TIMEOUT' 
+            };
         }
 
         let tempFileId = null;

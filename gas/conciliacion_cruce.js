@@ -205,9 +205,9 @@ const ConciliacionCruceV2 = {
         }
         perfLog('TRAMA_WRITTEN');
 
-        // Write BD_Cruce STATUS in batch
+        // Write BD_Cruce STATUS in batch (single setValues call is faster than multiple setValue)
         if (bdCupones.length > 0) {
-            const bdStatusValues = bdCupones.map(c => [c.status || this.STATUS.NO_REGISTRADO]);
+            const bdStatusValues = bdCupones.map(c => [c.status || '']);
             wsBDCruce.getRange(2, colStatusBD, bdStatusValues.length, 1).setValues(bdStatusValues);
         }
         perfLog('BD_WRITTEN');
