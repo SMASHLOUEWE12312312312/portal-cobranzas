@@ -1,120 +1,110 @@
 /**
- * @fileoverview Processor for La Positiva insurance company
- * @version 1.0.0
+ * @fileoverview Processor for La Positiva - OPTIMIZED V2
+ * @version 2.0.0 - ULTRA OPTIMIZED
  * 
- * REPLICA EXACTA DE: Module1.bas → Sub Macro_La_Positiva()
+ * CAMBIOS v2.0:
+ * - NUEVO: processOptimized() que usa DataContext compartido
+ * - ELIMINADO: Lecturas duplicadas de datos
+ * - OPTIMIZADO: Flujo de datos sin re-lecturas
+ * - OPTIMIZADO: Integración con ConciliacionExportV2
  * 
- * SPECIFICATIONS:
- * - EECC Sheet: EECC_La Positiva
- * - Trama Sheet: Trama_La Positiva
- * - Data start row: 11 (header at row 10)
- * - Filter: Column T = "Cancelado"
- * - Mapping:
- *   - CUPON: Col G + Col H (if H > 0)
- *   - FECHA: Col U
- *   - FACTURA: Col R
+ * MEJORA ESPERADA: 60-70% reducción en tiempo
  */
 
-const LaPositivaProcessor = {
-    // FIXED Configuration - DO NOT MODIFY
+const LaPositivaProcessorV2 = {
     CONFIG: {
         HOJA_EECC: 'EECC_La Positiva',
         HOJA_TRAMA: 'Trama_La Positiva',
-        START_ROW: 11,           // Data from row 11
-        HEADER_ROW: 10,          // Header at row 10
+        START_ROW: 11,
+        HEADER_ROW: 10,
 
-        // EECC Columns (1-indexed)
-        COL_NUMERO: 7,           // G - Number
-        COL_GIRO: 8,             // H - Giro
-        COL_FACTURA: 18,         // R - Factura
-        COL_ESTADO: 20,          // T - Estado
-        COL_FECHA: 21,           // U - Fecha pago
+        COL_NUMERO: 7,
+        COL_GIRO: 8,
+        COL_FACTURA: 18,
+        COL_ESTADO: 20,
+        COL_FECHA: 21,
 
-        // Trama Headers
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-
-        // Trama column formats
-        TRAMA_FORMAT: {
-            1: '@',              // NUMERO_CUPON as text
-            2: 'dd/mm/yyyy'      // FECHA_PAGO as date
-        }
+        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy' }
     },
 
     /**
-     * Processes La Positiva Estado de Cuenta file
+     * OPTIMIZED process method that uses shared DataContext
      * 
-     * @param {string} tempFileId - Converted temporary file ID
+     * @param {Object} convertResult - Result from convertirXLSXaSheet
      * @param {Spreadsheet} ss - Conciliation spreadsheet
+     * @param {Object} dataContext - Shared data context
      * @returns {Object} Processing result
      */
-    process(tempFileId, ss) {
-        const context = 'LaPositivaProcessor.process';
+    processOptimized(convertResult, ss, dataContext) {
+        const context = 'LaPositivaProcessorV2.processOptimized';
         const cfg = this.CONFIG;
+        const T = { start: Date.now() };
+        const perfLog = (label) => {
+            Logger.log('[PERF-V2] LaPositiva | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
+        };
 
-        Logger.log(context + ': Iniciando procesamiento La Positiva');
+        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO');
+        perfLog('INIT');
 
-        // 1. Get sheets
+        // Get sheets (from cached spreadsheet)
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
-        if (!wsEECC) {
-            wsEECC = ss.insertSheet(cfg.HOJA_EECC);
-        }
+        if (!wsEECC) wsEECC = ss.insertSheet(cfg.HOJA_EECC);
 
         let wsTrama = ss.getSheetByName(cfg.HOJA_TRAMA);
-        if (!wsTrama) {
-            wsTrama = ss.insertSheet(cfg.HOJA_TRAMA);
-        }
+        if (!wsTrama) wsTrama = ss.insertSheet(cfg.HOJA_TRAMA);
 
-        const wsBDCruce = ss.getSheetByName('BD_Cruce');
+        // Use pre-loaded BD_Cruce from context
+        const wsBDCruce = dataContext.bdCruceSheet;
         if (!wsBDCruce) {
-            throw new Error('Hoja BD_Cruce no encontrada. Primero sube la BD Sisnet.');
+            throw new Error('BD_Cruce no encontrada en contexto');
         }
+        perfLog('SHEETS_READY');
 
-        // 2. Clear sheets (replica VBA: wsBroker.Rows("11:" & lastAny).Delete)
+        // Clear destination sheets
         ProcessorBase.clearFromRow(wsEECC, cfg.START_ROW);
         ProcessorBase.clearFromRow(wsTrama, 2);
+        perfLog('SHEETS_CLEARED');
 
-        // 3. Load EECC file
-        const tempSS = SpreadsheetApp.openById(tempFileId);
-        const tempSheet = tempSS.getSheets()[0];
-        // FIX: Usar getDisplayValues() para preservar datos originales (ej: ceros iniciales)
-        const srcData = tempSheet.getDataRange().getDisplayValues();
+        // Get source data - use pre-parsed if available (SheetJS)
+        let srcData;
+        if (convertResult.data) {
+            srcData = convertResult.data;
+            perfLog('DATA_FROM_SHEETJS');
+        } else {
+            const tempSS = SpreadsheetApp.openById(convertResult.fileId);
+            const tempSheet = tempSS.getSheets()[0];
+            srcData = tempSheet.getDataRange().getDisplayValues();
+            perfLog('DATA_FROM_DRIVE');
+        }
 
-        // Copy from source row 11 to EECC row 11
-        // FIX v2.0: Apply text format BEFORE writing to preserve original values
+        // Write to EECC sheet (batch)
         if (srcData.length >= cfg.START_ROW) {
             const dataRows = srcData.slice(cfg.START_ROW - 1);
             if (dataRows.length > 0) {
                 const numRows = dataRows.length;
                 const numCols = dataRows[0].length;
                 const targetRange = wsEECC.getRange(cfg.START_ROW, 1, numRows, numCols);
-
-                // CRITICAL: Set text format BEFORE writing
                 targetRange.setNumberFormat('@');
-
-                // Now write values
                 targetRange.setValues(dataRows);
             }
         }
+        perfLog('EECC_WRITTEN');
 
         const filasCargadas = Math.max(0, srcData.length - cfg.START_ROW + 1);
 
-        // 4. Process EECC: filter Estado="Cancelado" → generate Trama
-        const eeccData = wsEECC.getDataRange().getValues();
+        // Process EECC - use srcData directly (NO re-read!)
         const tramaRows = [];
-
         let filasCancelado = 0;
         let filasOmitidas = 0;
 
-        for (let i = cfg.START_ROW - 1; i < eeccData.length; i++) {
-            const row = eeccData[i];
-
-            // Check Estado = "Cancelado" (Col T, index 19)
+        for (let i = cfg.START_ROW - 1; i < srcData.length; i++) {
+            const row = srcData[i];
             const estado = ProcessorBase.normalizeState(row[cfg.COL_ESTADO - 1]);
 
             if (estado === 'cancelado') {
                 filasCancelado++;
 
-                // Get NUMERO_CUPON: Col G + Col H (if H > 0)
                 const numeroRaw = String(row[cfg.COL_NUMERO - 1] || '').trim();
                 const giroVal = ProcessorBase.parseLongOrZero(row[cfg.COL_GIRO - 1]);
 
@@ -123,65 +113,85 @@ const LaPositivaProcessor = {
                     continue;
                 }
 
-                // Build coupon: number + giro (if giro > 0)
                 const numeroCupon = giroVal > 0 ? numeroRaw + String(giroVal) : numeroRaw;
+                const fechaPago = row[cfg.COL_FECHA - 1];
+                const factura = row[cfg.COL_FACTURA - 1];
 
-                // Get date and factura
-                const fechaPago = row[cfg.COL_FECHA - 1];    // Col U
-                const factura = row[cfg.COL_FACTURA - 1];    // Col R
-
-                // Add row to Trama (STATUS empty, filled during cross-reference)
                 tramaRows.push([numeroCupon, fechaPago, factura, '']);
             }
         }
+        perfLog('EECC_PROCESSED');
 
-        // 5. Write Trama
+        // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
-
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
+        perfLog('TRAMA_WRITTEN');
 
         const filasEscritas = tramaRows.length;
 
-        Logger.log(context + ': Procesamiento completado. ' +
-            'Cargadas: ' + filasCargadas + ', ' +
-            'Cancelado: ' + filasCancelado + ', ' +
-            'Escritas: ' + filasEscritas + ', ' +
-            'Omitidas: ' + filasOmitidas);
-
-        // 6. Execute cross-reference with BD_Cruce
-        const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, {
-            statusCol: 4  // Column D in Trama
+        // Execute cross-reference with pre-loaded BD_Cruce data
+        const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
+            statusCol: 4,
+            bdCruceData: dataContext.bdCruceData  // Use cached data
         });
+        perfLog('CRUCE_COMPLETE');
 
-        // 7. Export results
-        const exportResult = ConciliacionExport.exportarResultados(
-            wsTrama,
-            wsEECC,
-            wsBDCruce,
-            'La_Positiva',
+        // Export results using optimized exporter
+        // Pass cached data to avoid re-reading
+        const tramaDataForExport = wsTrama.getDataRange().getDisplayValues();
+        const exportResult = ConciliacionExportV2.exportarResultados(
+            wsTrama, wsEECC, wsBDCruce, 'La_Positiva',
             {
-                columnasTrama: 3,          // Export A:C (without STATUS)
+                columnasTrama: 3,
                 startRowEECC: cfg.START_ROW,
                 cuponColEECC: cfg.COL_NUMERO
+            },
+            {
+                tramaData: tramaDataForExport,
+                eeccData: srcData
             }
         );
+        perfLog('EXPORT_COMPLETE');
 
-        // 8. Cleanup temporary STATUS column from BD_Cruce
-        ConciliacionCruce.limpiarStatusBDCruce(wsBDCruce);
+        // Cleanup STATUS column
+        ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);
+        perfLog('CLEANUP');
+
+        Logger.log(context + ': Completado. Cargadas: ' + filasCargadas +
+            ', Cancelado: ' + filasCancelado + ', Escritas: ' + filasEscritas);
 
         return {
             ok: true,
             insurer: 'La Positiva',
-            stats: {
-                filasCargadas,
-                filasCancelado,
-                filasEscritas,
-                filasOmitidas
-            },
+            stats: { filasCargadas, filasCancelado, filasEscritas, filasOmitidas },
             cruce: cruceResult,
             exports: exportResult
         };
+    },
+
+    /**
+     * Original process method for backward compatibility
+     */
+    process(tempFileId, ss) {
+        // Create minimal context and call optimized version
+        const dataContext = {
+            bdCruceSheet: ss.getSheetByName('BD_Cruce'),
+            bdCruceData: null
+        };
+
+        if (dataContext.bdCruceSheet) {
+            dataContext.bdCruceData = dataContext.bdCruceSheet.getDataRange().getDisplayValues();
+        }
+
+        return this.processOptimized(
+            { fileId: tempFileId, data: null },
+            ss,
+            dataContext
+        );
     }
 };
+
+// Also update the non-V2 reference
+const LaPositivaProcessor = LaPositivaProcessorV2;
