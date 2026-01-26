@@ -94,7 +94,11 @@ const MapfreProcessorV2 = {
             const numeroCupon = String(row[cfg.COL_NUM_RECIBO - 1] || '').trim();
             if (!numeroCupon) continue;
 
-            const fechaPago = row[cfg.COL_FECHA - 1];
+            // FIX: Remove time portion from date (e.g., "01/27/2025 00:00:00" → "01/27/2025")
+            let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
+            if (fechaPago.includes(' ')) {
+                fechaPago = fechaPago.split(' ')[0];  // Keep only date part
+            }
 
             tramaRows.push([numeroCupon, fechaPago, '', '']);
         }
