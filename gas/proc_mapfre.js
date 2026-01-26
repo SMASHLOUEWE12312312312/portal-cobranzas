@@ -23,7 +23,7 @@ const MapfreProcessorV2 = {
         COL_FECHA: 17,           // Q - FEC_SITUACION
 
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: 'd/m/yyyy', 3: '@' }  // Date without leading zeros
+        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: '@' }  // Date format
     },
 
     /**
@@ -94,25 +94,8 @@ const MapfreProcessorV2 = {
             const numeroCupon = String(row[cfg.COL_NUM_RECIBO - 1] || '').trim();
             if (!numeroCupon) continue;
 
-            // FIX 2026-01-26: Remove leading zeros from date (keep original order)
-            // Example: "25/09/2025 00:00:00" → "25/9/2025" (Sisnet compatible)
-            let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
-            
-            // Remove time portion if present
-            if (fechaPago.includes(' ')) {
-                fechaPago = fechaPago.split(' ')[0];
-            }
-            
-            // Keep original order, just remove leading zeros
-            if (fechaPago && fechaPago.includes('/')) {
-                const parts = fechaPago.split('/');
-                if (parts.length === 3) {
-                    const p1 = parseInt(parts[0], 10);
-                    const p2 = parseInt(parts[1], 10);
-                    const p3 = parts[2];
-                    fechaPago = p1 + '/' + p2 + '/' + p3;
-                }
-            }
+            // FIX 2026-01-26: Convert to Date object for proper date formatting
+            const fechaPago = ProcessorBase.parseToDate(row[cfg.COL_FECHA - 1]);
 
             tramaRows.push([numeroCupon, fechaPago, '', '']);
         }

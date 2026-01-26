@@ -25,7 +25,7 @@ const QualitasProcessorV2 = {
 
         // Standard 4 columns
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: 'd/m/yyyy', 3: '@' }  // Date without leading zeros
+        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: '@' }  // Date format
     },
 
     /**
@@ -107,20 +107,8 @@ const QualitasProcessorV2 = {
                 const numeroCupon = String(row[cfg.COL_CUPON - 1] || '').trim();
                 if (!numeroCupon) continue;
 
-                // FIX 2026-01-26: Remove leading zeros from date (keep original order)
-                // Example: "25/09/2025" → "25/9/2025" (Sisnet compatible)
-                let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
-                if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
-                if (fechaPago && fechaPago.includes('/')) {
-                    const parts = fechaPago.split('/');
-                    if (parts.length === 3) {
-                        // Keep original order, just remove leading zeros
-                        const p1 = parseInt(parts[0], 10);
-                        const p2 = parseInt(parts[1], 10);
-                        const p3 = parts[2];
-                        fechaPago = p1 + '/' + p2 + '/' + p3;
-                    }
-                }
+                // FIX 2026-01-26: Convert to Date object for proper date formatting
+                const fechaPago = ProcessorBase.parseToDate(row[cfg.COL_FECHA - 1]);
 
                 // Standard 3 columns + STATUS (FACTURA empty)
                 tramaRows.push([numeroCupon, fechaPago, '', '']);

@@ -159,7 +159,7 @@ const ProcessorBase = {
 
     /**
      * Writes data to Trama with formatting
-     * FIX v2.0: Apply text format BEFORE writing to preserve original values
+     * FIX v3.0: Handle date columns properly - write Date objects, not strings
      * @param {Sheet} sheet - Trama sheet
      * @param {Array<Array>} rows - Data rows
      * @param {Object} formatConfig - Format config by column {col: format}
@@ -170,14 +170,28 @@ const ProcessorBase = {
         const numCols = rows[0].length;
         const range = sheet.getRange(2, 1, rows.length, numCols);
 
-        // FIX v2.0: Apply text format BEFORE writing to prevent numeric conversion
-        // This ensures values like "0002673426" are not converted to 2673426
-        range.setNumberFormat('@');
+        // FIX v3.0: Identify date columns from formatConfig
+        const dateColumns = new Set();
+        if (formatConfig) {
+            Object.keys(formatConfig).forEach(colStr => {
+                const format = formatConfig[parseInt(colStr, 10)];
+                if (format && (format.includes('d') || format.includes('m') || format.includes('y'))) {
+                    dateColumns.add(parseInt(colStr, 10) - 1); // Convert to 0-indexed
+                }
+            });
+        }
 
-        // Now write values - they will be preserved as text
+        // Apply text format ONLY to non-date columns
+        for (let col = 1; col <= numCols; col++) {
+            if (!dateColumns.has(col - 1)) {
+                sheet.getRange(2, col, rows.length, 1).setNumberFormat('@');
+            }
+        }
+
+        // Write values
         range.setValues(rows);
 
-        // Apply specific formats AFTER (overrides text format where needed)
+        // Apply specific formats (including date format)
         if (formatConfig) {
             Object.keys(formatConfig).forEach(colStr => {
                 const col = parseInt(colStr, 10);
@@ -236,6 +250,48 @@ const ProcessorBase = {
         // Try to parse string date
         const d = new Date(fecha);
         return isNaN(d.getTime()) ? fecha : d;
+    },
+
+    /**
+     * Converts a date string to a Date object for Google Sheets
+     * Handles formats: dd/mm/yyyy, d/m/yyyy, mm/dd/yyyy, yyyy-mm-dd
+     * @param {string|Date} fecha - Date string or Date object
+     * @returns {Date|string} Date object if valid, original string if not
+     */
+    parseToDate(fecha) {
+        if (!fecha) return '';
+        if (fecha instanceof Date) return fecha;
+        
+        const str = String(fecha).trim();
+        if (!str) return '';
+        
+        // Remove time portion if present (e.g., "25/09/2025 00:00:00")
+        const datePart = str.includes(' ') ? str.split(' ')[0] : str;
+        
+        // Try dd/mm/yyyy or d/m/yyyy format (most common in EECC files)
+        const dmyMatch = datePart.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if (dmyMatch) {
+            const day = parseInt(dmyMatch[1], 10);
+            const month = parseInt(dmyMatch[2], 10) - 1; // JavaScript months are 0-indexed
+            const year = parseInt(dmyMatch[3], 10);
+            
+            // Validate day and month ranges
+            if (day >= 1 && day <= 31 && month >= 0 && month <= 11) {
+                return new Date(year, month, day);
+            }
+        }
+        
+        // Try yyyy-mm-dd format (ISO)
+        const isoMatch = datePart.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+        if (isoMatch) {
+            const year = parseInt(isoMatch[1], 10);
+            const month = parseInt(isoMatch[2], 10) - 1;
+            const day = parseInt(isoMatch[3], 10);
+            return new Date(year, month, day);
+        }
+        
+        // Return original if can't parse
+        return str;
     },
 
     /**

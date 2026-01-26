@@ -27,7 +27,7 @@ const ChubbProcessorV2 = {
         COL_FECHA: 10,           // J - Fecha (Spanish format)
 
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: 'd/m/yyyy', 3: '@' }  // Date without leading zeros
+        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: '@' }  // Date format
     },
 
     processOptimized(convertResult, ss, dataContext) {
@@ -95,34 +95,18 @@ const ChubbProcessorV2 = {
             const convenio = String(row[cfg.COL_CONVENIO - 1] || '').trim();
             if (!convenio) continue;
 
-            // Parse Spanish date ("04 ago. 25") and convert to DD/MM/YYYY without leading zeros
+            // FIX 2026-01-26: Parse date (Spanish format or standard) and keep as Date object
             let fechaPago = row[cfg.COL_FECHA - 1];
-
-            // SheetJS often parses dates correctly already if cellDates: true, but just in case:
-            if (!(fechaPago instanceof Date)) {
-                const parsed = ProcessorBase.parsearFechaEspanol(fechaPago);
-                if (parsed) fechaPago = parsed;
-            }
             
-            // FIX 2026-01-26: Format as DD/MM/YYYY without leading zeros (Sisnet compatible)
-            if (fechaPago instanceof Date) {
-                const dia = fechaPago.getDate();
-                const mes = fechaPago.getMonth() + 1;
-                const anio = fechaPago.getFullYear();
-                fechaPago = dia + '/' + mes + '/' + anio;
-            } else {
-                // If string, just remove leading zeros (keep original order)
-                fechaPago = String(fechaPago || '').trim();
-                if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
-                if (fechaPago && fechaPago.includes('/')) {
-                    const parts = fechaPago.split('/');
-                    if (parts.length === 3) {
-                        // Keep original order, just remove leading zeros
-                        const p1 = parseInt(parts[0], 10);
-                        const p2 = parseInt(parts[1], 10);
-                        const p3 = parts[2];
-                        fechaPago = p1 + '/' + p2 + '/' + p3;
-                    }
+            // If already a Date, keep it
+            if (!(fechaPago instanceof Date)) {
+                // Try Spanish date parsing first ("04 ago. 25")
+                const parsedSpanish = ProcessorBase.parsearFechaEspanol(fechaPago);
+                if (parsedSpanish) {
+                    fechaPago = parsedSpanish;
+                } else {
+                    // Try standard date parsing
+                    fechaPago = ProcessorBase.parseToDate(fechaPago);
                 }
             }
 
