@@ -124,11 +124,13 @@ const RimacProcessorV2 = {
                 // Apply length rules
                 const numeroCupon = ProcessorBase.extraerCuponRimac(tipoDoc);
 
-                const fecEmision = row[cfg.COL_FEC_EMISION - 1]; // Keep mostly assuming it's dates
-                const fecPag = row[cfg.COL_FEC_PAG - 1];         // Rimac uses this as pay date
+                // FIX: Correct column mapping per user requirement
+                // - FECHA_PAGO (col B) = Column N (FEC_EMISION)
+                // - FACTURA (col C) = Column O (has the invoice code like "FA-F581 0007375086")
+                const fechaPago = row[cfg.COL_FEC_EMISION - 1];  // Col N → FECHA_PAGO
+                const factura = row[cfg.COL_FEC_PAG - 1];        // Col O → FACTURA
 
-                // Use FEC_PAG as FECHA_PAGO, FACTURA empty (Rimac has no factura)
-                tramaRows.push([numeroCupon, fecPag, '', '']);
+                tramaRows.push([numeroCupon, fechaPago, factura, '']);
             }
         }
         perfLog('EECC_PROCESSED');
