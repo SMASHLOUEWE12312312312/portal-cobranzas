@@ -126,7 +126,26 @@ const PacificoProcessorV2 = {
             const cuponFRaw = String(row[cfg.COL_F - 1] || '').trim();
             const cuponE = this._limpiarSufijoCupon(cuponERaw);
             const cuponF = this._limpiarSufijoCupon(cuponFRaw);
-            const fechaPago = row[cfg.COL_FECHA - 1];
+            
+            // FIX: Convert date from MM/DD/YYYY or M/DD/YYYY to DD/MM/YYYY
+            let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
+            // Remove time portion if present (e.g., "9/17/2025 00:00:00" → "9/17/2025")
+            if (fechaPago.includes(' ')) {
+                fechaPago = fechaPago.split(' ')[0];
+            }
+            // Convert MM/DD/YYYY or M/DD/YYYY → DD/MM/YYYY
+            if (fechaPago && fechaPago.includes('/')) {
+                const parts = fechaPago.split('/');
+                if (parts.length === 3) {
+                    // parts[0]=M or MM, parts[1]=DD, parts[2]=YYYY
+                    // Pad with zeros if needed
+                    const mes = parts[0].padStart(2, '0');
+                    const dia = parts[1].padStart(2, '0');
+                    const anio = parts[2];
+                    fechaPago = dia + '/' + mes + '/' + anio;
+                }
+            }
+            
             const factura = row[cfg.COL_FACTURA - 1];
 
             // Dual logic
