@@ -89,6 +89,10 @@ const ConciliacionExportV2 = {
         }
 
         if (rows.length <= 1) {
+            Logger.log(context + ': WARNING - No se encontraron registros. StatusCol: ' + statusCol +
+                ', TotalRows: ' + tramaData.length +
+                ', SampleStatus: ' + (tramaData[1] ? tramaData[1][statusCol - 1] : 'N/A'));
+
             return {
                 ok: true,
                 message: 'Sin cupones registrados para exportar',

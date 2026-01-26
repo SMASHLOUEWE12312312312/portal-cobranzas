@@ -171,11 +171,27 @@ const ConciliacionIOV2 = {
     },
 
     /**
+     * Helper: Safe Base64 Decode with cleanup
+     * @private
+     */
+    _safeBase64Decode(input) {
+        if (!input) throw new Error('Input base64 is empty');
+        // Aggressive cleanup: remove URI prefix AND all non-base64 chars (newlines, etc)
+        const clean = (input.includes(',') ? input.split(',')[1] : input).replace(/[^A-Za-z0-9+/=]/g, "");
+        if (clean.length % 4 !== 0) {
+            // Pad with = if needed
+            const padded = clean + '='.repeat((4 - clean.length % 4) % 4);
+            return Utilities.base64Decode(padded);
+        }
+        return Utilities.base64Decode(clean);
+    },
+
+    /**
      * Parses XLSX directly using SheetJS (NO DRIVE OPERATIONS)
      * @private
      */
     _parseXLSXWithSheetJS(base64Data) {
-        const bytes = Utilities.base64Decode(base64Data);
+        const bytes = this._safeBase64Decode(base64Data);
         const workbook = XLSX.read(bytes, {
             type: 'array',
             cellDates: true,
@@ -219,7 +235,7 @@ const ConciliacionIOV2 = {
             }
 
             // Fallback to Drive conversion
-            const bytes = Utilities.base64Decode(base64Data);
+            const bytes = this._safeBase64Decode(base64Data);
             const blob = Utilities.newBlob(bytes,
                 mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 fileName);
@@ -246,26 +262,7 @@ const ConciliacionIOV2 = {
      */
     forceCreateTempFile(base64Data, fileName, mimeType) {
         try {
-            if (!base64Data) throw new Error('base64Data is empty or undefined');
-
-            // Clean data URI prefix if present
-            const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-
-            // Decodificar seguramente
-            let bytes;
-            try {
-                bytes = Utilities.base64Decode(cleanBase64);
-            } catch (e) {
-                // Si falla, intentar modo web-safe o loggear detalle
-                Logger.log('Error decoding base64: ' + e.message + ' | Length: ' + cleanBase64.length);
-                // Intentar web-safe como fallback
-                try {
-                    bytes = Utilities.base64DecodeWebSafe(cleanBase64);
-                } catch (e2) {
-                    throw new Error('Failed to decode base64 content: ' + e.message);
-                }
-            }
-
+            const bytes = this._safeBase64Decode(base64Data);
             const blob = Utilities.newBlob(bytes,
                 mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 fileName);
