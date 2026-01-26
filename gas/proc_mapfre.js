@@ -94,20 +94,24 @@ const MapfreProcessorV2 = {
             const numeroCupon = String(row[cfg.COL_NUM_RECIBO - 1] || '').trim();
             if (!numeroCupon) continue;
 
-            // FIX: Format date as DD/MM/YYYY
+            // Convert date from MM/DD/YYYY to DD/MM/YYYY (without leading zeros)
+            // Example: "01/27/2025 00:00:00" → "27/1/2025" (Sisnet compatible)
             let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
             
-            // Remove time portion if present (e.g., "01/27/2025 00:00:00" → "01/27/2025")
+            // Remove time portion if present
             if (fechaPago.includes(' ')) {
                 fechaPago = fechaPago.split(' ')[0];
             }
             
-            // Convert MM/DD/YYYY → DD/MM/YYYY
+            // Convert MM/DD/YYYY → DD/MM/YYYY without leading zeros
             if (fechaPago && fechaPago.includes('/')) {
                 const parts = fechaPago.split('/');
                 if (parts.length === 3) {
-                    // parts[0]=MM, parts[1]=DD, parts[2]=YYYY → DD/MM/YYYY
-                    fechaPago = parts[1] + '/' + parts[0] + '/' + parts[2];
+                    // parts[0]=M or MM, parts[1]=D or DD, parts[2]=YYYY
+                    const mes = parseInt(parts[0], 10);  // Remove leading zero
+                    const dia = parseInt(parts[1], 10);  // Remove leading zero
+                    const anio = parts[2];
+                    fechaPago = dia + '/' + mes + '/' + anio;
                 }
             }
 

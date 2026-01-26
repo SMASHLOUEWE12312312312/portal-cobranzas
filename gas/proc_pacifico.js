@@ -127,20 +127,22 @@ const PacificoProcessorV2 = {
             const cuponE = this._limpiarSufijoCupon(cuponERaw);
             const cuponF = this._limpiarSufijoCupon(cuponFRaw);
             
-            // FIX: Convert date from MM/DD/YYYY or M/DD/YYYY to DD/MM/YYYY
+            // Convert date from MM/DD/YYYY to DD/MM/YYYY (without leading zeros)
+            // Example: "1/27/2025" → "27/1/2025" (Sisnet compatible)
             let fechaPago = String(row[cfg.COL_FECHA - 1] || '').trim();
-            // Remove time portion if present (e.g., "9/17/2025 00:00:00" → "9/17/2025")
+            
+            // Remove time portion if present
             if (fechaPago.includes(' ')) {
                 fechaPago = fechaPago.split(' ')[0];
             }
-            // Convert MM/DD/YYYY or M/DD/YYYY → DD/MM/YYYY
+            
+            // Convert MM/DD/YYYY → DD/MM/YYYY without leading zeros
             if (fechaPago && fechaPago.includes('/')) {
                 const parts = fechaPago.split('/');
                 if (parts.length === 3) {
-                    // parts[0]=M or MM, parts[1]=DD, parts[2]=YYYY
-                    // Pad with zeros if needed
-                    const mes = parts[0].padStart(2, '0');
-                    const dia = parts[1].padStart(2, '0');
+                    // parts[0]=M or MM, parts[1]=D or DD, parts[2]=YYYY
+                    const mes = parseInt(parts[0], 10);  // Remove leading zero
+                    const dia = parseInt(parts[1], 10);  // Remove leading zero
                     const anio = parts[2];
                     fechaPago = dia + '/' + mes + '/' + anio;
                 }
