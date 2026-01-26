@@ -239,6 +239,31 @@ const ConciliacionIOV2 = {
     },
 
     /**
+     * Forces creation of a temporary Google Sheet (Legacy support)
+     * @param {string} base64Data 
+     * @param {string} fileName 
+     * @param {string} mimeType 
+     */
+    forceCreateTempFile(base64Data, fileName, mimeType) {
+        try {
+            const bytes = Utilities.base64Decode(base64Data);
+            const blob = Utilities.newBlob(bytes,
+                mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                fileName);
+
+            const resource = {
+                title: 'TMP_EECC_LEGACY_' + Date.now(),
+                mimeType: 'application/vnd.google-apps.spreadsheet'
+            };
+
+            const file = Drive.Files.insert(resource, blob, { convert: true });
+            return { ok: true, fileId: file.id };
+        } catch (error) {
+            return { ok: false, error: error.message };
+        }
+    },
+
+    /**
      * Gets data from temp file or from pre-parsed data
      * @param {string|null} tempFileId - Temp file ID (null if SheetJS used)
      * @param {Array|null} parsedData - Pre-parsed data from SheetJS

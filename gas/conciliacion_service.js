@@ -188,6 +188,19 @@ const ConciliacionServiceV2 = {
                 return { ok: false, error: 'Aseguradora no válida: ' + insurerKey };
             }
 
+            // === LEGACY FALLBACK ===
+            // If processor is V1 (no processOptimized) AND we used SheetJS (no tempFileId),
+            // we MUST create a physical file now because V1 processors expect it.
+            if (!processor.processOptimized && !tempFileId) {
+                Logger.log(context + ': Legacy processor detected. Force-creating temp file...');
+                const legacyResult = ConciliacionIOV2.forceCreateTempFile(base64Data, fileName, normalizedMime);
+                if (!legacyResult.ok) {
+                    return { ok: false, error: 'Error creating legacy temp file: ' + legacyResult.error };
+                }
+                tempFileId = legacyResult.fileId;
+                Logger.log(context + ': Created temp file ' + tempFileId);
+            }
+
             // Execute processing with optimized interface
             const result = processor.processOptimized ?
                 processor.processOptimized(convertResult, ss, this._dataContext) :
