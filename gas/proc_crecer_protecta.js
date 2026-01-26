@@ -180,7 +180,7 @@ const CrecerProtectaProcessor = {
                 columnasTrama: 3,
                 startRowEECC: cfg.START_ROW,
                 cuponColEECC: colDocumento,
-                cuponTransformFn: ProcessorBase.extraerCuponCrecerProtecta
+                cuponTransformFn: ProcessorBase.extraerCuponCrecerProtecta.bind(ProcessorBase)
             }
         );
 
