@@ -66,20 +66,19 @@ const PacificoProcessorV2 = {
         if (!wsBDCruce) throw new Error('BD_Cruce no encontrada en contexto');
 
         // Prepare BD lookup sets for dual logic
-        // Use cached data to build sets in memory (fast)
-        const cuponColBD = getConfig('CONCILIACION.BD_CRUCE_CUPON_COL', 8);
-        const bdData = dataContext.bdCruceData;
+        // V6 OPTIMIZATION: Use pre-loaded cupones array (much faster)
         const cuponesBD = new Set();
         const cuponesBDNorm = new Set();
-
-        for (let i = 1; i < bdData.length; i++) {
-            const cupon = String(bdData[i][cuponColBD - 1] || '').trim();
+        
+        const bdCupones = dataContext.bdCruceCupones || [];
+        for (let i = 1; i < bdCupones.length; i++) {
+            const cupon = String(bdCupones[i] || '').trim();
             if (cupon) {
                 cuponesBD.add(cupon);
                 cuponesBDNorm.add(ProcessorBase.normalizarCupon(cupon));
             }
         }
-        perfLog('BD_LOOKUP_BUILT');
+        perfLog('BD_LOOKUP_BUILT | cupones: ' + cuponesBD.size);
 
         // Clear sheets
         wsEECC.clear();
@@ -215,12 +214,16 @@ const PacificoProcessorV2 = {
     },
 
     process(tempFileId, ss) {
+        const cuponCol = getConfig('CONCILIACION.BD_CRUCE_CUPON_COL', 8);
+        const bdCruceSheet = ss.getSheetByName('BD_Cruce');
         const dataContext = {
-            bdCruceSheet: ss.getSheetByName('BD_Cruce'),
-            bdCruceData: null
+            bdCruceSheet: bdCruceSheet,
+            bdCruceCupones: null
         };
-        if (dataContext.bdCruceSheet) {
-            dataContext.bdCruceData = dataContext.bdCruceSheet.getDataRange().getDisplayValues();
+        if (bdCruceSheet) {
+            // V6: Load only cupones column for better performance
+            const lastRow = bdCruceSheet.getLastRow();
+            dataContext.bdCruceCupones = bdCruceSheet.getRange(1, cuponCol, lastRow, 1).getDisplayValues().map(r => r[0]);
         }
         return this.processOptimized({ fileId: tempFileId, data: null }, ss, dataContext);
     }

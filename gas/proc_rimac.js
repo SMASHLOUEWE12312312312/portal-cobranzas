@@ -188,13 +188,17 @@ const RimacProcessorV2 = {
      */
     process(tempFileId, ss) {
         // Create minimal context and call optimized version
+        const cuponCol = getConfig('CONCILIACION.BD_CRUCE_CUPON_COL', 8);
+        const bdCruceSheet = ss.getSheetByName('BD_Cruce');
         const dataContext = {
-            bdCruceSheet: ss.getSheetByName('BD_Cruce'),
-            bdCruceData: null
+            bdCruceSheet: bdCruceSheet,
+            bdCruceCupones: null
         };
 
-        if (dataContext.bdCruceSheet) {
-            dataContext.bdCruceData = dataContext.bdCruceSheet.getDataRange().getDisplayValues();
+        if (bdCruceSheet) {
+            // V6: Load only cupones column for better performance
+            const lastRow = bdCruceSheet.getLastRow();
+            dataContext.bdCruceCupones = bdCruceSheet.getRange(1, cuponCol, lastRow, 1).getDisplayValues().map(r => r[0]);
         }
 
         return this.processOptimized(
