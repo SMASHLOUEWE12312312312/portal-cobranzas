@@ -246,7 +246,26 @@ const ConciliacionIOV2 = {
      */
     forceCreateTempFile(base64Data, fileName, mimeType) {
         try {
-            const bytes = Utilities.base64Decode(base64Data);
+            if (!base64Data) throw new Error('base64Data is empty or undefined');
+
+            // Clean data URI prefix if present
+            const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+
+            // Decodificar seguramente
+            let bytes;
+            try {
+                bytes = Utilities.base64Decode(cleanBase64);
+            } catch (e) {
+                // Si falla, intentar modo web-safe o loggear detalle
+                Logger.log('Error decoding base64: ' + e.message + ' | Length: ' + cleanBase64.length);
+                // Intentar web-safe como fallback
+                try {
+                    bytes = Utilities.base64DecodeWebSafe(cleanBase64);
+                } catch (e2) {
+                    throw new Error('Failed to decode base64 content: ' + e.message);
+                }
+            }
+
             const blob = Utilities.newBlob(bytes,
                 mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 fileName);
@@ -259,6 +278,7 @@ const ConciliacionIOV2 = {
             const file = Drive.Files.insert(resource, blob, { convert: true });
             return { ok: true, fileId: file.id };
         } catch (error) {
+            Logger.log('forceCreateTempFile Error: ' + error.message);
             return { ok: false, error: error.message };
         }
     },

@@ -39,6 +39,9 @@ const ConciliacionExportV2 = {
         };
 
         try {
+            // Ensure any pending writes are committed before reading
+            SpreadsheetApp.flush();
+
             // Use cached data if available, otherwise read
             const tramaData = cachedData.tramaData || wsTrama.getDataRange().getDisplayValues();
             const eeccData = cachedData.eeccData || wsEECC.getDataRange().getDisplayValues();
