@@ -135,6 +135,14 @@ const ConciliacionServiceV2 = {
         const normalizedMime = _conciliacionInferExcelMimeType_(fileName) || mimeType ||
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
+        // === [R4] STRICT GUARD: SheetJS (XLSX) MUST BE AVAILABLE ===
+        if (typeof XLSX === 'undefined') {
+            const errorMsg = '[SHEETJS][STRICT] FATAL: XLSX is undefined. ' +
+                'El archivo xlsx.full.min.js debe estar en el runtime servidor.';
+            Logger.log(errorMsg);
+            throw new Error(errorMsg); // Fail fast per REGLAS_STRICT
+        }
+
         // Get lock - using Document lock instead of Script lock for better granularity
         const lock = LockService.getScriptLock();
         if (!lock.tryLock(60000)) {
