@@ -28,7 +28,7 @@ const CrecerProtectaProcessor = {
         COL_FECHA: 13,           // M - Fecha pago
         COL_COMPROBANTE: 10,     // J - Comprobante
 
-        TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'COMPROBANTE', 'STATUS'],
+        TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
         TRAMA_FORMAT: {
             1: '@',
             2: 'dd/mm/yyyy'

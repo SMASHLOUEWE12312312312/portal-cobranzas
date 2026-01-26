@@ -25,9 +25,9 @@ const QualitasProcessor = {
         COL_CUPON: 10,           // J - CUPON
         COL_FECHA: 14,           // N - Fecha
 
-        // Only 3 columns - NO FACTURA
-        TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy' }
+        // Standard 4 columns
+        TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
+        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: '@' }
     },
 
     process(tempFileId, ss) {
@@ -88,8 +88,8 @@ const QualitasProcessor = {
 
             const fechaPago = row[cfg.COL_FECHA - 1];
 
-            // Only 2 columns + STATUS (no FACTURA)
-            tramaRows.push([numeroCupon, fechaPago, '']);
+            // Standard 3 columns + STATUS (FACTURA empty)
+            tramaRows.push([numeroCupon, fechaPago, '', '']);
         }
 
         // Write Trama (3 columns only)
@@ -101,13 +101,13 @@ const QualitasProcessor = {
 
         Logger.log(context + ': Procesamiento completado. Filas desde row 17: ' + tramaRows.length);
 
-        // Execute cross-reference (STATUS is in column 3)
-        const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 3 });
+        // Execute cross-reference (STATUS is in column 4)
+        const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 4 });
 
         // Export (only 2 columns, no factura)
         const exportResult = ConciliacionExport.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Qualitas',
-            { columnasTrama: 2, startRowEECC: cfg.START_ROW, cuponColEECC: cfg.COL_CUPON }
+            { columnasTrama: 3, startRowEECC: cfg.START_ROW, cuponColEECC: cfg.COL_CUPON }
         );
 
         // Cleanup

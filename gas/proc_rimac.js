@@ -29,8 +29,8 @@ const RimacProcessor = {
         COL_FEC_EMISION: 14,     // N - FEC_EMISION
         COL_FEC_PAG: 15,         // O - FEC_PAG
 
-        TRAMA_HEADERS: ['NUMERO_CUPON', 'FEC_EMISION', 'FEC_PAG', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: 'dd/mm/yyyy' }
+        TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
+        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: '@' }
     },
 
     process(tempFileId, ss) {
@@ -103,7 +103,8 @@ const RimacProcessor = {
                 const fecEmision = row[cfg.COL_FEC_EMISION - 1];
                 const fecPag = row[cfg.COL_FEC_PAG - 1];
 
-                tramaRows.push([numeroCupon, fecEmision, fecPag, '']);
+                // Use FEC_PAG as FECHA_PAGO, FACTURA empty (Rimac has no factura)
+                tramaRows.push([numeroCupon, fecPag, '', '']);
             }
         }
 
