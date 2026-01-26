@@ -27,7 +27,7 @@ const ChubbProcessorV2 = {
         COL_FECHA: 10,           // J - Fecha (Spanish format)
 
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-        TRAMA_FORMAT: { 1: '@', 2: '@', 3: '@' }  // All text to preserve exact format
+        TRAMA_FORMAT: { 1: '@', 2: 'd/m/yyyy', 3: '@' }  // Date without leading zeros
     },
 
     processOptimized(convertResult, ss, dataContext) {
