@@ -50,7 +50,14 @@ const ConciliacionIOV2 = {
     },
 
     /**
-     * Uploads BD Sisnet file - OPTIMIZED VERSION
+     * Uploads BD Sisnet file - OPTIMIZED VERSION V3
+     * 
+     * V3 FIXES:
+     * - Extended lock timeout to 300s (5 min) for large files
+     * - Better error handling with specific error codes
+     * - Performance logging with correlation ID
+     * - Robust fallback to Drive API when SheetJS unavailable
+     * - Chunked writing for very large files (>50k rows)
      * 
      * @param {string} base64Data - File content in base64
      * @param {string} fileName - File name
@@ -59,114 +66,184 @@ const ConciliacionIOV2 = {
      */
     subirBDSisnet(base64Data, fileName, mimeType) {
         const context = 'ConciliacionIOV2.subirBDSisnet';
+        const runId = 'BD_' + Date.now();
         const T = { start: Date.now() };
-        const perfLog = (label) => {
-            Logger.log('[PERF-V2] subirBDSisnet | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
+        const perfLog = (label, extra) => {
+            const msg = '[PERF-V2][' + runId + '] subirBDSisnet | ' + label + ' | ' + (Date.now() - T.start) + 'ms';
+            Logger.log(extra ? msg + ' | ' + JSON.stringify(extra) : msg);
         };
-        perfLog('INIT');
+        perfLog('INIT', { fileName: fileName, base64Len: base64Data ? base64Data.length : 0 });
 
+        // V3 FIX: Extended lock timeout to 300 seconds (5 min) for large files
         const lock = LockService.getScriptLock();
-        if (!lock.tryLock(30000)) {
-            return { ok: false, error: 'Proceso en ejecución, intenta más tarde' };
+        if (!lock.tryLock(300000)) {
+            Logger.log('[ERR][' + runId + '] Lock timeout - another process is running');
+            return { ok: false, error: 'Proceso en ejecución, intenta más tarde', errorCode: 'LOCK_TIMEOUT' };
         }
 
         let tempFileId = null;
 
         try {
-            if (!base64Data || !fileName) {
-                return { ok: false, error: 'Datos de archivo inválidos' };
+            // Validation
+            if (!base64Data) {
+                return { ok: false, error: 'Datos de archivo vacíos', errorCode: 'EMPTY_DATA' };
+            }
+            if (!fileName) {
+                return { ok: false, error: 'Nombre de archivo no especificado', errorCode: 'NO_FILENAME' };
             }
 
             const ss = this.getConciliacionSpreadsheet();
             if (!ss) {
-                return { ok: false, error: 'CONCILIACION.SS_ID no configurado' };
+                return { ok: false, error: 'Spreadsheet de conciliación no configurado (CONCILIACION.SS_ID)', errorCode: 'NO_SS_CONFIG' };
             }
             perfLog('OPEN_SS_CACHED');
 
             // Try SheetJS first if available
             let data;
-            if (typeof XLSX !== 'undefined') {
-                data = this._parseXLSXWithSheetJS(base64Data);
-                perfLog('PARSE_SHEETJS');
-            } else {
-                // Fallback to Drive conversion
-                const bytes = Utilities.base64Decode(base64Data);
-                const blob = Utilities.newBlob(bytes, mimeType ||
-                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', fileName);
+            const sheetJSAvailable = typeof XLSX !== 'undefined';
+            
+            if (sheetJSAvailable) {
+                try {
+                    data = this._parseXLSXWithSheetJS(base64Data);
+                    perfLog('PARSE_SHEETJS', { rows: data ? data.length : 0 });
+                } catch (sheetJSError) {
+                    Logger.log('[WARN][' + runId + '] SheetJS parsing failed: ' + sheetJSError.message + ' - falling back to Drive');
+                    data = null; // Force Drive fallback
+                }
+            }
+            
+            // V3 FIX: Robust Drive fallback when SheetJS unavailable or fails
+            if (!data) {
+                perfLog('DRIVE_FALLBACK_START');
+                
+                try {
+                    const bytes = this._safeBase64Decode(base64Data);
+                    perfLog('BASE64_DECODED', { byteLength: bytes.length });
+                    
+                    const effectiveMime = mimeType || 
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                    const blob = Utilities.newBlob(bytes, effectiveMime, fileName);
+                    perfLog('BLOB_CREATED');
 
-                const resource = {
-                    title: 'TMP_BD_SISNET_' + Date.now(),
-                    mimeType: 'application/vnd.google-apps.spreadsheet'
-                };
+                    const resource = {
+                        title: 'TMP_BD_SISNET_' + runId,
+                        mimeType: 'application/vnd.google-apps.spreadsheet'
+                    };
 
-                const tempFile = Drive.Files.insert(resource, blob, { convert: true });
-                tempFileId = tempFile.id;
-                perfLog('DRIVE_CONVERT');
+                    // Drive conversion - this is the slow step
+                    perfLog('DRIVE_INSERT_START');
+                    const tempFile = Drive.Files.insert(resource, blob, { convert: true });
+                    tempFileId = tempFile.id;
+                    perfLog('DRIVE_INSERT_COMPLETE', { tempFileId: tempFileId });
 
-                const tempSS = SpreadsheetApp.openById(tempFileId);
-                const tempSheet = tempSS.getSheets()[0];
-                data = tempSheet.getDataRange().getDisplayValues();
-                perfLog('READ_TEMP_DATA');
+                    const tempSS = SpreadsheetApp.openById(tempFileId);
+                    const tempSheet = tempSS.getSheets()[0];
+                    data = tempSheet.getDataRange().getDisplayValues();
+                    perfLog('READ_TEMP_DATA', { rows: data.length, cols: data[0] ? data[0].length : 0 });
+                    
+                } catch (driveError) {
+                    Logger.log('[ERR][' + runId + '] Drive conversion failed: ' + driveError.message);
+                    return { 
+                        ok: false, 
+                        error: 'Error al convertir archivo Excel: ' + driveError.message, 
+                        errorCode: 'DRIVE_CONVERT_FAILED' 
+                    };
+                }
             }
 
+            // Validate data
             if (!data || data.length < 2) {
-                return { ok: false, error: 'El archivo no contiene datos válidos' };
+                return { ok: false, error: 'El archivo no contiene datos válidos (mínimo 2 filas: encabezado + datos)', errorCode: 'INVALID_DATA' };
             }
 
             // Get or create BD_Cruce sheet
             let bdCruce = ss.getSheetByName('BD_Cruce');
             if (!bdCruce) {
                 bdCruce = ss.insertSheet('BD_Cruce');
+                perfLog('SHEET_CREATED');
             }
 
-            // OPTIMIZED: Single batch write with pre-formatting
+            // Clear sheet
             bdCruce.clear();
             perfLog('CLEAR_BD_CRUCE');
 
             const numRows = data.length;
             const numCols = data[0].length;
+            perfLog('DATA_SIZE', { numRows: numRows, numCols: numCols });
 
-            // CRITICAL: Set text format and values in optimal order
-            // 1. First set text format on data rows
-            if (numRows > 1) {
-                bdCruce.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
+            // V3 FIX: Chunked writing for very large files
+            const CHUNK_SIZE = 20000;
+            
+            if (numRows <= CHUNK_SIZE) {
+                // Standard batch write for normal files
+                if (numRows > 1) {
+                    bdCruce.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
+                }
+                bdCruce.getRange(1, 1, numRows, numCols).setValues(data);
+                perfLog('WRITE_SINGLE_BATCH');
+            } else {
+                // Chunked write for large files
+                perfLog('WRITE_CHUNKED_START', { chunks: Math.ceil(numRows / CHUNK_SIZE) });
+                
+                for (let i = 0; i < numRows; i += CHUNK_SIZE) {
+                    const endRow = Math.min(i + CHUNK_SIZE, numRows);
+                    const chunk = data.slice(i, endRow);
+                    const chunkRows = chunk.length;
+                    
+                    if (i > 0) { // Skip format for header row
+                        bdCruce.getRange(i + 1, 1, chunkRows, numCols).setNumberFormat('@');
+                    }
+                    bdCruce.getRange(i + 1, 1, chunkRows, numCols).setValues(chunk);
+                    
+                    perfLog('WRITE_CHUNK', { chunk: Math.floor(i / CHUNK_SIZE) + 1, rows: chunkRows });
+                }
             }
 
-            // 2. Write all data at once
-            bdCruce.getRange(1, 1, numRows, numCols).setValues(data);
-
-            // 3. Apply all formatting in one batch
+            // Apply formatting in batch
             bdCruce.setTabColor('#00B0F0');
             bdCruce.setFrozenRows(1);
             bdCruce.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
 
             // Single flush at the end
             SpreadsheetApp.flush();
-            perfLog('WRITE_AND_FORMAT_BATCH');
+            perfLog('WRITE_AND_FORMAT_COMPLETE');
 
             const rowsLoaded = numRows - 1;
-            Logger.log(context + ': BD Sisnet cargada. Registros: ' + rowsLoaded);
+            const totalTime = Date.now() - T.start;
+            
+            Logger.log('[SUCCESS][' + runId + '] BD Sisnet cargada. Registros: ' + rowsLoaded + ' | Tiempo: ' + totalTime + 'ms');
 
             return {
                 ok: true,
                 rowsLoaded: rowsLoaded,
-                data: data,  // Return data for caching
-                message: 'BD Sisnet cargada exitosamente. Registros: ' + rowsLoaded
+                data: data,  // Return data for caching (optional - can be large)
+                message: 'BD Sisnet cargada exitosamente. Registros: ' + rowsLoaded,
+                perfMs: totalTime,
+                usedSheetJS: sheetJSAvailable && data !== null
             };
 
         } catch (error) {
-            Logger.log(context + ': ERROR - ' + error.message);
-            return { ok: false, error: 'Error al cargar BD Sisnet: ' + error.message };
+            const errMsg = error.message || String(error);
+            Logger.log('[ERR][' + runId + '] subirBDSisnet EXCEPTION: ' + errMsg);
+            Logger.log('[ERR][' + runId + '] Stack: ' + (error.stack || 'no stack'));
+            return { 
+                ok: false, 
+                error: 'Error al cargar BD Sisnet: ' + errMsg, 
+                errorCode: 'EXCEPTION' 
+            };
 
         } finally {
+            // Cleanup temp file
             if (tempFileId) {
                 try {
                     Drive.Files.remove(tempFileId);
+                    perfLog('CLEANUP_TEMP_FILE');
                 } catch (e) {
-                    Logger.log(context + ': Warning - ' + e.message);
+                    Logger.log('[WARN][' + runId + '] Cleanup warning: ' + e.message);
                 }
             }
             lock.releaseLock();
+            perfLog('LOCK_RELEASED');
         }
     },
 
@@ -211,46 +288,84 @@ const ConciliacionIOV2 = {
     },
 
     /**
-     * Converts XLSX to temporary Sheet - OPTIMIZED
-     * Returns data directly if SheetJS available
+     * Converts XLSX to temporary Sheet - OPTIMIZED V3
+     * Returns data directly if SheetJS available, otherwise creates temp file
+     * 
+     * V3 FIXES:
+     * - Robust SheetJS error handling with Drive fallback
+     * - Detailed logging for debugging
+     * - Returns data directly when possible to avoid re-reading
      * 
      * @param {string} base64Data - Content in base64
      * @param {string} fileName - File name
      * @param {string} mimeType - MIME type
-     * @returns {Object} { ok, fileId?, data?, error? }
+     * @returns {Object} { ok, fileId?, data?, error?, useSheetJS? }
      */
     convertirXLSXaSheet(base64Data, fileName, mimeType) {
         const context = 'ConciliacionIOV2.convertirXLSXaSheet';
+        const runId = 'CONV_' + Date.now();
+        const T = { start: Date.now() };
 
         try {
-            // Try SheetJS first
+            Logger.log('[FLOW][' + runId + '] convertirXLSXaSheet START | file: ' + fileName);
+            
+            // Try SheetJS first if available
             if (typeof XLSX !== 'undefined') {
-                const data = this._parseXLSXWithSheetJS(base64Data);
-                return {
-                    ok: true,
-                    fileId: null,  // No temp file created
-                    data: data,    // Data ready to use
-                    useSheetJS: true
-                };
+                try {
+                    Logger.log('[FLOW][' + runId + '] Attempting SheetJS parsing...');
+                    const data = this._parseXLSXWithSheetJS(base64Data);
+                    
+                    if (data && data.length > 0) {
+                        Logger.log('[FLOW][' + runId + '] SheetJS SUCCESS | rows: ' + data.length + ' | ' + (Date.now() - T.start) + 'ms');
+                        return {
+                            ok: true,
+                            fileId: null,  // No temp file created
+                            data: data,    // Data ready to use
+                            useSheetJS: true
+                        };
+                    } else {
+                        Logger.log('[WARN][' + runId + '] SheetJS returned empty data, falling back to Drive');
+                    }
+                } catch (sheetJSError) {
+                    Logger.log('[WARN][' + runId + '] SheetJS failed: ' + sheetJSError.message + ' - using Drive fallback');
+                }
+            } else {
+                Logger.log('[FLOW][' + runId + '] SheetJS not available - using Drive conversion');
             }
 
             // Fallback to Drive conversion
+            Logger.log('[FLOW][' + runId + '] Starting Drive conversion...');
             const bytes = this._safeBase64Decode(base64Data);
-            const blob = Utilities.newBlob(bytes,
-                mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                fileName);
+            Logger.log('[FLOW][' + runId + '] Base64 decoded | bytes: ' + bytes.length);
+            
+            const effectiveMime = mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            const blob = Utilities.newBlob(bytes, effectiveMime, fileName);
 
             const resource = {
-                title: 'TMP_EECC_' + Date.now(),
+                title: 'TMP_EECC_' + runId,
                 mimeType: 'application/vnd.google-apps.spreadsheet'
             };
 
             const file = Drive.Files.insert(resource, blob, { convert: true });
-            return { ok: true, fileId: file.id, useSheetJS: false };
+            Logger.log('[FLOW][' + runId + '] Drive conversion SUCCESS | fileId: ' + file.id + ' | ' + (Date.now() - T.start) + 'ms');
+            
+            // V3 FIX: Also read the data here so processor doesn't have to re-open
+            const tempSS = SpreadsheetApp.openById(file.id);
+            const tempSheet = tempSS.getSheets()[0];
+            const data = tempSheet.getDataRange().getDisplayValues();
+            Logger.log('[FLOW][' + runId + '] Data read from temp file | rows: ' + data.length);
+            
+            return { 
+                ok: true, 
+                fileId: file.id, 
+                data: data,  // V3: Also return data to avoid re-reading
+                useSheetJS: false 
+            };
 
         } catch (error) {
-            Logger.log(context + ': ERROR - ' + error.message);
-            return { ok: false, error: error.message };
+            Logger.log('[ERR][' + runId + '] convertirXLSXaSheet FAILED: ' + error.message);
+            Logger.log('[ERR][' + runId + '] Stack: ' + (error.stack || 'no stack'));
+            return { ok: false, error: error.message, errorCode: 'CONVERT_FAILED' };
         }
     },
 

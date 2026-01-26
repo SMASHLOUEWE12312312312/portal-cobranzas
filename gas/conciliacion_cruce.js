@@ -58,19 +58,29 @@ const ConciliacionCruceV2 = {
     },
 
     /**
-     * Executes cross-reference - OPTIMIZED VERSION
+     * Executes cross-reference - OPTIMIZED VERSION V3
      * Accepts pre-loaded data to avoid re-reading sheets
+     * 
+     * V3 OPTIMIZATIONS:
+     * - Pre-built lookup maps for O(1) matching
+     * - Memoized normalization to avoid repeated string ops
+     * - Batch writes for better performance
+     * - Detailed performance metrics
      * 
      * @param {Sheet} wsTrama - Trama sheet
      * @param {Sheet} wsBDCruce - BD_Cruce sheet
      * @param {Object} options - Options including pre-loaded data
-     * @returns {Object} { registrado, validar, noRegistrado, tramaData }
+     * @returns {Object} { registrado, validar, noRegistrado, tramaData, perfMetrics }
      */
     ejecutarCruce(wsTrama, wsBDCruce, options = {}) {
         const context = 'ConciliacionCruceV2.ejecutarCruce';
+        const runId = 'CRUCE_' + Date.now();
         const T = { start: Date.now() };
+        const perfMetrics = {};
         const perfLog = (label) => {
-            Logger.log('[PERF-V2] cruce | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
+            const elapsed = Date.now() - T.start;
+            perfMetrics[label] = elapsed;
+            Logger.log('[PERF-V2][' + runId + '] cruce | ' + label + ' | ' + elapsed + 'ms');
         };
         perfLog('INIT');
 
@@ -191,15 +201,19 @@ const ConciliacionCruceV2 = {
         // Clear normalization cache to free memory
         this.clearCache();
 
-        Logger.log(context + ': Cruce completado. Reg: ' + contRegistrado +
-            ', Val: ' + contValidar + ', No: ' + contNoRegistrado);
+        const totalTime = Date.now() - T.start;
+        perfMetrics.TOTAL = totalTime;
+        
+        Logger.log('[SUCCESS][' + runId + '] Cruce completado. Reg: ' + contRegistrado +
+            ', Val: ' + contValidar + ', No: ' + contNoRegistrado + ' | ' + totalTime + 'ms');
 
         return {
             registrado: contRegistrado,
             validar: contValidar,
             noRegistrado: contNoRegistrado,
             total: contRegistrado + contValidar + contNoRegistrado,
-            tramaData: tramaData  // Return for use in export
+            tramaData: tramaData,  // Return for use in export
+            perfMetrics: perfMetrics  // V3: Return performance metrics
         };
     },
 

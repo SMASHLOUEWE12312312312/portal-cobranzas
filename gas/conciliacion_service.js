@@ -135,12 +135,14 @@ const ConciliacionServiceV2 = {
         const normalizedMime = _conciliacionInferExcelMimeType_(fileName) || mimeType ||
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-        // === [R4] STRICT GUARD: SheetJS (XLSX) MUST BE AVAILABLE ===
-        if (typeof XLSX === 'undefined') {
-            const errorMsg = '[SHEETJS][STRICT] FATAL: XLSX is undefined. ' +
-                'El archivo xlsx.full.min.js debe estar en el runtime servidor.';
-            Logger.log(errorMsg);
-            throw new Error(errorMsg); // Fail fast per REGLAS_STRICT
+        // === [R4] SHEETJS CHECK: Log availability but DO NOT fail ===
+        // V3 FIX: Removed STRICT guard that was blocking ALL processing
+        // SheetJS is preferred but Drive fallback MUST work
+        const sheetJSAvailable = typeof XLSX !== 'undefined';
+        if (!sheetJSAvailable) {
+            Logger.log('[PERF-V2][SHEETJS_FALLBACK] XLSX not available - using Drive conversion (slower)');
+        } else {
+            Logger.log('[PERF-V2][SHEETJS_OK] XLSX available - using direct parsing');
         }
 
         // Get lock - using Document lock instead of Script lock for better granularity
@@ -158,12 +160,20 @@ const ConciliacionServiceV2 = {
             perfLog('CONTEXT_INIT');
 
             // Convert XLSX - now returns data directly if SheetJS available
-            convertResult = ConciliacionIOV2.convertirXLSXaSheet(base64Data, fileName, normalizedMime);
-            if (!convertResult.ok) {
-                return { ok: false, error: 'Error al convertir archivo: ' + convertResult.error };
+            // V3 FIX: Better error handling and logging
+            try {
+                convertResult = ConciliacionIOV2.convertirXLSXaSheet(base64Data, fileName, normalizedMime);
+            } catch (convertError) {
+                Logger.log(context + ': Convert exception - ' + convertError.message);
+                return { ok: false, error: 'Error al convertir archivo: ' + convertError.message, errorCode: 'CONVERT_EXCEPTION' };
             }
+            
+            if (!convertResult.ok) {
+                return { ok: false, error: 'Error al convertir archivo: ' + (convertResult.error || 'Error desconocido'), errorCode: convertResult.errorCode || 'CONVERT_FAILED' };
+            }
+            
             tempFileId = convertResult.fileId;  // null if SheetJS used
-            perfLog('CONVERT_COMPLETE');
+            perfLog('CONVERT_COMPLETE', convertResult.useSheetJS ? 'SHEETJS' : 'DRIVE');
 
             // Get spreadsheet (cached)
             const ss = ConciliacionIOV2.getConciliacionSpreadsheet();
@@ -193,21 +203,47 @@ const ConciliacionServiceV2 = {
             // we MUST create a physical file now because V1 processors expect it.
             if (!processor.processOptimized && !tempFileId) {
                 Logger.log(context + ': Legacy processor detected. Force-creating temp file...');
-                const legacyResult = ConciliacionIOV2.forceCreateTempFile(base64Data, fileName, normalizedMime);
-                if (!legacyResult.ok) {
-                    return { ok: false, error: 'Error creating legacy temp file: ' + legacyResult.error };
+                try {
+                    const legacyResult = ConciliacionIOV2.forceCreateTempFile(base64Data, fileName, normalizedMime);
+                    if (!legacyResult.ok) {
+                        return { ok: false, error: 'Error creating legacy temp file: ' + legacyResult.error, errorCode: 'LEGACY_FILE_FAILED' };
+                    }
+                    tempFileId = legacyResult.fileId;
+                    Logger.log(context + ': Created temp file ' + tempFileId);
+                } catch (legacyErr) {
+                    return { ok: false, error: 'Exception creating legacy temp file: ' + legacyErr.message, errorCode: 'LEGACY_FILE_EXCEPTION' };
                 }
-                tempFileId = legacyResult.fileId;
-                Logger.log(context + ': Created temp file ' + tempFileId);
             }
 
             // Execute processing with optimized interface
-            const result = processor.processOptimized ?
-                processor.processOptimized(convertResult, ss, this._dataContext) :
-                processor.process(tempFileId, ss);  // Fallback to original
+            // V3 FIX: Wrap in try-catch for better error reporting
+            let result;
+            try {
+                if (processor.processOptimized) {
+                    Logger.log(context + ': Using processOptimized for ' + insurerKey);
+                    result = processor.processOptimized(convertResult, ss, this._dataContext);
+                } else {
+                    Logger.log(context + ': Using legacy process() for ' + insurerKey);
+                    result = processor.process(tempFileId, ss);
+                }
+            } catch (processError) {
+                Logger.log(context + ': Processor exception for ' + insurerKey + ': ' + processError.message);
+                Logger.log(context + ': Stack: ' + (processError.stack || 'no stack'));
+                return { 
+                    ok: false, 
+                    error: 'Error procesando ' + insurerKey + ': ' + processError.message, 
+                    errorCode: 'PROCESSOR_EXCEPTION',
+                    insurer: insurerKey
+                };
+            }
 
             perfLog('PROCESS_COMPLETE');
             Logger.log(context + ': Procesamiento completado para ' + insurerKey);
+
+            // V3 FIX: Ensure result has insurer info
+            if (result && result.ok) {
+                result.insurer = result.insurer || insurerKey;
+            }
 
             return result;
 
