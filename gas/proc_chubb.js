@@ -104,17 +104,24 @@ const ChubbProcessorV2 = {
                 if (parsed) fechaPago = parsed;
             }
             
-            // Format date as DD/MM/YYYY without leading zeros (Sisnet compatible)
+            // FIX 2026-01-26: Format as DD/MM/YYYY without leading zeros (Sisnet compatible)
             if (fechaPago instanceof Date) {
-                fechaPago = fechaPago.getDate() + '/' + (fechaPago.getMonth() + 1) + '/' + fechaPago.getFullYear();
+                const dia = fechaPago.getDate();
+                const mes = fechaPago.getMonth() + 1;
+                const anio = fechaPago.getFullYear();
+                fechaPago = dia + '/' + mes + '/' + anio;
             } else {
-                // If string, try to convert
+                // If string, convert from MM/DD/YYYY → DD/MM/YYYY
                 fechaPago = String(fechaPago || '').trim();
                 if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
                 if (fechaPago && fechaPago.includes('/')) {
                     const parts = fechaPago.split('/');
                     if (parts.length === 3) {
-                        fechaPago = parseInt(parts[1], 10) + '/' + parseInt(parts[0], 10) + '/' + parts[2];
+                        // parts[0]=mes, parts[1]=día, parts[2]=año → día/mes/año
+                        const dia = parseInt(parts[1], 10);
+                        const mes = parseInt(parts[0], 10);
+                        const anio = parts[2];
+                        fechaPago = dia + '/' + mes + '/' + anio;
                     }
                 }
             }

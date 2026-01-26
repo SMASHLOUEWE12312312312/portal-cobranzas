@@ -134,13 +134,18 @@ const CrecerProtectaProcessorV2 = {
 
             const numeroCupon = ProcessorBase.extraerCuponCrecerProtecta(documento);
             
-            // Convert date to DD/MM/YYYY without leading zeros (Sisnet compatible)
+            // FIX 2026-01-26: Convert MM/DD/YYYY → DD/MM/YYYY without leading zeros
+            // Example: "9/25/2025" → "25/9/2025" (Sisnet compatible)
             let fechaPago = String(row[colFecha - 1] || '').trim();
             if (fechaPago.includes(' ')) fechaPago = fechaPago.split(' ')[0];
             if (fechaPago && fechaPago.includes('/')) {
                 const parts = fechaPago.split('/');
                 if (parts.length === 3) {
-                    fechaPago = parseInt(parts[1], 10) + '/' + parseInt(parts[0], 10) + '/' + parts[2];
+                    // parts[0]=mes, parts[1]=día, parts[2]=año → día/mes/año
+                    const dia = parseInt(parts[1], 10);
+                    const mes = parseInt(parts[0], 10);
+                    const anio = parts[2];
+                    fechaPago = dia + '/' + mes + '/' + anio;
                 }
             }
             
