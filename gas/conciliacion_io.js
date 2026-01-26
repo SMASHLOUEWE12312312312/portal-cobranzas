@@ -98,12 +98,10 @@ const ConciliacionIOV2 = {
             }
             perfLog('OPEN_SS_CACHED');
 
-            // V4 FIX: ALWAYS use Drive API for file conversion
-            // SheetJS hangs on large files (>2MB) in Apps Script environment
-            // Drive API is slower but more reliable for production use
-            let data;
+            // V5 FIX: Use Drive API + direct sheet copy (fastest method)
+            // Instead of read/write chunks, copy the sheet directly
             
-            // Calculate file size (base64 is ~33% larger than original)
+            // Calculate file size for logging
             const estimatedFileSizeMB = (base64Data.length * 0.75) / (1024 * 1024);
             Logger.log('[FLOW][' + runId + '] File size estimate: ' + estimatedFileSizeMB.toFixed(2) + ' MB');
             
@@ -130,88 +128,69 @@ const ConciliacionIOV2 = {
 
                 const tempSS = SpreadsheetApp.openById(tempFileId);
                 const tempSheet = tempSS.getSheets()[0];
-                data = tempSheet.getDataRange().getDisplayValues();
-                perfLog('READ_TEMP_DATA', { rows: data.length, cols: data[0] ? data[0].length : 0 });
+                perfLog('TEMP_SS_OPENED');
+                
+                // V5 OPTIMIZATION: Copy sheet directly instead of read/write
+                // This is MUCH faster than reading 61k rows and writing by chunks
+                
+                // Get data info for validation and reporting
+                const lastRow = tempSheet.getLastRow();
+                const lastCol = tempSheet.getLastColumn();
+                perfLog('DATA_INFO', { rows: lastRow, cols: lastCol });
+                
+                if (lastRow < 2) {
+                    return { ok: false, error: 'El archivo no contiene datos válidos (mínimo 2 filas)', errorCode: 'INVALID_DATA' };
+                }
+                
+                // Delete existing BD_Cruce if exists
+                const existingBDCruce = ss.getSheetByName('BD_Cruce');
+                if (existingBDCruce) {
+                    ss.deleteSheet(existingBDCruce);
+                    perfLog('OLD_SHEET_DELETED');
+                }
+                
+                // Copy the temp sheet to destination spreadsheet
+                const copiedSheet = tempSheet.copyTo(ss);
+                perfLog('SHEET_COPIED');
+                
+                // Rename to BD_Cruce
+                copiedSheet.setName('BD_Cruce');
+                perfLog('SHEET_RENAMED');
+                
+                // Apply minimal formatting (fast operations only)
+                copiedSheet.setTabColor('#00B0F0');
+                copiedSheet.setFrozenRows(1);
+                
+                // Format header row (only 1 row, fast)
+                if (lastCol > 0) {
+                    copiedSheet.getRange(1, 1, 1, lastCol).setFontWeight('bold').setBackground('#D9D9D9');
+                }
+                perfLog('FORMAT_COMPLETE');
+                
+                // Flush to ensure all changes are committed
+                SpreadsheetApp.flush();
+                perfLog('FLUSH_COMPLETE');
+                
+                const rowsLoaded = lastRow - 1;
+                const totalTime = Date.now() - T.start;
+                
+                Logger.log('[SUCCESS][' + runId + '] BD Sisnet cargada. Registros: ' + rowsLoaded + ' | Tiempo: ' + totalTime + 'ms');
+
+                return {
+                    ok: true,
+                    rowsLoaded: rowsLoaded,
+                    message: 'BD Sisnet cargada exitosamente. Registros: ' + rowsLoaded,
+                    perfMs: totalTime
+                };
                 
             } catch (driveError) {
-                Logger.log('[ERR][' + runId + '] Drive conversion failed: ' + driveError.message);
+                Logger.log('[ERR][' + runId + '] Drive/Copy failed: ' + driveError.message);
                 return { 
                     ok: false, 
-                    error: 'Error al convertir archivo Excel: ' + driveError.message, 
-                    errorCode: 'DRIVE_CONVERT_FAILED' 
+                    error: 'Error al procesar archivo Excel: ' + driveError.message, 
+                    errorCode: 'PROCESS_FAILED' 
                 };
             }
-
-            // Validate data
-            if (!data || data.length < 2) {
-                return { ok: false, error: 'El archivo no contiene datos válidos (mínimo 2 filas: encabezado + datos)', errorCode: 'INVALID_DATA' };
-            }
-
-            // Get or create BD_Cruce sheet
-            let bdCruce = ss.getSheetByName('BD_Cruce');
-            if (!bdCruce) {
-                bdCruce = ss.insertSheet('BD_Cruce');
-                perfLog('SHEET_CREATED');
-            }
-
-            // Clear sheet
-            bdCruce.clear();
-            perfLog('CLEAR_BD_CRUCE');
-
-            const numRows = data.length;
-            const numCols = data[0].length;
-            perfLog('DATA_SIZE', { numRows: numRows, numCols: numCols });
-
-            // V3 FIX: Chunked writing for very large files
-            const CHUNK_SIZE = 20000;
-            
-            if (numRows <= CHUNK_SIZE) {
-                // Standard batch write for normal files
-                if (numRows > 1) {
-                    bdCruce.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
-                }
-                bdCruce.getRange(1, 1, numRows, numCols).setValues(data);
-                perfLog('WRITE_SINGLE_BATCH');
-            } else {
-                // Chunked write for large files
-                perfLog('WRITE_CHUNKED_START', { chunks: Math.ceil(numRows / CHUNK_SIZE) });
-                
-                for (let i = 0; i < numRows; i += CHUNK_SIZE) {
-                    const endRow = Math.min(i + CHUNK_SIZE, numRows);
-                    const chunk = data.slice(i, endRow);
-                    const chunkRows = chunk.length;
-                    
-                    if (i > 0) { // Skip format for header row
-                        bdCruce.getRange(i + 1, 1, chunkRows, numCols).setNumberFormat('@');
-                    }
-                    bdCruce.getRange(i + 1, 1, chunkRows, numCols).setValues(chunk);
-                    
-                    perfLog('WRITE_CHUNK', { chunk: Math.floor(i / CHUNK_SIZE) + 1, rows: chunkRows });
-                }
-            }
-
-            // Apply formatting in batch
-            bdCruce.setTabColor('#00B0F0');
-            bdCruce.setFrozenRows(1);
-            bdCruce.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
-
-            // Single flush at the end
-            SpreadsheetApp.flush();
-            perfLog('WRITE_AND_FORMAT_COMPLETE');
-
-            const rowsLoaded = numRows - 1;
-            const totalTime = Date.now() - T.start;
-            
-            Logger.log('[SUCCESS][' + runId + '] BD Sisnet cargada. Registros: ' + rowsLoaded + ' | Tiempo: ' + totalTime + 'ms');
-
-            // V3 FIX: DO NOT return data array - it's too large for google.script.run response
-            // Data is already written to BD_Cruce sheet, no need to return it
-            return {
-                ok: true,
-                rowsLoaded: rowsLoaded,
-                message: 'BD Sisnet cargada exitosamente. Registros: ' + rowsLoaded,
-                perfMs: totalTime
-            };
 
         } catch (error) {
             const errMsg = error.message || String(error);
