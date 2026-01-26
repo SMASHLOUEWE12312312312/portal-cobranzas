@@ -159,7 +159,7 @@ const ProcessorBase = {
 
     /**
      * Writes data to Trama with formatting
-     * FIX v3.0: Handle date columns properly - write Date objects, not strings
+     * FIX v5.0: Handle dates and text separately for proper formatting
      * @param {Sheet} sheet - Trama sheet
      * @param {Array<Array>} rows - Data rows
      * @param {Object} formatConfig - Format config by column {col: format}
@@ -168,37 +168,56 @@ const ProcessorBase = {
         if (!rows || rows.length === 0) return;
 
         const numCols = rows[0].length;
-        const range = sheet.getRange(2, 1, rows.length, numCols);
+        const numRows = rows.length;
 
-        // FIX v3.0: Identify date columns from formatConfig
+        Logger.log('[writeTramaData] Writing ' + numRows + ' rows, ' + numCols + ' cols');
+
+        // Identify date columns from formatConfig
         const dateColumns = new Set();
-        if (formatConfig) {
-            Object.keys(formatConfig).forEach(colStr => {
-                const format = formatConfig[parseInt(colStr, 10)];
-                if (format && (format.includes('d') || format.includes('m') || format.includes('y'))) {
-                    dateColumns.add(parseInt(colStr, 10) - 1); // Convert to 0-indexed
-                }
-            });
-        }
-
-        // Apply text format ONLY to non-date columns
-        for (let col = 1; col <= numCols; col++) {
-            if (!dateColumns.has(col - 1)) {
-                sheet.getRange(2, col, rows.length, 1).setNumberFormat('@');
-            }
-        }
-
-        // Write values
-        range.setValues(rows);
-
-        // Apply specific formats (including date format)
         if (formatConfig) {
             Object.keys(formatConfig).forEach(colStr => {
                 const col = parseInt(colStr, 10);
                 const format = formatConfig[col];
-                sheet.getRange(2, col, rows.length, 1).setNumberFormat(format);
+                if (format && format !== '@' && (format.includes('d') || format.includes('m') || format.includes('y'))) {
+                    dateColumns.add(col);
+                    Logger.log('[writeTramaData] Column ' + col + ' is DATE format: ' + format);
+                }
             });
         }
+
+        // Process each column separately for proper formatting
+        for (let col = 1; col <= numCols; col++) {
+            const colRange = sheet.getRange(2, col, numRows, 1);
+            const colValues = rows.map(row => [row[col - 1]]);
+            
+            if (dateColumns.has(col)) {
+                // DATE COLUMN: Ensure all values are Date objects, then write and format
+                const dateValues = colValues.map(v => {
+                    const val = v[0];
+                    if (val instanceof Date && !isNaN(val.getTime())) {
+                        return [val];
+                    } else if (val) {
+                        // Try to convert to Date
+                        const parsed = this.parseToDate(val);
+                        return [parsed];
+                    }
+                    return [new Date()];
+                });
+                
+                // Write date values
+                colRange.setValues(dateValues);
+                // Apply date format
+                colRange.setNumberFormat(formatConfig[col]);
+                Logger.log('[writeTramaData] Col ' + col + ': wrote dates with format ' + formatConfig[col]);
+            } else {
+                // TEXT COLUMN: Apply text format first, then write
+                colRange.setNumberFormat('@');
+                colRange.setValues(colValues);
+                Logger.log('[writeTramaData] Col ' + col + ': wrote as text');
+            }
+        }
+        
+        Logger.log('[writeTramaData] Complete');
     },
 
     /**
@@ -254,16 +273,16 @@ const ProcessorBase = {
 
     /**
      * Converts a date string to a Date object for Google Sheets
-     * Handles formats: dd/mm/yyyy, d/m/yyyy, mm/dd/yyyy, yyyy-mm-dd
+     * Handles formats: dd/mm/yyyy, d/m/yyyy, yyyy-mm-dd
      * @param {string|Date} fecha - Date string or Date object
      * @returns {Date|string} Date object if valid, original string if not
      */
     parseToDate(fecha) {
-        if (!fecha) return '';
-        if (fecha instanceof Date) return fecha;
+        if (!fecha) return new Date(); // Return current date if empty
+        if (fecha instanceof Date && !isNaN(fecha.getTime())) return fecha;
         
         const str = String(fecha).trim();
-        if (!str) return '';
+        if (!str) return new Date();
         
         // Remove time portion if present (e.g., "25/09/2025 00:00:00")
         const datePart = str.includes(' ') ? str.split(' ')[0] : str;
@@ -277,7 +296,9 @@ const ProcessorBase = {
             
             // Validate day and month ranges
             if (day >= 1 && day <= 31 && month >= 0 && month <= 11) {
-                return new Date(year, month, day);
+                const d = new Date(year, month, day);
+                Logger.log('[parseToDate] Input: ' + str + ' → Date: ' + d);
+                return d;
             }
         }
         
@@ -287,11 +308,21 @@ const ProcessorBase = {
             const year = parseInt(isoMatch[1], 10);
             const month = parseInt(isoMatch[2], 10) - 1;
             const day = parseInt(isoMatch[3], 10);
-            return new Date(year, month, day);
+            const d = new Date(year, month, day);
+            Logger.log('[parseToDate] Input: ' + str + ' (ISO) → Date: ' + d);
+            return d;
         }
         
-        // Return original if can't parse
-        return str;
+        // Try native Date parsing as last resort
+        const nativeDate = new Date(str);
+        if (!isNaN(nativeDate.getTime())) {
+            Logger.log('[parseToDate] Input: ' + str + ' (native) → Date: ' + nativeDate);
+            return nativeDate;
+        }
+        
+        // Return current date if can't parse (ensures always a Date object)
+        Logger.log('[parseToDate] WARN: Could not parse: ' + str + ', using current date');
+        return new Date();
     },
 
     /**
