@@ -1,8 +1,6 @@
 /**
- * @fileoverview Processor for Rimac insurance company
- * @version 1.0.0
- * 
- * REPLICA EXACTA DE: Module5.bas → Sub Macro_Rimac()
+ * @fileoverview Processor for Rimac insurance company - OPTIMIZED V2
+ * @version 2.0.0 - ULTRA OPTIMIZED
  * 
  * SPECIFICATIONS:
  * - EECC Sheet: EECC_Rimac
@@ -18,7 +16,7 @@
  *   - FEC_PAG: Col O
  */
 
-const RimacProcessor = {
+const RimacProcessorV2 = {
     CONFIG: {
         HOJA_EECC: 'EECC_Rimac',
         HOJA_TRAMA: 'Trama_Rimac',
@@ -33,54 +31,80 @@ const RimacProcessor = {
         TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: '@' }
     },
 
-    process(tempFileId, ss) {
-        const context = 'RimacProcessor.process';
+    /**
+     * OPTIMIZED process method that uses shared DataContext
+     * 
+     * @param {Object} convertResult - Result from convertirXLSXaSheet
+     * @param {Spreadsheet} ss - Conciliation spreadsheet
+     * @param {Object} dataContext - Shared data context
+     * @returns {Object} Processing result
+     */
+    processOptimized(convertResult, ss, dataContext) {
+        const context = 'RimacProcessorV2.processOptimized';
         const cfg = this.CONFIG;
+        const T = { start: Date.now() };
+        const perfLog = (label) => {
+            Logger.log('[PERF-V2] Rimac | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
+        };
 
-        Logger.log(context + ': Iniciando procesamiento Rimac');
+        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO');
+        perfLog('INIT');
 
-        // Get sheets
+        // Get sheets (from cached spreadsheet)
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
         if (!wsEECC) wsEECC = ss.insertSheet(cfg.HOJA_EECC);
 
         let wsTrama = ss.getSheetByName(cfg.HOJA_TRAMA);
         if (!wsTrama) wsTrama = ss.insertSheet(cfg.HOJA_TRAMA);
 
-        const wsBDCruce = ss.getSheetByName('BD_Cruce');
-        if (!wsBDCruce) throw new Error('Hoja BD_Cruce no encontrada');
+        // Use pre-loaded BD_Cruce from context
+        const wsBDCruce = dataContext.bdCruceSheet;
+        if (!wsBDCruce) {
+            throw new Error('BD_Cruce no encontrada en contexto');
+        }
+        perfLog('SHEETS_READY');
 
-        // Clear sheets
-        wsEECC.clear();
+        // Clear destination sheets
+        wsEECC.clear(); // Rimac requires full clear as it writes from row 1 usually? No, check original logic.
+        // Original: wsEECC.clear(); ProcessorBase.clearFromRow(wsTrama, 2);
         ProcessorBase.clearFromRow(wsTrama, 2);
+        perfLog('SHEETS_CLEARED');
 
-        // Load EECC file
-        const tempSS = SpreadsheetApp.openById(tempFileId);
-        const tempSheet = tempSS.getSheets()[0];
-        // FIX: Usar getDisplayValues() para preservar datos originales
-        const srcData = tempSheet.getDataRange().getDisplayValues();
+        // Get source data - use pre-parsed if available (SheetJS)
+        let srcData;
+        if (convertResult.data) {
+            srcData = convertResult.data;
+            perfLog('DATA_FROM_SHEETJS');
+        } else {
+            const tempSS = SpreadsheetApp.openById(convertResult.fileId);
+            const tempSheet = tempSS.getSheets()[0];
+            srcData = tempSheet.getDataRange().getDisplayValues();
+            perfLog('DATA_FROM_DRIVE');
+        }
 
-        // Copy to EECC
-        // FIX v2.0: Apply text format BEFORE writing to preserve original values
+        // Write to EECC sheet (preserve text format)
         if (srcData.length > 0) {
             const numRows = srcData.length;
             const numCols = srcData[0].length;
-            const eeccRange = wsEECC.getRange(1, 1, numRows, numCols);
 
-            // CRITICAL: Set text format on data rows (row 2 onwards)
+            // Format first
             if (numRows > 1) {
                 wsEECC.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
             }
 
-            // Now write values
-            eeccRange.setValues(srcData);
+            // Write values
+            wsEECC.getRange(1, 1, numRows, numCols).setValues(srcData);
 
+            // Header style
             wsEECC.setFrozenRows(1);
             wsEECC.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
         }
+        perfLog('EECC_WRITTEN');
 
-        const filasCargadas = srcData.length - 1;
+        const filasCargadas = Math.max(0, srcData.length - 1);
 
         // Process EECC: filter Tipo = "COB" or "PAG"
+        // Use srcData directly (NO re-read!)
         const tramaRows = [];
         let filtrados = 0;
 
@@ -100,40 +124,53 @@ const RimacProcessor = {
                 // Apply length rules
                 const numeroCupon = ProcessorBase.extraerCuponRimac(tipoDoc);
 
-                const fecEmision = row[cfg.COL_FEC_EMISION - 1];
-                const fecPag = row[cfg.COL_FEC_PAG - 1];
+                const fecEmision = row[cfg.COL_FEC_EMISION - 1]; // Keep mostly assuming it's dates
+                const fecPag = row[cfg.COL_FEC_PAG - 1];         // Rimac uses this as pay date
 
                 // Use FEC_PAG as FECHA_PAGO, FACTURA empty (Rimac has no factura)
                 tramaRows.push([numeroCupon, fecPag, '', '']);
             }
         }
+        perfLog('EECC_PROCESSED');
 
         // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
-
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
+        perfLog('TRAMA_WRITTEN');
 
-        Logger.log(context + ': Procesamiento completado. Filtrados: ' + filtrados + ', Escritas: ' + tramaRows.length);
+        // Execute cross-reference with pre-loaded BD_Cruce data
+        const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
+            statusCol: 4,
+            bdCruceData: dataContext.bdCruceData  // Use cached data
+        });
+        perfLog('CRUCE_COMPLETE');
 
-        // Execute cross-reference
-        const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 4 });
-
-        // Export
-        // FIX v1.4: Agregar función de transformación
-        const exportResult = ConciliacionExport.exportarResultados(
+        // Export results using optimized exporter
+        // Pass cached data to avoid re-reading
+        const tramaDataForExport = wsTrama.getDataRange().getDisplayValues();
+        const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Rimac',
             {
                 columnasTrama: 3,
                 startRowEECC: cfg.START_ROW,
                 cuponColEECC: cfg.COL_TIPO_DOC,
                 cuponTransformFn: ProcessorBase.extraerCuponRimac
+            },
+            {
+                tramaData: tramaDataForExport,
+                eeccData: srcData
             }
         );
+        perfLog('EXPORT_COMPLETE');
 
-        // Cleanup
-        ConciliacionCruce.limpiarStatusBDCruce(wsBDCruce);
+        // Cleanup STATUS column
+        ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);
+        perfLog('CLEANUP');
+
+        Logger.log(context + ': Completado. Cargadas: ' + filasCargadas +
+            ', Filtrados: ' + filtrados + ', Escritas: ' + tramaRows.length);
 
         return {
             ok: true,
@@ -142,5 +179,29 @@ const RimacProcessor = {
             cruce: cruceResult,
             exports: exportResult
         };
+    },
+
+    /**
+     * Original process method for backward compatibility
+     */
+    process(tempFileId, ss) {
+        // Create minimal context and call optimized version
+        const dataContext = {
+            bdCruceSheet: ss.getSheetByName('BD_Cruce'),
+            bdCruceData: null
+        };
+
+        if (dataContext.bdCruceSheet) {
+            dataContext.bdCruceData = dataContext.bdCruceSheet.getDataRange().getDisplayValues();
+        }
+
+        return this.processOptimized(
+            { fileId: tempFileId, data: null },
+            ss,
+            dataContext
+        );
     }
 };
+
+// Also update the non-V2 reference
+const RimacProcessor = RimacProcessorV2;

@@ -1,8 +1,6 @@
 /**
- * @fileoverview Processor for Qualitas insurance company
- * @version 1.0.0
- * 
- * REPLICA EXACTA DE: Module7.bas → Sub Macro_Qualitas()
+ * @fileoverview Processor for Qualitas insurance company - OPTIMIZED V2
+ * @version 2.0.0 - ULTRA OPTIMIZED
  * 
  * SPECIFICATIONS:
  * - EECC Sheet: EECC_Qualitas
@@ -16,7 +14,7 @@
  *   - FACTURA: - (not applicable)
  */
 
-const QualitasProcessor = {
+const QualitasProcessorV2 = {
     CONFIG: {
         HOJA_EECC: 'EECC_Qualitas',
         HOJA_TRAMA: 'Trama_Qualitas',
@@ -30,11 +28,24 @@ const QualitasProcessor = {
         TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy', 3: '@' }
     },
 
-    process(tempFileId, ss) {
-        const context = 'QualitasProcessor.process';
+    /**
+     * OPTIMIZED process method that uses shared DataContext
+     * 
+     * @param {Object} convertResult - Result from convertirXLSXaSheet
+     * @param {Spreadsheet} ss - Conciliation spreadsheet
+     * @param {Object} dataContext - Shared data context
+     * @returns {Object} Processing result
+     */
+    processOptimized(convertResult, ss, dataContext) {
+        const context = 'QualitasProcessorV2.processOptimized';
         const cfg = this.CONFIG;
+        const T = { start: Date.now() };
+        const perfLog = (label) => {
+            Logger.log('[PERF-V2] Qualitas | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
+        };
 
-        Logger.log(context + ': Iniciando procesamiento Qualitas (ROW 17!)');
+        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO (ROW 17)');
+        perfLog('INIT');
 
         // Get sheets
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
@@ -43,75 +54,101 @@ const QualitasProcessor = {
         let wsTrama = ss.getSheetByName(cfg.HOJA_TRAMA);
         if (!wsTrama) wsTrama = ss.insertSheet(cfg.HOJA_TRAMA);
 
-        const wsBDCruce = ss.getSheetByName('BD_Cruce');
-        if (!wsBDCruce) throw new Error('Hoja BD_Cruce no encontrada');
+        // Link BD_Cruce
+        const wsBDCruce = dataContext.bdCruceSheet;
+        if (!wsBDCruce) throw new Error('BD_Cruce no encontrada en contexto');
+        perfLog('SHEETS_READY');
 
         // Clear sheets
         wsEECC.clear();
         ProcessorBase.clearFromRow(wsTrama, 2);
+        perfLog('SHEETS_CLEARED');
 
-        // Load EECC file
-        const tempSS = SpreadsheetApp.openById(tempFileId);
-        const tempSheet = tempSS.getSheets()[0];
-        // FIX: Usar getDisplayValues() para preservar datos originales
-        const srcData = tempSheet.getDataRange().getDisplayValues();
+        // Get source data
+        let srcData;
+        if (convertResult.data) {
+            srcData = convertResult.data;
+            perfLog('DATA_FROM_SHEETJS');
+        } else {
+            const tempSS = SpreadsheetApp.openById(convertResult.fileId);
+            const tempSheet = tempSS.getSheets()[0];
+            srcData = tempSheet.getDataRange().getDisplayValues();
+            perfLog('DATA_FROM_DRIVE');
+        }
 
-        // Copy to EECC (includes headers + data from row 17)
-        // FIX v2.0: Apply text format BEFORE writing to preserve original values
+        // Write to EECC (headers + data)
+        // Note: Qualitas keeps original headers and data structure starting at row 17
         if (srcData.length > 0) {
             const numRows = srcData.length;
             const numCols = srcData[0].length;
-            const eeccRange = wsEECC.getRange(1, 1, numRows, numCols);
 
-            // CRITICAL: Set text format on data rows (row 2 onwards)
-            if (numRows > 1) {
-                wsEECC.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
-            }
+            // Text format for data rows (assuming header is row 1-16, data starts 17)
+            // Ideally we format the whole sheet to be safe or just the data part
+            wsEECC.getRange(1, 1, numRows, numCols).setNumberFormat('@');
 
-            // Now write values - they will be preserved as text
-            eeccRange.setValues(srcData);
+            // Write all data
+            wsEECC.getRange(1, 1, numRows, numCols).setValues(srcData);
 
             wsEECC.setFrozenRows(1);
             wsEECC.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
         }
+        perfLog('EECC_WRITTEN');
 
         const filasCargadas = Math.max(0, srcData.length - cfg.START_ROW + 1);
 
         // Process EECC from row 17
         const tramaRows = [];
 
-        for (let i = cfg.START_ROW - 1; i < srcData.length; i++) {
-            const row = srcData[i];
+        // Protection against empty files
+        if (srcData.length >= cfg.START_ROW) {
+            for (let i = cfg.START_ROW - 1; i < srcData.length; i++) {
+                const row = srcData[i];
 
-            const numeroCupon = String(row[cfg.COL_CUPON - 1] || '').trim();
-            if (!numeroCupon) continue;
+                const numeroCupon = String(row[cfg.COL_CUPON - 1] || '').trim();
+                if (!numeroCupon) continue;
 
-            const fechaPago = row[cfg.COL_FECHA - 1];
+                const fechaPago = row[cfg.COL_FECHA - 1];
 
-            // Standard 3 columns + STATUS (FACTURA empty)
-            tramaRows.push([numeroCupon, fechaPago, '', '']);
+                // Standard 3 columns + STATUS (FACTURA empty)
+                tramaRows.push([numeroCupon, fechaPago, '', '']);
+            }
         }
+        perfLog('EECC_PROCESSED');
 
-        // Write Trama (3 columns only)
+        // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
-
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
+        perfLog('TRAMA_WRITTEN');
 
-        Logger.log(context + ': Procesamiento completado. Filas desde row 17: ' + tramaRows.length);
+        // Execute cross-reference
+        const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
+            statusCol: 4,
+            bdCruceData: dataContext.bdCruceData
+        });
+        perfLog('CRUCE_COMPLETE');
 
-        // Execute cross-reference (STATUS is in column 4)
-        const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 4 });
-
-        // Export (only 2 columns, no factura)
-        const exportResult = ConciliacionExport.exportarResultados(
+        // Export using optimized V2
+        const tramaDataForExport = wsTrama.getDataRange().getDisplayValues();
+        const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Qualitas',
-            { columnasTrama: 3, startRowEECC: cfg.START_ROW, cuponColEECC: cfg.COL_CUPON }
+            {
+                columnasTrama: 3,
+                startRowEECC: cfg.START_ROW,
+                cuponColEECC: cfg.COL_CUPON
+            },
+            {
+                tramaData: tramaDataForExport,
+                eeccData: srcData
+            }
         );
+        perfLog('EXPORT_COMPLETE');
 
         // Cleanup
-        ConciliacionCruce.limpiarStatusBDCruce(wsBDCruce);
+        ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);
+
+        Logger.log(context + ': Completado. Filas desde row 17: ' + tramaRows.length);
 
         return {
             ok: true,
@@ -120,5 +157,24 @@ const QualitasProcessor = {
             cruce: cruceResult,
             exports: exportResult
         };
+    },
+
+    process(tempFileId, ss) {
+        // Compatibility wrapper
+        const dataContext = {
+            bdCruceSheet: ss.getSheetByName('BD_Cruce'),
+            bdCruceData: null
+        };
+        if (dataContext.bdCruceSheet) {
+            dataContext.bdCruceData = dataContext.bdCruceSheet.getDataRange().getDisplayValues();
+        }
+
+        return this.processOptimized(
+            { fileId: tempFileId, data: null },
+            ss,
+            dataContext
+        );
     }
 };
+
+const QualitasProcessor = QualitasProcessorV2;

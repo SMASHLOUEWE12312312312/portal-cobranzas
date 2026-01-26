@@ -1,8 +1,6 @@
 /**
- * @fileoverview Processor for Mapfre insurance company
- * @version 1.0.0
- * 
- * REPLICA EXACTA DE: Module3.bas → Sub Macro_Mapfre()
+ * @fileoverview Processor for Mapfre insurance company - OPTIMIZED V2
+ * @version 2.0.0 - ULTRA OPTIMIZED
  * 
  * SPECIFICATIONS:
  * - EECC Sheet: EECC_Mapfre
@@ -15,7 +13,7 @@
  *   - FACTURA: -
  */
 
-const MapfreProcessor = {
+const MapfreProcessorV2 = {
     CONFIG: {
         HOJA_EECC: 'EECC_Mapfre',
         HOJA_TRAMA: 'Trama_Mapfre',
@@ -28,11 +26,19 @@ const MapfreProcessor = {
         TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy' }
     },
 
-    process(tempFileId, ss) {
-        const context = 'MapfreProcessor.process';
+    /**
+     * OPTIMIZED process method
+     */
+    processOptimized(convertResult, ss, dataContext) {
+        const context = 'MapfreProcessorV2.processOptimized';
         const cfg = this.CONFIG;
+        const T = { start: Date.now() };
+        const perfLog = (label) => {
+            Logger.log('[PERF-V2] Mapfre | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
+        };
 
-        Logger.log(context + ': Iniciando procesamiento Mapfre');
+        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO');
+        perfLog('INIT');
 
         // Get sheets
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
@@ -41,41 +47,45 @@ const MapfreProcessor = {
         let wsTrama = ss.getSheetByName(cfg.HOJA_TRAMA);
         if (!wsTrama) wsTrama = ss.insertSheet(cfg.HOJA_TRAMA);
 
-        const wsBDCruce = ss.getSheetByName('BD_Cruce');
-        if (!wsBDCruce) throw new Error('Hoja BD_Cruce no encontrada');
+        const wsBDCruce = dataContext.bdCruceSheet;
+        if (!wsBDCruce) throw new Error('BD_Cruce no encontrada en contexto');
+        perfLog('SHEETS_READY');
 
         // Clear sheets
         wsEECC.clear();
         ProcessorBase.clearFromRow(wsTrama, 2);
+        perfLog('SHEETS_CLEARED');
 
-        // Load EECC file
-        const tempSS = SpreadsheetApp.openById(tempFileId);
-        const tempSheet = tempSS.getSheets()[0];
-        // FIX: Usar getDisplayValues() para preservar datos originales
-        const srcData = tempSheet.getDataRange().getDisplayValues();
+        // Get source data
+        let srcData;
+        if (convertResult.data) {
+            srcData = convertResult.data;
+            perfLog('DATA_FROM_SHEETJS');
+        } else {
+            const tempSS = SpreadsheetApp.openById(convertResult.fileId);
+            const tempSheet = tempSS.getSheets()[0];
+            srcData = tempSheet.getDataRange().getDisplayValues();
+            perfLog('DATA_FROM_DRIVE');
+        }
 
-        // Copy all data to EECC
-        // FIX v2.0: Apply text format BEFORE writing to preserve original values
+        // Write to EECC
         if (srcData.length > 0) {
             const numRows = srcData.length;
             const numCols = srcData[0].length;
-            const eeccRange = wsEECC.getRange(1, 1, numRows, numCols);
 
-            // CRITICAL: Set text format on data rows (row 2 onwards)
             if (numRows > 1) {
                 wsEECC.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
             }
-
-            // Now write values
-            eeccRange.setValues(srcData);
+            wsEECC.getRange(1, 1, numRows, numCols).setValues(srcData);
 
             wsEECC.setFrozenRows(1);
             wsEECC.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
         }
+        perfLog('EECC_WRITTEN');
 
         const filasCargadas = Math.max(0, srcData.length - 1);
 
-        // Process EECC: no filter
+        // Process EECC
         const tramaRows = [];
 
         for (let i = cfg.START_ROW - 1; i < srcData.length; i++) {
@@ -88,27 +98,40 @@ const MapfreProcessor = {
 
             tramaRows.push([numeroCupon, fechaPago, '', '']);
         }
+        perfLog('EECC_PROCESSED');
 
         // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
-
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
-
-        Logger.log(context + ': Procesamiento completado. Filas: ' + tramaRows.length);
+        perfLog('TRAMA_WRITTEN');
 
         // Execute cross-reference
-        const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 4 });
+        const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
+            statusCol: 4,
+            bdCruceData: dataContext.bdCruceData
+        });
+        perfLog('CRUCE_COMPLETE');
 
-        // Export results
-        const exportResult = ConciliacionExport.exportarResultados(
+        // Export
+        const tramaDataForExport = wsTrama.getDataRange().getDisplayValues();
+        const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Mapfre',
-            { columnasTrama: 3, startRowEECC: cfg.START_ROW, cuponColEECC: cfg.COL_NUM_RECIBO }
+            {
+                columnasTrama: 3,
+                startRowEECC: cfg.START_ROW,
+                cuponColEECC: cfg.COL_NUM_RECIBO
+            },
+            {
+                tramaData: tramaDataForExport,
+                eeccData: srcData
+            }
         );
+        perfLog('EXPORT_COMPLETE');
 
         // Cleanup
-        ConciliacionCruce.limpiarStatusBDCruce(wsBDCruce);
+        ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);
 
         return {
             ok: true,
@@ -117,5 +140,18 @@ const MapfreProcessor = {
             cruce: cruceResult,
             exports: exportResult
         };
+    },
+
+    process(tempFileId, ss) {
+        const dataContext = {
+            bdCruceSheet: ss.getSheetByName('BD_Cruce'),
+            bdCruceData: null
+        };
+        if (dataContext.bdCruceSheet) {
+            dataContext.bdCruceData = dataContext.bdCruceSheet.getDataRange().getDisplayValues();
+        }
+        return this.processOptimized({ fileId: tempFileId, data: null }, ss, dataContext);
     }
 };
+
+const MapfreProcessor = MapfreProcessorV2;

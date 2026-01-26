@@ -1,8 +1,6 @@
 /**
- * @fileoverview Processor for Crecer VLE (Vida Ley) insurance
- * @version 1.0.0
- * 
- * REPLICA EXACTA DE: Module8.bas → Sub Macro_Crecer_VLE()
+ * @fileoverview Processor for Crecer VLE (Vida Ley) insurance - OPTIMIZED V2
+ * @version 2.0.0 - ULTRA OPTIMIZED
  * 
  * SPECIFICATIONS:
  * - EECC Sheet: EECC_Crecer_VLE
@@ -10,19 +8,18 @@
  * - Data start row: 2
  * - Source sheet MUST be named "Reporte"
  * - Special: BuildNumeroCupon transformation
- *   "F008-00090390" → "8" + "00090390" → "800090390"
  * - Mapping:
  *   - CUPON: Col I (with BuildNumeroCupon)
  *   - FECHA: Col L
  *   - FACTURA: Col I (as-is)
  */
 
-const CrecerVLEProcessor = {
+const CrecerVLEProcessorV2 = {
     CONFIG: {
         HOJA_EECC: 'EECC_Crecer_VLE',
         HOJA_TRAMA: 'Trama_Crecer_VLE',
         START_ROW: 2,
-        SOURCE_SHEET_NAME: 'Reporte',  // Source sheet must have this name
+        SOURCE_SHEET_NAME: 'Reporte',
 
         COL_NRO_COMPROBANTE: 9,  // I - NRO_COMPROBANTE (for CUPON & FACTURA)
         COL_FECHA: 12,           // L - Fecha
@@ -31,11 +28,16 @@ const CrecerVLEProcessor = {
         TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy' }
     },
 
-    process(tempFileId, ss) {
-        const context = 'CrecerVLEProcessor.process';
+    processOptimized(convertResult, ss, dataContext) {
+        const context = 'CrecerVLEProcessorV2.processOptimized';
         const cfg = this.CONFIG;
+        const T = { start: Date.now() };
+        const perfLog = (label) => {
+            Logger.log('[PERF-V2] CrecerVLE | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
+        };
 
-        Logger.log(context + ': Iniciando procesamiento Crecer VLE');
+        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO');
+        perfLog('INIT');
 
         // Get sheets
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
@@ -44,46 +46,56 @@ const CrecerVLEProcessor = {
         let wsTrama = ss.getSheetByName(cfg.HOJA_TRAMA);
         if (!wsTrama) wsTrama = ss.insertSheet(cfg.HOJA_TRAMA);
 
-        const wsBDCruce = ss.getSheetByName('BD_Cruce');
-        if (!wsBDCruce) throw new Error('Hoja BD_Cruce no encontrada');
+        const wsBDCruce = dataContext.bdCruceSheet;
+        if (!wsBDCruce) throw new Error('BD_Cruce no encontrada en contexto');
+        perfLog('SHEETS_READY');
 
         // Clear sheets
         wsEECC.clear();
         ProcessorBase.clearFromRow(wsTrama, 2);
+        perfLog('SHEETS_CLEARED');
 
-        // Load EECC file - MUST find sheet named "Reporte"
-        const tempSS = SpreadsheetApp.openById(tempFileId);
-        let tempSheet = tempSS.getSheetByName(cfg.SOURCE_SHEET_NAME);
+        // Get source data
+        // Special Case: Crecer VLE creates a Workbook with specific sheet name logic.
+        // If SheetJS is used, we receive 'data' from the first sheet. 
+        // We might need to check sheet names in SheetJS result?
+        // _parseXLSXWithSheetJS returns just data from first sheet.
+        // If Crecer VLE requires "Reporte" specifically and it's not the first sheet, this could be tricky.
+        // However, usually the report IS the first/only sheet.
+        // Legacy code checked: let tempSheet = tempSS.getSheetByName(cfg.SOURCE_SHEET_NAME); if (!tempSheet) tempSheet = tempSS.getSheets()[0];
+        // So it falls back to first sheet anyway. We can safely use the data we have.
 
-        if (!tempSheet) {
-            // Try first sheet if "Reporte" not found
-            tempSheet = tempSS.getSheets()[0];
-            Logger.log(context + ': Warning - Hoja "Reporte" no encontrada, usando primera hoja');
+        let srcData;
+        if (convertResult.data) {
+            srcData = convertResult.data;
+            perfLog('DATA_FROM_SHEETJS');
+        } else {
+            const tempSS = SpreadsheetApp.openById(convertResult.fileId);
+            let tempSheet = tempSS.getSheetByName(cfg.SOURCE_SHEET_NAME);
+            if (!tempSheet) {
+                tempSheet = tempSS.getSheets()[0];
+                Logger.log(context + ': Warning - Hoja "Reporte" no encontrada, usando primera hoja');
+            }
+            srcData = tempSheet.getDataRange().getDisplayValues();
+            perfLog('DATA_FROM_DRIVE');
         }
 
-        // FIX: Usar getDisplayValues() para preservar datos originales
-        const srcData = tempSheet.getDataRange().getDisplayValues();
-
-        // Copy to EECC
-        // FIX v2.0: Apply text format BEFORE writing to preserve original values
+        // Write to EECC
         if (srcData.length > 0) {
             const numRows = srcData.length;
             const numCols = srcData[0].length;
-            const eeccRange = wsEECC.getRange(1, 1, numRows, numCols);
 
-            // CRITICAL: Set text format on data rows (row 2 onwards)
             if (numRows > 1) {
                 wsEECC.getRange(2, 1, numRows - 1, numCols).setNumberFormat('@');
             }
-
-            // Now write values
-            eeccRange.setValues(srcData);
+            wsEECC.getRange(1, 1, numRows, numCols).setValues(srcData);
 
             wsEECC.setFrozenRows(1);
             wsEECC.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
         }
+        perfLog('EECC_WRITTEN');
 
-        const filasCargadas = srcData.length - 1;
+        const filasCargadas = Math.max(0, srcData.length - 1);
 
         // Process EECC
         const tramaRows = [];
@@ -96,42 +108,47 @@ const CrecerVLEProcessor = {
 
             // Apply BuildNumeroCupon transformation
             const numeroCupon = ProcessorBase.buildNumeroCuponVLE(nroComprobante);
-
             const fechaPago = row[cfg.COL_FECHA - 1];
 
             // FACTURA is the NRO_COMPROBANTE as-is
             tramaRows.push([numeroCupon, fechaPago, nroComprobante, '']);
         }
+        perfLog('EECC_PROCESSED');
 
         // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
-
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
-
-        Logger.log(context + ': Procesamiento completado. Filas: ' + tramaRows.length);
+        perfLog('TRAMA_WRITTEN');
 
         // Execute cross-reference
-        const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, { statusCol: 4 });
+        const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
+            statusCol: 4,
+            bdCruceData: dataContext.bdCruceData
+        });
+        perfLog('CRUCE_COMPLETE');
 
         // Export
-        // FIX v1.3: cuponColsTrama:[1,3] para matchear por NUMERO_CUPON (col 1) y FACTURA (col 3)
-        // FACTURA tiene el valor original del EECC, permitiendo el match correcto
-        // FIX v1.4: Agregar función de transformación
-        const exportResult = ConciliacionExport.exportarResultados(
+        const tramaDataForExport = wsTrama.getDataRange().getDisplayValues();
+        const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Crecer_VLE',
             {
                 columnasTrama: 3,
                 startRowEECC: cfg.START_ROW,
                 cuponColEECC: cfg.COL_NRO_COMPROBANTE,
-                cuponColsTrama: [1, 3],  // FIX: NUMERO_CUPON + FACTURA para match con EECC
+                cuponColsTrama: [1, 3], // NUMERO_CUPON + FACTURA
                 cuponTransformFn: ProcessorBase.buildNumeroCuponVLE
+            },
+            {
+                tramaData: tramaDataForExport,
+                eeccData: srcData
             }
         );
+        perfLog('EXPORT_COMPLETE');
 
         // Cleanup
-        ConciliacionCruce.limpiarStatusBDCruce(wsBDCruce);
+        ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);
 
         return {
             ok: true,
@@ -140,5 +157,18 @@ const CrecerVLEProcessor = {
             cruce: cruceResult,
             exports: exportResult
         };
+    },
+
+    process(tempFileId, ss) {
+        const dataContext = {
+            bdCruceSheet: ss.getSheetByName('BD_Cruce'),
+            bdCruceData: null
+        };
+        if (dataContext.bdCruceSheet) {
+            dataContext.bdCruceData = dataContext.bdCruceSheet.getDataRange().getDisplayValues();
+        }
+        return this.processOptimized({ fileId: tempFileId, data: null }, ss, dataContext);
     }
 };
+
+const CrecerVLEProcessor = CrecerVLEProcessorV2;

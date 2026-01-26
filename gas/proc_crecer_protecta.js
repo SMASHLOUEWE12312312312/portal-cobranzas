@@ -1,8 +1,6 @@
 /**
- * @fileoverview Processor for Crecer&Protecta insurance company
- * @version 1.0.0
- * 
- * REPLICA EXACTA DE: Module2.bas → Sub Macro_Crecer_Protecta()
+ * @fileoverview Processor for Crecer&Protecta insurance company - OPTIMIZED V2
+ * @version 2.0.0 - ULTRA OPTIMIZED
  * 
  * SPECIFICATIONS:
  * - EECC Sheet: EECC_Crecer&Protecta
@@ -16,7 +14,7 @@
  *   - FACTURA: -
  */
 
-const CrecerProtectaProcessor = {
+const CrecerProtectaProcessorV2 = {
     CONFIG: {
         HOJA_EECC: 'EECC_Crecer&Protecta',
         HOJA_TRAMA: 'Trama_Crecer&Protecta',
@@ -29,17 +27,19 @@ const CrecerProtectaProcessor = {
         COL_COMPROBANTE: 10,     // J - Comprobante
 
         TRAMA_HEADERS: ['NUMERO_CUPON', 'FECHA_PAGO', 'FACTURA', 'STATUS'],
-        TRAMA_FORMAT: {
-            1: '@',
-            2: 'dd/mm/yyyy'
-        }
+        TRAMA_FORMAT: { 1: '@', 2: 'dd/mm/yyyy' }
     },
 
-    process(tempFileId, ss) {
-        const context = 'CrecerProtectaProcessor.process';
+    processOptimized(convertResult, ss, dataContext) {
+        const context = 'CrecerProtectaProcessorV2.processOptimized';
         const cfg = this.CONFIG;
+        const T = { start: Date.now() };
+        const perfLog = (label) => {
+            Logger.log('[PERF-V2] CrecerProtecta | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
+        };
 
-        Logger.log(context + ': Iniciando procesamiento Crecer&Protecta');
+        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO');
+        perfLog('INIT');
 
         // Get sheets
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
@@ -48,38 +48,45 @@ const CrecerProtectaProcessor = {
         let wsTrama = ss.getSheetByName(cfg.HOJA_TRAMA);
         if (!wsTrama) wsTrama = ss.insertSheet(cfg.HOJA_TRAMA);
 
-        const wsBDCruce = ss.getSheetByName('BD_Cruce');
-        if (!wsBDCruce) throw new Error('Hoja BD_Cruce no encontrada');
+        const wsBDCruce = dataContext.bdCruceSheet;
+        if (!wsBDCruce) throw new Error('BD_Cruce no encontrada en contexto');
+        perfLog('SHEETS_READY');
 
         // Clear sheets
         ProcessorBase.clearFromRow(wsEECC, cfg.START_ROW);
         ProcessorBase.clearFromRow(wsTrama, 2);
+        perfLog('SHEETS_CLEARED');
 
-        // Load EECC file
-        const tempSS = SpreadsheetApp.openById(tempFileId);
-        const tempSheet = tempSS.getSheets()[0];
-        // FIX: Usar getDisplayValues() para preservar datos originales
-        let srcData = tempSheet.getDataRange().getDisplayValues();
+        // Get source data
+        let srcData;
+        if (convertResult.data) {
+            srcData = convertResult.data; // Copy to avoid mutating original if passed by ref
+            // Deep copy not strictly needed if we just splice, but safer if dataContext caches it.
+            // Actually slice() logic below creates new arrays for rows.
+        } else {
+            const tempSS = SpreadsheetApp.openById(convertResult.fileId);
+            const tempSheet = tempSS.getSheets()[0];
+            srcData = tempSheet.getDataRange().getDisplayValues();
+        }
+
+        // Clone srcData to avoid mutating validation cache?
+        // Since we modify it (delete column), we should map it.
+        srcData = srcData.map(row => [...row]);
 
         // Check if column E header is "Estado" and delete it
-        // (replica VBA: If header(5) = "Estado" Then delete column)
         let colOffset = 0;
         if (srcData.length > 0 && srcData[0].length >= 5) {
             const headerE = String(srcData[0][4] || '').trim().toLowerCase();
             if (headerE === 'estado') {
                 // Remove column E (index 4) from all rows
-                srcData = srcData.map(row => {
-                    const newRow = [...row];
-                    newRow.splice(4, 1);
-                    return newRow;
-                });
+                srcData.forEach(row => row.splice(4, 1));
                 colOffset = -1; // Columns after E shift left
                 Logger.log(context + ': Columna E (Estado) eliminada');
             }
         }
+        perfLog('DATA_NORMALIZED');
 
-        // Write to EECC sheet
-        // FIX v2.0: Apply text format BEFORE writing to preserve original values
+        // Write to EECC
         if (srcData.length >= cfg.START_ROW) {
             const dataRows = srcData.slice(cfg.START_ROW - 1);
             if (dataRows.length > 0) {
@@ -87,105 +94,85 @@ const CrecerProtectaProcessor = {
                 const numCols = dataRows[0].length;
                 const targetRange = wsEECC.getRange(cfg.START_ROW, 1, numRows, numCols);
 
-                // CRITICAL: Set text format BEFORE writing
                 targetRange.setNumberFormat('@');
-
-                // Now write values
                 targetRange.setValues(dataRows);
             }
         }
+        perfLog('EECC_WRITTEN');
 
         const filasCargadas = Math.max(0, srcData.length - cfg.START_ROW + 1);
 
-        // Adjust column indices if E was deleted
+        // Adjust column indices
         const colDocumento = cfg.COL_DOCUMENTO + colOffset;
         const colVigencia = cfg.COL_VIGENCIA + colOffset;
         const colFecha = cfg.COL_FECHA + colOffset;
         const colComprobante = cfg.COL_COMPROBANTE + colOffset;
 
-        // Process EECC: filter Vigencia >= 2025
-        const eeccData = wsEECC.getDataRange().getValues();
+        // Process EECC
         const tramaRows = [];
-
         let filasValidas = 0;
         let filasOmitidas = 0;
 
-        for (let i = cfg.START_ROW - 1; i < eeccData.length; i++) {
-            const row = eeccData[i];
+        for (let i = cfg.START_ROW - 1; i < srcData.length; i++) {
+            const row = srcData[i];
 
-            // =================================================================
-            // FILTRO DE VIGENCIA - REPLICA EXACTA DEL VBA
-            // =================================================================
-            // VBA Logic:
-            // - Si IsDate() Y Year() < 2025 → EXCLUIR
-            // - Si IsDate() Y Year() >= 2025 → PROCESAR
-            // - Si NO IsDate() (vacío, texto, etc.) → PROCESAR
-            // =================================================================
+            // Filter Vigencia >= 2025
             const vigenciaRaw = row[colVigencia - 1];
             const anioVigencia = ProcessorBase.extraerAnioDeVigencia(vigenciaRaw);
 
-            // Si es fecha válida con año < 2025, excluir (igual que VBA)
             if (anioVigencia !== null && anioVigencia < 2025) {
-                continue;  // Skip this row
+                continue;
             }
 
-            // Si llegamos aquí, la fila debe procesarse:
-            // - Es fecha válida con año >= 2025, O
-            // - No es fecha válida (VBA no elimina estas filas)
             filasValidas++;
 
-            // Get and transform DOCUMENTO
             const documento = String(row[colDocumento - 1] || '').trim();
             if (!documento) {
                 filasOmitidas++;
                 continue;
             }
 
-            // Transform DOCUMENTO → CUPON
             const numeroCupon = ProcessorBase.extraerCuponCrecerProtecta(documento);
-
-            // Get date
             const fechaPago = row[colFecha - 1];
-
-            // Get COMPROBANTE from column J (adjusted for offset)
-            // REPLICA EXACTA VBA: comprobanteStr = CStr(wsEstadoCuenta.Cells(i, "J").Value)
             const comprobante = String(row[colComprobante - 1] || '').trim();
 
-            // Add to Trama
             tramaRows.push([numeroCupon, fechaPago, comprobante, '']);
         }
+        perfLog('EECC_PROCESSED');
 
         // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
-
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
-
-        Logger.log(context + ': Procesamiento completado. ' +
-            'Cargadas: ' + filasCargadas + ', ' +
-            'Válidas: ' + filasValidas + ', ' +
-            'Escritas: ' + tramaRows.length);
+        perfLog('TRAMA_WRITTEN');
 
         // Execute cross-reference
-        const cruceResult = ConciliacionCruce.ejecutarCruce(wsTrama, wsBDCruce, {
-            statusCol: 4
+        const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
+            statusCol: 4,
+            bdCruceData: dataContext.bdCruceData
         });
+        perfLog('CRUCE_COMPLETE');
 
-        // Export results
-        // FIX v1.4: Agregar función de transformación para que coincidan los cupones
-        const exportResult = ConciliacionExport.exportarResultados(
+        // Export
+        const tramaDataForExport = wsTrama.getDataRange().getDisplayValues();
+        const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Crecer_Protecta',
             {
                 columnasTrama: 3,
                 startRowEECC: cfg.START_ROW,
                 cuponColEECC: colDocumento,
                 cuponTransformFn: ProcessorBase.extraerCuponCrecerProtecta.bind(ProcessorBase)
+            },
+            {
+                tramaData: tramaDataForExport,
+                eeccData: srcData // Export modified data with column deleted
             }
         );
+        perfLog('EXPORT_COMPLETE');
 
         // Cleanup
-        ConciliacionCruce.limpiarStatusBDCruce(wsBDCruce);
+        ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);
 
         return {
             ok: true,
@@ -194,5 +181,18 @@ const CrecerProtectaProcessor = {
             cruce: cruceResult,
             exports: exportResult
         };
+    },
+
+    process(tempFileId, ss) {
+        const dataContext = {
+            bdCruceSheet: ss.getSheetByName('BD_Cruce'),
+            bdCruceData: null
+        };
+        if (dataContext.bdCruceSheet) {
+            dataContext.bdCruceData = dataContext.bdCruceSheet.getDataRange().getDisplayValues();
+        }
+        return this.processOptimized({ fileId: tempFileId, data: null }, ss, dataContext);
     }
 };
+
+const CrecerProtectaProcessor = CrecerProtectaProcessorV2;
