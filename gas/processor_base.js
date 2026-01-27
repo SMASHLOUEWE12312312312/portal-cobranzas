@@ -159,7 +159,7 @@ const ProcessorBase = {
 
     /**
      * Writes data to Trama with formatting
-     * FIX v5.0: Handle dates and text separately for proper formatting
+     * V8 OPTIMIZATION: Consolidated writes - single setValues() call instead of per-column
      * @param {Sheet} sheet - Trama sheet
      * @param {Array<Array>} rows - Data rows
      * @param {Object} formatConfig - Format config by column {col: format}
@@ -169,55 +169,68 @@ const ProcessorBase = {
 
         const numCols = rows[0].length;
         const numRows = rows.length;
+        const T = Date.now();
 
-        Logger.log('[writeTramaData] Writing ' + numRows + ' rows, ' + numCols + ' cols');
-
-        // Identify date columns from formatConfig
+        // V8: Identify date and text columns upfront
         const dateColumns = new Set();
+        const textColumns = new Set();
+        
         if (formatConfig) {
-            Object.keys(formatConfig).forEach(colStr => {
-                const col = parseInt(colStr, 10);
+            for (let col = 1; col <= numCols; col++) {
                 const format = formatConfig[col];
                 if (format && format !== '@' && (format.includes('d') || format.includes('m') || format.includes('y'))) {
                     dateColumns.add(col);
-                    Logger.log('[writeTramaData] Column ' + col + ' is DATE format: ' + format);
+                } else {
+                    textColumns.add(col);
                 }
-            });
-        }
-
-        // Process each column separately for proper formatting
-        for (let col = 1; col <= numCols; col++) {
-            const colRange = sheet.getRange(2, col, numRows, 1);
-            const colValues = rows.map(row => [row[col - 1]]);
-            
-            if (dateColumns.has(col)) {
-                // DATE COLUMN: Ensure all values are Date objects, then write and format
-                const dateValues = colValues.map(v => {
-                    const val = v[0];
-                    if (val instanceof Date && !isNaN(val.getTime())) {
-                        return [val];
-                    } else if (val) {
-                        // Try to convert to Date
-                        const parsed = this.parseToDate(val);
-                        return [parsed];
-                    }
-                    return [new Date()];
-                });
-                
-                // Write date values
-                colRange.setValues(dateValues);
-                // Apply date format
-                colRange.setNumberFormat(formatConfig[col]);
-                Logger.log('[writeTramaData] Col ' + col + ': wrote dates with format ' + formatConfig[col]);
-            } else {
-                // TEXT COLUMN: Apply text format first, then write
-                colRange.setNumberFormat('@');
-                colRange.setValues(colValues);
-                Logger.log('[writeTramaData] Col ' + col + ': wrote as text');
+            }
+        } else {
+            // If no config, all columns are text
+            for (let col = 1; col <= numCols; col++) {
+                textColumns.add(col);
             }
         }
-        
-        Logger.log('[writeTramaData] Complete');
+
+        // V8: Pre-process all data in memory (ensure dates are Date objects)
+        const processedRows = new Array(numRows);
+        for (let r = 0; r < numRows; r++) {
+            const row = rows[r];
+            const newRow = new Array(numCols);
+            for (let c = 0; c < numCols; c++) {
+                const col = c + 1;
+                const val = row[c];
+                if (dateColumns.has(col)) {
+                    // Convert to Date if needed
+                    if (val instanceof Date && !isNaN(val.getTime())) {
+                        newRow[c] = val;
+                    } else if (val) {
+                        newRow[c] = this.parseToDate(val);
+                    } else {
+                        newRow[c] = new Date();
+                    }
+                } else {
+                    newRow[c] = val;
+                }
+            }
+            processedRows[r] = newRow;
+        }
+
+        // V8 OPTIMIZATION: Single setValues() call for all data
+        const range = sheet.getRange(2, 1, numRows, numCols);
+        range.setValues(processedRows);
+
+        // V8: Apply formats efficiently (batch by column type)
+        // Apply text format to text columns
+        textColumns.forEach(col => {
+            sheet.getRange(2, col, numRows, 1).setNumberFormat('@');
+        });
+
+        // Apply date format to date columns
+        dateColumns.forEach(col => {
+            sheet.getRange(2, col, numRows, 1).setNumberFormat(formatConfig[col]);
+        });
+
+        Logger.log('[writeTramaData] V8: ' + numRows + ' rows, ' + numCols + ' cols in ' + (Date.now() - T) + 'ms');
     },
 
     /**

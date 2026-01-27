@@ -131,8 +131,26 @@ const CrecerVLEProcessorV2 = {
         });
         perfLog('CRUCE_COMPLETE');
 
-        // Export
-        const tramaDataForExport = wsTrama.getDataRange().getDisplayValues();
+        // V8 OPTIMIZATION: Build export data from memory
+        const tramaDataForExport = [cfg.TRAMA_HEADERS];
+        for (let i = 0; i < tramaRows.length; i++) {
+            const row = tramaRows[i];
+            const exportRow = row.map((cell) => {
+                if (cell instanceof Date && !isNaN(cell.getTime())) {
+                    return cell.getDate() + '/' + (cell.getMonth() + 1) + '/' + cell.getFullYear();
+                }
+                return cell;
+            });
+            tramaDataForExport.push(exportRow);
+        }
+        if (tramaRows.length > 0) {
+            const statusValues = wsTrama.getRange(2, 4, tramaRows.length, 1).getDisplayValues();
+            for (let i = 0; i < statusValues.length; i++) {
+                tramaDataForExport[i + 1][3] = statusValues[i][0];
+            }
+        }
+        perfLog('EXPORT_DATA_BUILT');
+        
         const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Crecer_VLE',
             {

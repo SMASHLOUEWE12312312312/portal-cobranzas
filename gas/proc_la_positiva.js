@@ -140,9 +140,33 @@ const LaPositivaProcessorV2 = {
         });
         perfLog('CRUCE_COMPLETE');
 
-        // Export results using optimized exporter
-        // Pass cached data to avoid re-reading
-        const tramaDataForExport = wsTrama.getDataRange().getDisplayValues();
+        // V8 OPTIMIZATION: Build export data from memory instead of re-reading sheet
+        // This saves one getDataRange().getDisplayValues() call (~500-1000ms for large datasets)
+        const tramaDataForExport = [cfg.TRAMA_HEADERS];
+        for (let i = 0; i < tramaRows.length; i++) {
+            const row = tramaRows[i];
+            // Convert Date objects to strings for export compatibility
+            const exportRow = row.map((cell, idx) => {
+                if (cell instanceof Date && !isNaN(cell.getTime())) {
+                    const d = cell.getDate();
+                    const m = cell.getMonth() + 1;
+                    const y = cell.getFullYear();
+                    return d + '/' + m + '/' + y;
+                }
+                return cell;
+            });
+            // Add STATUS from cruce result (read from sheet only for status column)
+            tramaDataForExport.push(exportRow);
+        }
+        // Read only STATUS column from sheet (much faster than full getDataRange)
+        if (tramaRows.length > 0) {
+            const statusValues = wsTrama.getRange(2, 4, tramaRows.length, 1).getDisplayValues();
+            for (let i = 0; i < statusValues.length; i++) {
+                tramaDataForExport[i + 1][3] = statusValues[i][0];
+            }
+        }
+        perfLog('EXPORT_DATA_BUILT');
+        
         const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'La_Positiva',
             {
