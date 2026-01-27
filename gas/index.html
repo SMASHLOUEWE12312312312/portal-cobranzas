@@ -8502,6 +8502,68 @@
         }
 
         /**
+         * V7: Ejecuta llamada al servidor con retry automático
+         * Maneja errores 502, timeout y otros errores de red
+         * @param {Function} serverCall - Función que ejecuta la llamada (debe retornar Promise)
+         * @param {Object} options - Opciones de retry
+         * @returns {Promise} Resultado de la llamada
+         */
+        function executeWithRetry(serverCall, options = {}) {
+            const maxRetries = options.maxRetries || 3;
+            const baseDelay = options.baseDelay || 2000; // 2 segundos
+            const onRetry = options.onRetry || (() => {});
+            
+            return new Promise((resolve, reject) => {
+                let attempt = 0;
+                
+                function tryCall() {
+                    attempt++;
+                    
+                    serverCall()
+                        .then(result => resolve(result))
+                        .catch(error => {
+                            const errorMsg = error && error.message ? error.message : String(error || 'Error desconocido');
+                            const isRetryable = !errorMsg || 
+                                errorMsg === 'undefined' ||
+                                errorMsg.includes('502') ||
+                                errorMsg.includes('503') ||
+                                errorMsg.includes('timeout') ||
+                                errorMsg.includes('network') ||
+                                errorMsg.includes('Failed to fetch') ||
+                                errorMsg.includes('Script error');
+                            
+                            if (isRetryable && attempt < maxRetries) {
+                                const delay = baseDelay * attempt; // 2s, 4s, 6s
+                                console.log('[Retry] Attempt ' + attempt + ' failed, retrying in ' + delay + 'ms...');
+                                onRetry(attempt, maxRetries, delay);
+                                setTimeout(tryCall, delay);
+                            } else {
+                                reject(error);
+                            }
+                        });
+                }
+                
+                tryCall();
+            });
+        }
+
+        /**
+         * Wrapper para google.script.run que retorna Promise
+         * @param {string} functionName - Nombre de la función del servidor
+         * @param {...any} args - Argumentos para la función
+         * @returns {Promise}
+         */
+        function callServerAsync(functionName, ...args) {
+            return new Promise((resolve, reject) => {
+                const runner = google.script.run
+                    .withSuccessHandler(result => resolve(result))
+                    .withFailureHandler(error => reject(error));
+                
+                runner[functionName](...args);
+            });
+        }
+
+        /**
          * Muestra estado en un contenedor
          */
         function showConciliacionStatus(containerId, message, type) {
@@ -8687,34 +8749,45 @@
 
             reader.onload = e => {
                 const base64 = e.target.result.split(',')[1];
+                const mimeType = file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-                google.script.run
-                    .withSuccessHandler(result => {
-                        showLoading(false);
-                        btn.disabled = false;
-                        btn.textContent = '📤 Cargar BD Sisnet';
-
-                        if (result && result.ok) {
-                            const rows = result.rowsLoaded || 0;
-                            showConciliacionStatus('bdSisnetStatus', 'BD cargada exitosamente. ' + rows.toLocaleString() + ' registros.', 'success');
-                            showToast('BD Sisnet cargada: ' + rows.toLocaleString() + ' registros', 'success');
-                            log('✅ BD Sisnet cargada: ' + rows + ' registros', 'success');
-                            fileInput.value = '';
-                            refreshConciliacionStatus();
-                        } else {
-                            const error = result && result.error ? result.error : 'Error desconocido';
-                            showConciliacionStatus('bdSisnetStatus', error, 'error');
-                            log('❌ Error BD Sisnet: ' + error, 'error');
+                // V7: Usar retry automático para manejar errores 502 y similares
+                executeWithRetry(
+                    () => callServerAsync('conciliacionUploadBDSisnet', base64, file.name, mimeType),
+                    {
+                        maxRetries: 3,
+                        baseDelay: 5000, // 5 segundos entre reintentos (BD es más lenta)
+                        onRetry: (attempt, max, delay) => {
+                            showConciliacionStatus('bdSisnetStatus', 'Reintentando... (intento ' + attempt + ' de ' + max + ')', 'warning');
                         }
-                    })
-                    .withFailureHandler(error => {
-                        showLoading(false);
-                        btn.disabled = false;
-                        btn.textContent = '📤 Cargar BD Sisnet';
-                        showConciliacionStatus('bdSisnetStatus', error.message, 'error');
-                        log('❌ Error BD Sisnet: ' + error.message, 'error');
-                    })
-                    .conciliacionUploadBDSisnet(base64, file.name, file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    }
+                )
+                .then(result => {
+                    showLoading(false);
+                    btn.disabled = false;
+                    btn.textContent = '📤 Cargar BD Sisnet';
+
+                    if (result && result.ok) {
+                        const rows = result.rowsLoaded || 0;
+                        showConciliacionStatus('bdSisnetStatus', 'BD cargada exitosamente. ' + rows.toLocaleString() + ' registros.', 'success');
+                        showToast('BD Sisnet cargada: ' + rows.toLocaleString() + ' registros', 'success');
+                        log('✅ BD Sisnet cargada: ' + rows + ' registros', 'success');
+                        fileInput.value = '';
+                        refreshConciliacionStatus();
+                    } else {
+                        const error = result && result.error ? result.error : 'Error desconocido';
+                        showConciliacionStatus('bdSisnetStatus', error, 'error');
+                        log('❌ Error BD Sisnet: ' + error, 'error');
+                    }
+                })
+                .catch(error => {
+                    showLoading(false);
+                    btn.disabled = false;
+                    btn.textContent = '📤 Cargar BD Sisnet';
+                    const errorMsg = error && error.message ? error.message : 'Error de conexión con el servidor';
+                    showConciliacionStatus('bdSisnetStatus', errorMsg + ' (después de 3 reintentos)', 'error');
+                    log('❌ Error BD Sisnet: ' + errorMsg, 'error');
+                });
             };
 
             reader.onerror = () => {
@@ -8765,65 +8838,77 @@
                 conciliacionLog('Archivo leído correctamente', 'success');
                 conciliacionLog('Enviando al servidor para procesamiento...', 'info');
 
-                google.script.run
-                    .withSuccessHandler(result => {
-                        showLoading(false);
-                        btn.disabled = false;
-                        btn.textContent = '⚙️ Procesar Conciliación';
+                const mimeType = conciliacionInferExcelMimeType(file.name) || file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-                        if (result && result.ok) {
-                            CONCILIACION_LAST_RESULT = result;
-
-                            conciliacionLog('✅ Procesamiento completado para ' + insurerName, 'success');
-
-                            if (result.stats) {
-                                conciliacionLog('📊 Filas cargadas: ' + (result.stats.filasCargadas || 0), 'info');
-                                conciliacionLog('📊 Filas filtradas: ' + (result.stats.filasCancelado || result.stats.filasFiltradas || 0), 'info');
-                                conciliacionLog('📊 Filas escritas en Trama: ' + (result.stats.filasEscritas || 0), 'info');
-                            }
-
-                            if (result.cruce) {
-                                conciliacionLog('🟢 Registrados: ' + (result.cruce.registrado || 0), 'success');
-                                conciliacionLog('🟡 Validar: ' + (result.cruce.validar || 0), 'warning');
-                                conciliacionLog('🔴 No Registrados: ' + (result.cruce.noRegistrado || 0), 'error');
-                            }
-
-                            if (result.exports) {
-                                conciliacionLog('📁 Exportando archivos...', 'info');
-                                if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.ok) {
-                                    conciliacionLog('✅ Trama_Registrados: ' + (result.exports.tramaRegistrados.count || 0) + ' registros', 'success');
-                                }
-                                if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.ok) {
-                                    conciliacionLog('✅ Estado_Cuenta_Pendientes: ' + (result.exports.estadoCuentaPendientes.count || 0) + ' registros', 'success');
-                                }
-                            }
-
-                            showConciliacionStatus('conciliacionStatus', 'Procesamiento completado exitosamente', 'success');
-                            showToast(insurerName + ' procesado exitosamente', 'success');
-                            log('✅ EECC ' + insurerName + ' procesado', 'success');
-
-                            displayConciliacionResults(result, insurerName);
-
-                            fileInput.value = '';
-                            insurerSelect.value = '';
-                            updateProcessBtnState();
-
-                        } else {
-                            const error = result && result.error ? result.error : 'Error desconocido';
-                            conciliacionLog('❌ Error: ' + error, 'error');
-                            showConciliacionStatus('conciliacionStatus', error, 'error');
-                            log('❌ Error EECC: ' + error, 'error');
+                // V7: Usar retry automático para manejar errores 502 y similares
+                executeWithRetry(
+                    () => callServerAsync('conciliacionProcess', insurerKey, base64, file.name, mimeType),
+                    {
+                        maxRetries: 3,
+                        baseDelay: 3000, // 3 segundos entre reintentos
+                        onRetry: (attempt, max, delay) => {
+                            conciliacionLog('⚠️ Reintentando... (intento ' + attempt + ' de ' + max + ')', 'warning');
                         }
-                    })
-                    .withFailureHandler(error => {
-                        showLoading(false);
-                        btn.disabled = false;
-                        btn.textContent = '⚙️ Procesar Conciliación';
-                        conciliacionLog('❌ Error fatal: ' + error.message, 'error');
-                        showConciliacionStatus('conciliacionStatus', error.message, 'error');
-                        log('❌ Error EECC: ' + error.message, 'error');
-                    })
-                    .conciliacionProcess(insurerKey, base64, file.name, conciliacionInferExcelMimeType(file.name) || file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    }
+                )
+                .then(result => {
+                    showLoading(false);
+                    btn.disabled = false;
+                    btn.textContent = '⚙️ Procesar Conciliación';
+
+                    if (result && result.ok) {
+                        CONCILIACION_LAST_RESULT = result;
+
+                        conciliacionLog('✅ Procesamiento completado para ' + insurerName, 'success');
+
+                        if (result.stats) {
+                            conciliacionLog('📊 Filas cargadas: ' + (result.stats.filasCargadas || 0), 'info');
+                            conciliacionLog('📊 Filas filtradas: ' + (result.stats.filasCancelado || result.stats.filasFiltradas || 0), 'info');
+                            conciliacionLog('📊 Filas escritas en Trama: ' + (result.stats.filasEscritas || 0), 'info');
+                        }
+
+                        if (result.cruce) {
+                            conciliacionLog('🟢 Registrados: ' + (result.cruce.registrado || 0), 'success');
+                            conciliacionLog('🟡 Validar: ' + (result.cruce.validar || 0), 'warning');
+                            conciliacionLog('🔴 No Registrados: ' + (result.cruce.noRegistrado || 0), 'error');
+                        }
+
+                        if (result.exports) {
+                            conciliacionLog('📁 Exportando archivos...', 'info');
+                            if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.ok) {
+                                conciliacionLog('✅ Trama_Registrados: ' + (result.exports.tramaRegistrados.count || 0) + ' registros', 'success');
+                            }
+                            if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.ok) {
+                                conciliacionLog('✅ Estado_Cuenta_Pendientes: ' + (result.exports.estadoCuentaPendientes.count || 0) + ' registros', 'success');
+                            }
+                        }
+
+                        showConciliacionStatus('conciliacionStatus', 'Procesamiento completado exitosamente', 'success');
+                        showToast(insurerName + ' procesado exitosamente', 'success');
+                        log('✅ EECC ' + insurerName + ' procesado', 'success');
+
+                        displayConciliacionResults(result, insurerName);
+
+                        fileInput.value = '';
+                        insurerSelect.value = '';
+                        updateProcessBtnState();
+
+                    } else {
+                        const error = result && result.error ? result.error : 'Error desconocido';
+                        conciliacionLog('❌ Error: ' + error, 'error');
+                        showConciliacionStatus('conciliacionStatus', error, 'error');
+                        log('❌ Error EECC: ' + error, 'error');
+                    }
+                })
+                .catch(error => {
+                    showLoading(false);
+                    btn.disabled = false;
+                    btn.textContent = '⚙️ Procesar Conciliación';
+                    const errorMsg = error && error.message ? error.message : 'Error de conexión con el servidor';
+                    conciliacionLog('❌ Error: ' + errorMsg + ' (después de 3 reintentos)', 'error');
+                    showConciliacionStatus('conciliacionStatus', errorMsg, 'error');
+                    log('❌ Error EECC: ' + errorMsg, 'error');
+                });
             };
 
             reader.onerror = () => {
