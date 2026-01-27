@@ -87,19 +87,55 @@ const KPIService = {
             const ciaIdx = colMap['CIA'] ?? -1;
             const importeIdx = colMap['IMPORTE'] ?? -1;
             const monIdx = colMap['MON'] ?? -1;
-            // Nota: columnMap normaliza headers (guiones bajos → espacios)
-            // Buscar variaciones posibles del nombre de columna de fecha de vencimiento
-            const fecVencIdx = colMap['FEC VENCIMIENTO COB'] ?? 
-                               colMap['FEC_VENCIMIENTO_COB'] ?? 
-                               colMap['FEC_VENCIMIENTO COB'] ?? 
-                               colMap['FECHA VENCIMIENTO'] ??
-                               colMap['FEC VENC'] ??
-                               -1;
             
-            // Log para debugging si no encuentra la columna
+            // Buscar columna de fecha de vencimiento de forma flexible
+            // El header original es "FEC_VENCIMIENTO COB" que se normaliza a "FEC VENCIMIENTO COB"
+            let fecVencIdx = -1;
+            const fecVencVariants = [
+                'FEC VENCIMIENTO COB',
+                'FEC_VENCIMIENTO COB', 
+                'FEC_VENCIMIENTO_COB',
+                'FECHA VENCIMIENTO COB',
+                'FECHA VENCIMIENTO',
+                'FEC VENC',
+                'VENCIMIENTO'
+            ];
+            
+            // Buscar directamente en colMap
+            for (const variant of fecVencVariants) {
+                if (colMap[variant] !== undefined) {
+                    fecVencIdx = colMap[variant];
+                    break;
+                }
+            }
+            
+            // Si no encontramos, buscar por coincidencia parcial
             if (fecVencIdx === -1) {
-                Logger.warn(context, 'Columna de fecha vencimiento no encontrada', { 
-                    columnasDisponibles: Object.keys(colMap).slice(0, 15) 
+                const colKeys = Object.keys(colMap);
+                const fecVencKey = colKeys.find(k => 
+                    k.includes('VENCIMIENTO') && k.includes('COB')
+                );
+                if (fecVencKey) {
+                    fecVencIdx = colMap[fecVencKey];
+                    Logger.info(context, 'Columna fecha vencimiento encontrada por coincidencia', { 
+                        columna: fecVencKey, 
+                        index: fecVencIdx 
+                    });
+                }
+            }
+            
+            // Log para debugging
+            if (fecVencIdx === -1) {
+                Logger.warn(context, 'Columna de fecha vencimiento NO encontrada', { 
+                    columnasDisponibles: Object.keys(colMap).join(', ')
+                });
+            } else {
+                Logger.debug(context, 'Columnas encontradas', {
+                    asegurado: aseguradoIdx,
+                    cia: ciaIdx,
+                    importe: importeIdx,
+                    mon: monIdx,
+                    fecVenc: fecVencIdx
                 });
             }
 
@@ -300,8 +336,38 @@ const KPIService = {
 
     _parseDate(value) {
         if (!value) return null;
-        if (value instanceof Date) return value;
+        
+        // Si ya es Date, retornar directamente
+        if (value instanceof Date) {
+            return isNaN(value.getTime()) ? null : value;
+        }
+        
+        // Si es número (serial de Excel/Sheets), convertir
+        if (typeof value === 'number') {
+            // Excel/Sheets serial date: días desde 1899-12-30
+            const excelEpoch = new Date(1899, 11, 30);
+            const d = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        
         try {
+            const str = String(value).trim();
+            
+            // Intentar formato dd/mm/yyyy o dd-mm-yyyy
+            const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+            if (ddmmyyyy) {
+                const d = new Date(parseInt(ddmmyyyy[3]), parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
+                return isNaN(d.getTime()) ? null : d;
+            }
+            
+            // Intentar formato yyyy-mm-dd
+            const yyyymmdd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+            if (yyyymmdd) {
+                const d = new Date(parseInt(yyyymmdd[1]), parseInt(yyyymmdd[2]) - 1, parseInt(yyyymmdd[3]));
+                return isNaN(d.getTime()) ? null : d;
+            }
+            
+            // Fallback: intentar parseo nativo
             const d = new Date(value);
             return isNaN(d.getTime()) ? null : d;
         } catch (e) {
