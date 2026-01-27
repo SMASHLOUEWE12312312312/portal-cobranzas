@@ -87,7 +87,21 @@ const KPIService = {
             const ciaIdx = colMap['CIA'] ?? -1;
             const importeIdx = colMap['IMPORTE'] ?? -1;
             const monIdx = colMap['MON'] ?? -1;
-            const fecVencIdx = colMap['FEC_VENCIMIENTO_COB'] ?? colMap['FEC_VENCIMIENTO COB'] ?? -1;
+            // Nota: columnMap normaliza headers (guiones bajos → espacios)
+            // Buscar variaciones posibles del nombre de columna de fecha de vencimiento
+            const fecVencIdx = colMap['FEC VENCIMIENTO COB'] ?? 
+                               colMap['FEC_VENCIMIENTO_COB'] ?? 
+                               colMap['FEC_VENCIMIENTO COB'] ?? 
+                               colMap['FECHA VENCIMIENTO'] ??
+                               colMap['FEC VENC'] ??
+                               -1;
+            
+            // Log para debugging si no encuentra la columna
+            if (fecVencIdx === -1) {
+                Logger.warn(context, 'Columna de fecha vencimiento no encontrada', { 
+                    columnasDisponibles: Object.keys(colMap).slice(0, 15) 
+                });
+            }
 
             const aseguradosSet = new Set();
             const ciaMap = {};

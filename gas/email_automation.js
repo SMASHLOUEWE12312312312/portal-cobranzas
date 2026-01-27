@@ -219,18 +219,65 @@ const EmailAutomation = {
             }
         }
 
-        // Obtener PTPs próximos y vencidos
+        // Obtener PTPs/Compromisos próximos y vencidos
+        // Primero intentar PTPService, si no tiene datos usar BitacoraService
+        let ptpsObtenidos = false;
         if (typeof PTPService !== 'undefined') {
             try {
                 const ptps = PTPService.getPTPsPendientes();
-                data.ptpsPendientes = ptps.length;
-                data.ptpsVencidos = ptps.filter(p => p.vencido).length;
-                data.ptpsProximos = ptps.filter(p => !p.vencido && p.diasRestantes <= 3);
-                data.ptpsHoy = ptps.filter(p => p.diasRestantes === 0);
-                // Top 10 PTPs próximos para mostrar
-                data.topPtpsProximos = ptps.filter(p => p.diasRestantes <= 3).slice(0, 10);
+                if (ptps && ptps.length > 0) {
+                    data.ptpsPendientes = ptps.length;
+                    data.ptpsVencidos = ptps.filter(p => p.vencido).length;
+                    data.ptpsProximos = ptps.filter(p => !p.vencido && p.diasRestantes <= 3);
+                    data.ptpsHoy = ptps.filter(p => p.diasRestantes === 0);
+                    data.topPtpsProximos = ptps.filter(p => p.diasRestantes <= 3).slice(0, 10);
+                    ptpsObtenidos = true;
+                }
             } catch (e) { 
-                Logger.warn(context, 'Error obteniendo PTPs', e); 
+                Logger.warn(context, 'Error obteniendo PTPs de PTPService', e); 
+            }
+        }
+        
+        // Fallback: usar compromisos de BitacoraService
+        if (!ptpsObtenidos && typeof BitacoraService !== 'undefined') {
+            try {
+                const compromisos = BitacoraService.obtenerCompromisosActivos();
+                if (compromisos && compromisos.length > 0) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    const ptpsFromBitacora = compromisos.map(c => {
+                        const fechaComp = c.fechaCompromiso ? new Date(c.fechaCompromiso) : null;
+                        const diasRestantes = fechaComp ? Math.floor((fechaComp - today) / (1000 * 60 * 60 * 24)) : 999;
+                        return {
+                            asegurado: c.asegurado,
+                            ruc: c.ruc,
+                            fechaCompromiso: c.fechaCompromiso,
+                            montoComprometido: c.snapshotVencidoPEN || 0,
+                            moneda: 'PEN',
+                            responsable: c.responsable,
+                            estado: c.estadoGestion,
+                            diasRestantes: diasRestantes,
+                            vencido: diasRestantes < 0
+                        };
+                    });
+                    
+                    data.ptpsPendientes = ptpsFromBitacora.length;
+                    data.ptpsVencidos = ptpsFromBitacora.filter(p => p.vencido).length;
+                    data.ptpsProximos = ptpsFromBitacora.filter(p => !p.vencido && p.diasRestantes <= 3);
+                    data.ptpsHoy = ptpsFromBitacora.filter(p => p.diasRestantes === 0);
+                    data.topPtpsProximos = ptpsFromBitacora
+                        .filter(p => p.diasRestantes <= 7)
+                        .sort((a, b) => a.diasRestantes - b.diasRestantes)
+                        .slice(0, 10);
+                    
+                    Logger.info(context, 'PTPs obtenidos de BitacoraService', { 
+                        total: data.ptpsPendientes, 
+                        vencidos: data.ptpsVencidos 
+                    });
+                }
+            } catch (e) { 
+                Logger.warn(context, 'Error obteniendo compromisos de BitacoraService', e); 
             }
         }
 

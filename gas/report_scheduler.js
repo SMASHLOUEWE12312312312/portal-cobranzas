@@ -107,24 +107,59 @@ const ReportScheduler = {
 
         if (typeof BitacoraService !== 'undefined') {
             try {
-                const gestiones = BitacoraService.obtenerGestiones({ limit: 1000 });
-                const todayStr = today.toISOString().split('T')[0];
+                const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
+                
+                // Usar fecha local de Perú para comparación
+                const todayLocal = Utilities.formatDate(today, 'America/Lima', 'yyyy-MM-dd');
+                
                 data.gestionesHoy = gestiones.filter(g => { 
-                    const fechaReg = g.fechaRegistro ? new Date(g.fechaRegistro).toISOString().split('T')[0] : ''; 
-                    return fechaReg === todayStr; 
+                    if (!g.fechaRegistro) return false;
+                    const fechaGestion = new Date(g.fechaRegistro);
+                    const fechaLocal = Utilities.formatDate(fechaGestion, 'America/Lima', 'yyyy-MM-dd');
+                    return fechaLocal === todayLocal; 
                 }).length;
+                
+                // También contar ciclos activos
+                const ciclosUnicos = new Set(gestiones.map(g => g.idCiclo).filter(Boolean));
+                data.ciclosActivos = ciclosUnicos.size;
+                
             } catch (e) { 
                 Logger.warn('ReportScheduler._collectDailyData', 'Error en BitacoraService', e); 
             }
         }
 
+        // Obtener PTPs - primero PTPService, luego fallback a BitacoraService
+        let ptpsFound = false;
         if (typeof PTPService !== 'undefined') {
             try {
                 const ptps = PTPService.getPTPsPendientes();
-                data.ptpsPendientes = ptps.length;
-                data.ptpsVencidos = ptps.filter(p => p.vencido).length;
+                if (ptps && ptps.length > 0) {
+                    data.ptpsPendientes = ptps.length;
+                    data.ptpsVencidos = ptps.filter(p => p.vencido).length;
+                    ptpsFound = true;
+                }
             } catch (e) { 
                 Logger.warn('ReportScheduler._collectDailyData', 'Error en PTPService', e); 
+            }
+        }
+        
+        // Fallback a BitacoraService para PTPs
+        if (!ptpsFound && typeof BitacoraService !== 'undefined') {
+            try {
+                const compromisos = BitacoraService.obtenerCompromisosActivos();
+                if (compromisos && compromisos.length > 0) {
+                    const todayMidnight = new Date(today);
+                    todayMidnight.setHours(0, 0, 0, 0);
+                    
+                    data.ptpsPendientes = compromisos.length;
+                    data.ptpsVencidos = compromisos.filter(c => {
+                        if (!c.fechaCompromiso) return false;
+                        const fechaComp = new Date(c.fechaCompromiso);
+                        return fechaComp < todayMidnight;
+                    }).length;
+                }
+            } catch (e) {
+                Logger.warn('ReportScheduler._collectDailyData', 'Error en BitacoraService fallback', e);
             }
         }
 
@@ -198,11 +233,12 @@ const ReportScheduler = {
         // Obtener datos de semana anterior para deltas
         data.lastWeek = this._getLastWeekData();
 
-        // Métricas de PTP
+        // Métricas de PTP - intentar PTPService, si no hay datos usar BitacoraService
+        let ptpMetricsObtained = false;
         if (typeof PTPService !== 'undefined') {
             try {
                 const metricas = PTPService.getMetricasCumplimiento({ forceRefresh: true });
-                if (metricas.ok) { 
+                if (metricas.ok && (metricas.cumplidos > 0 || metricas.pendientes > 0 || metricas.incumplidos > 0)) { 
                     data.ptpsCumplidos = metricas.cumplidos; 
                     data.ptpsIncumplidos = metricas.incumplidos;
                     data.ptpsPendientes = metricas.pendientes;
@@ -211,9 +247,64 @@ const ReportScheduler = {
                     data.montoComprometido = metricas.montoComprometido;
                     data.tasaRecuperacion = parseFloat(metricas.tasaRecuperacion) || 0;
                     data.cei = parseFloat(metricas.cei) || 0;
+                    ptpMetricsObtained = true;
                 }
             } catch (e) { 
                 Logger.warn('ReportScheduler._collectWeeklyDataEnriched', 'Error en PTPService', e); 
+            }
+        }
+        
+        // Fallback: usar compromisos de BitacoraService para métricas de PTP
+        if (!ptpMetricsObtained && typeof BitacoraService !== 'undefined') {
+            try {
+                const compromisos = BitacoraService.obtenerCompromisosActivos();
+                const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
+                
+                if (compromisos && compromisos.length > 0) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    // Contar pendientes vs vencidos
+                    let pendientes = 0, vencidos = 0;
+                    compromisos.forEach(c => {
+                        if (c.fechaCompromiso) {
+                            const fechaComp = new Date(c.fechaCompromiso);
+                            if (fechaComp < today) {
+                                vencidos++;
+                            } else {
+                                pendientes++;
+                            }
+                        }
+                    });
+                    
+                    // Contar cerrados/pagados en la semana (aproximación)
+                    const weekStart = new Date(today);
+                    weekStart.setDate(weekStart.getDate() - 7);
+                    const cerradosPagados = gestiones.filter(g => {
+                        if (g.estadoGestion !== 'CERRADO_PAGADO') return false;
+                        const fecha = new Date(g.fechaRegistro);
+                        return fecha >= weekStart && fecha <= today;
+                    }).length;
+                    
+                    data.ptpsPendientes = pendientes;
+                    data.ptpsIncumplidos = vencidos;
+                    data.ptpsCumplidos = cerradosPagados;
+                    
+                    // Calcular tasa de cumplimiento
+                    const totalProcessed = data.ptpsCumplidos + data.ptpsIncumplidos;
+                    data.tasaCumplimiento = totalProcessed > 0 
+                        ? parseFloat(((data.ptpsCumplidos / totalProcessed) * 100).toFixed(1))
+                        : 0;
+                    
+                    Logger.info('ReportScheduler._collectWeeklyDataEnriched', 'PTPs obtenidos de BitacoraService', {
+                        pendientes: data.ptpsPendientes,
+                        vencidos: data.ptpsIncumplidos,
+                        cumplidos: data.ptpsCumplidos,
+                        tasa: data.tasaCumplimiento
+                    });
+                }
+            } catch (e) {
+                Logger.warn('ReportScheduler._collectWeeklyDataEnriched', 'Error en BitacoraService fallback', e);
             }
         }
 
@@ -229,7 +320,7 @@ const ReportScheduler = {
                     data.totalVencido = kpis.summary.totalVencido;
                     data.agingDistribution = kpis.aging.buckets.map(b => ({ 
                         id: b.id,
-                        bucket: b.label, 
+                        label: b.label,   // Corregido: era "bucket", template espera "label"
                         count: b.count, 
                         percentage: b.percentage,
                         amount: b.amount,
