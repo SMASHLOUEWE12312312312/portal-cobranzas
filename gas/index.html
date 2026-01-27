@@ -3639,15 +3639,17 @@
                 totalCount = sourceList.length;
             }
             
-            // Si no hay búsqueda, mostrar todos
+            // ═══ SIN BÚSQUEDA = MOSTRAR TODOS ═══
             if (!searchText) {
-                if (EECC_MODE === 'grupo') {
-                    AUTOCOMPLETE_EECC_FILTERED = [...sourceList];
-                } else {
-                    ASEGURADOS_FILTERED = [...sourceList];
-                }
-                mostrarContadorEECC(sourceList.length, totalCount);
-                renderAutocompleteOptionsEECC(searchText);
+                // Resetear listas filtradas para que renderAutocomplete use la lista completa
+                AUTOCOMPLETE_EECC_FILTERED = [];
+                ASEGURADOS_FILTERED = [];
+                
+                // Mostrar contador (todos)
+                mostrarContadorEECC(totalCount, totalCount);
+                
+                // Renderizar TODOS los items (sin searchText = lista completa)
+                renderAutocompleteOptionsEECC('');
                 dropdown.style.display = 'block';
                 return;
             }
@@ -3799,18 +3801,26 @@
             }
 
             let list = [];
+            const hasSearchText = searchText && searchText.trim().length > 0;
+            
             if (EECC_MODE === 'grupo') {
-                list = AUTOCOMPLETE_EECC_FILTERED;
+                // Grupo: usar lista filtrada si hay búsqueda, o TODOS si no hay búsqueda
+                list = hasSearchText ? AUTOCOMPLETE_EECC_FILTERED : (ALL_GRUPOS || []);
             } else {
-                // Usar lista FILTRADA (no la completa)
-                list = ASEGURADOS_FILTERED.length > 0 || searchText ? ASEGURADOS_FILTERED : ASEGURADOS_DS.items;
+                // Asegurado: usar lista filtrada si hay búsqueda, o TODOS si no hay búsqueda
+                list = hasSearchText ? ASEGURADOS_FILTERED : (ASEGURADOS_DS.items || []);
             }
 
+            // Sin resultados: solo mostrar si HAY búsqueda activa y no hay coincidencias
             if (list.length === 0) {
                 if (EECC_MODE === 'asegurado' && ASEGURADOS_DS.loading) {
-                    optionsContainer.innerHTML = '<div class="autocomplete-option disabled" style="color:var(--tp-primary);">🔍 Buscando...</div>';
-                } else {
+                    optionsContainer.innerHTML = '<div class="autocomplete-option disabled" style="color:var(--tp-primary);">⏳ Cargando asegurados...</div>';
+                } else if (hasSearchText) {
+                    // Solo mostrar "Sin resultados" si hay texto de búsqueda
                     optionsContainer.innerHTML = '<div class="autocomplete-option disabled">❌ Sin resultados para "' + escapeHtml(searchText) + '"</div>';
+                } else {
+                    // Sin búsqueda y sin datos = aún cargando o sin datos
+                    optionsContainer.innerHTML = '<div class="autocomplete-option disabled" style="color:var(--tp-text-secondary);">📋 No hay datos disponibles</div>';
                 }
                 return;
             }
