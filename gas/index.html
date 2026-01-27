@@ -583,7 +583,42 @@
                             </button>
                         </div>
 
-                        <!-- Filtros -->
+                        <!-- QUICK WIN: Botones de Filtros Rápidos -->
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                            <span style="font-size: 0.75rem; color: var(--tp-text-secondary); display: flex; align-items: center; margin-right: 0.5rem;">⚡ Filtros rápidos:</span>
+                            <button onclick="aplicarFiltroRapido('vencidos')" 
+                                class="btn-filtro-rapido" 
+                                style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
+                                onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                                ⚠️ Compromisos vencidos
+                            </button>
+                            <button onclick="aplicarFiltroRapido('deuda_aumento')" 
+                                class="btn-filtro-rapido"
+                                style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
+                                onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                                📈 Deuda en aumento
+                            </button>
+                            <button onclick="aplicarFiltroRapido('criticos')" 
+                                class="btn-filtro-rapido"
+                                style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
+                                onmouseover="this.style.background='#FDE68A'" onmouseout="this.style.background='#FEF3C7'">
+                                🔴 Críticos (+60 días)
+                            </button>
+                            <button onclick="aplicarFiltroRapido('sin_respuesta')" 
+                                class="btn-filtro-rapido"
+                                style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #F3F4F6; color: #374151; border: 1px solid #D1D5DB; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
+                                onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                                ❌ Sin respuesta
+                            </button>
+                            <button onclick="aplicarFiltroRapido('hoy')" 
+                                class="btn-filtro-rapido"
+                                style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
+                                onmouseover="this.style.background='#DBEAFE'" onmouseout="this.style.background='#EFF6FF'">
+                                📅 Vencen hoy
+                            </button>
+                        </div>
+
+                        <!-- Filtros Avanzados -->
                         <div
                             style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--tp-surface-secondary); border-radius: 8px;">
                             <div class="form-group mb-0">
@@ -632,6 +667,18 @@
                                     <option value="con">✅ Con compromiso</option>
                                     <option value="sin">➖ Sin compromiso</option>
                                     <option value="vencidos">🔴 Vencidos</option>
+                                </select>
+                            </div>
+                            <!-- QUICK WIN: Filtro por Tendencia de Deuda -->
+                            <div class="form-group mb-0">
+                                <label class="form-label" for="filtroTendenciaEmb">📈 Tendencia Deuda</label>
+                                <select id="filtroTendenciaEmb" onchange="filtrarBitacoraEmbedded()"
+                                    style="width: 100%;">
+                                    <option value="">Todas</option>
+                                    <option value="AUMENTO">🔴 En aumento ↑</option>
+                                    <option value="DISMINUCION">🟢 En disminución ↓</option>
+                                    <option value="SIN_CAMBIO">⚪ Sin cambio =</option>
+                                    <option value="PRIMERA">🆕 Primera gestión</option>
                                 </select>
                             </div>
                             <div class="form-group mb-0" style="display: flex; align-items: flex-end;">
@@ -683,9 +730,19 @@
                                             style="padding: 8px 6px; text-align: right; font-size: 0.7rem; cursor: pointer; user-select: none;">
                                             VENC. PEN <span id="sortIndicatorSnapshotVencidoPEN"></span>
                                         </th>
+                                        <th onclick="ordenarBitacora('deltaVencidoPEN')"
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;"
+                                            title="Variación vs gestión anterior">
+                                            Δ PEN <span id="sortIndicatorDeltaVencidoPEN"></span>
+                                        </th>
                                         <th onclick="ordenarBitacora('snapshotVencidoUSD')"
                                             style="padding: 8px 6px; text-align: right; font-size: 0.7rem; cursor: pointer; user-select: none;">
                                             VENC. USD <span id="sortIndicatorSnapshotVencidoUSD"></span>
+                                        </th>
+                                        <th onclick="ordenarBitacora('deltaVencidoUSD')"
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;"
+                                            title="Variación vs gestión anterior">
+                                            Δ USD <span id="sortIndicatorDeltaVencidoUSD"></span>
                                         </th>
                                         <th style="padding: 8px 6px; text-align: left; font-size: 0.7rem;">PRÓX. ACCIÓN
                                         </th>
@@ -707,7 +764,17 @@
                         </div>
                         <div
                             style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                            <span class="text-muted"><span id="bitacoraCountEmb">0</span> ciclos de gestión</span>
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span class="text-muted"><span id="bitacoraCountEmb">0</span> ciclos de gestión</span>
+                                <!-- QUICK WIN: Botón Refresh visible -->
+                                <button id="btnRefreshBitacora" onclick="refreshBitacoraManual()" 
+                                    title="Actualizar datos (F5)"
+                                    style="padding: 0.4rem 0.75rem; font-size: 0.75rem; background: #F3F4F6; border: 1px solid #D1D5DB; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; transition: all 0.15s ease;"
+                                    onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                                    <span id="refreshIconBitacora">🔄</span>
+                                    <span>Actualizar</span>
+                                </button>
+                            </div>
                             <div id="bitacora-load-more" style="display:none;">
                                 <button id="btnCargarMas" onclick="cargarMasBitacora()"
                                     class="btn btn-outline-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
@@ -1095,12 +1162,17 @@
                                                     id="requiredObsEmb"
                                                     style="display: none; color: var(--tp-primary); font-weight: 700;">*</span>
                                             </label>
-                                            <textarea id="gestionObservacionesEmb" rows="3" oninput="validateFormV4()"
+                                            <textarea id="gestionObservacionesEmb" rows="3" 
+                                                oninput="validateFormV4(); updateCharCounter('gestionObservacionesEmb', 'obsCharCounter', 500)"
+                                                maxlength="500"
                                                 placeholder="Detalles de la gestión (con quién se habló, qué se acordó, etc.)"
                                                 style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; resize: vertical; min-height: 80px; transition: border-color 0.15s ease;"></textarea>
-                                            <p id="obsHelperText"
-                                                style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--tp-text-tertiary);">
-                                                Obligatorio para: Derivaciones, No cobrable</p>
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.375rem;">
+                                                <p id="obsHelperText"
+                                                    style="margin: 0; font-size: 0.75rem; color: var(--tp-text-tertiary);">
+                                                    Obligatorio para: Derivaciones, No cobrable</p>
+                                                <span id="obsCharCounter" style="font-size: 0.7rem; color: var(--tp-text-tertiary);">0/500</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -5105,6 +5177,47 @@
         }
 
         /**
+         * QUICK WIN: Refresh manual de bitácora con feedback visual
+         * Limpia caché y recarga datos frescos del servidor
+         */
+        function refreshBitacoraManual() {
+            const btn = document.getElementById('btnRefreshBitacora');
+            const icon = document.getElementById('refreshIconBitacora');
+            
+            if (!btn || BITACORA_LOADING) return;
+            
+            // Feedback visual: spinning icon
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            if (icon) {
+                icon.style.animation = 'spin 1s linear infinite';
+            }
+            
+            console.log('[refreshBitacoraManual] 🔄 Recargando datos frescos...');
+            
+            // Limpiar cachés
+            localStorage.removeItem('bitacora_data_cache');
+            window.bitacoraDataPreload = null;
+            BITACORA_DATA = [];
+            BITACORA_FILTERED = [];
+            BITACORA_EMB_LOADED = false;
+            Object.keys(TIMELINE_CACHE).forEach(key => delete TIMELINE_CACHE[key]);
+            
+            // Recargar datos
+            loadBitacoraEmbeddedData(true).finally(() => {
+                // Restaurar botón
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }
+                if (icon) {
+                    icon.style.animation = '';
+                }
+                showToast('Datos actualizados', 'success');
+            });
+        }
+
+        /**
          * Carga más resultados (paginación)
          */
         function cargarMasBitacora() {
@@ -5142,7 +5255,7 @@
             if (!tbody) return;
 
             if (!BITACORA_FILTERED || BITACORA_FILTERED.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--tp-text-secondary);">No hay gestiones registradas</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:2rem;color:var(--tp-text-secondary);">No hay gestiones registradas</td></tr>';
                 if (countEl) countEl.textContent = '0';
                 return;
             }
@@ -5165,10 +5278,16 @@
                 const estadoBadge = getEstadoBadge(g.estadoGestion);
                 const responsable = (g.responsable || '-').replace(/@.*/, '').substring(0, 15);
                 const proximaAccion = (g.proximaAccion || '-').substring(0, 25) + (g.proximaAccion && g.proximaAccion.length > 25 ? '...' : '');
-                const asegurado = (g.asegurado || '-').substring(0, 30) + (g.asegurado && g.asegurado.length > 30 ? '...' : '');
+                const asegurado = (g.asegurado || '-').substring(0, 28) + (g.asegurado && g.asegurado.length > 28 ? '...' : '');
+                
+                // QUICK WIN: Badge contador de gestiones
+                const numGestiones = g.numGestiones || 1;
+                const gestionesBadge = numGestiones > 1 
+                    ? '<span style="display:inline-flex;align-items:center;justify-content:center;background:#E5E7EB;color:#374151;padding:1px 5px;border-radius:10px;font-size:0.6rem;font-weight:600;margin-left:4px;" title="' + numGestiones + ' gestiones registradas">' + numGestiones + '</span>'
+                    : '';
 
                 html += '<tr style="border-bottom:1px solid #E5E7EB;transition:background 0.15s;" onmouseover="this.style.background=\'#F9FAFB\'" onmouseout="this.style.background=\'transparent\'">';
-                html += '<td style="padding:8px 10px;font-weight:500;font-size:0.8rem;max-width:180px;" title="' + (g.asegurado || '') + '">' + asegurado + '</td>';
+                html += '<td style="padding:8px 10px;font-weight:500;font-size:0.8rem;max-width:200px;" title="' + (g.asegurado || '') + ' (' + numGestiones + ' gestiones)">' + asegurado + gestionesBadge + '</td>';
                 html += '<td style="padding:8px 6px;">' + estadoBadge + '</td>';
                 html += '<td style="padding:8px 6px;font-size:0.75rem;color:#6B7280;">' + responsable + '</td>';
                 html += '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">' + formatDate(g.fechaEnvioEECC) + '</td>';
@@ -5177,13 +5296,21 @@
                     '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">' +
                     '<span style="background:' + diasBg + ';color:' + diasText + ';padding:3px 8px;border-radius:10px;font-size:0.7rem;font-weight:700;">' + dias + '</span>' +
                     '<span style="font-size:0.6rem;color:#9CA3AF;">' + diasLabel + '</span></div></td>';
-                html += '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">' + (g.fechaCompromiso ? formatDate(g.fechaCompromiso) : '<span style="color:#D1D5DB;">—</span>') + '</td>';
+                // QUICK WIN: Indicador de compromiso vencido
+                html += formatCompromisoCell(g.fechaCompromiso, g.estadoGestion);
 
-                // NUEVO: Columnas de Vencido PEN y USD con formato y color
+                // Columnas de Vencido PEN y USD con formato y color
                 const vencidoPEN = g.snapshotVencidoPEN || 0;
                 const vencidoUSD = g.snapshotVencidoUSD || 0;
                 html += '<td style="padding:8px 6px;font-size:0.75rem;text-align:right;font-weight:500;color:' + (vencidoPEN > 0 ? '#D32F2F' : '#9CA3AF') + ';">' + (vencidoPEN > 0 ? 'S/ ' + formatNumber(vencidoPEN) : '—') + '</td>';
+
+                // NUEVO: Indicador de variación PEN (Δ PEN)
+                html += formatDeltaCell(g.deltaVencidoPEN, g.tendenciaPEN, 'PEN');
+
                 html += '<td style="padding:8px 6px;font-size:0.75rem;text-align:right;font-weight:500;color:' + (vencidoUSD > 0 ? '#1565C0' : '#9CA3AF') + ';">' + (vencidoUSD > 0 ? '$ ' + formatNumber(vencidoUSD) : '—') + '</td>';
+
+                // NUEVO: Indicador de variación USD (Δ USD)
+                html += formatDeltaCell(g.deltaVencidoUSD, g.tendenciaUSD, 'USD');
 
                 html += '<td style="padding:8px 6px;font-size:0.75rem;color:#4B5563;max-width:140px;" title="' + (g.proximaAccion || '') + '">' + proximaAccion + '</td>';
                 html += '<td style="padding:6px;text-align:center;white-space:nowrap;">';
@@ -5220,6 +5347,118 @@
         function formatNumber(num) {
             if (!num && num !== 0) return '-';
             return num.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        /**
+         * FASE D: Formatea celda de variación de deuda (delta)
+         * @param {number|null} delta - Valor del delta (puede ser null)
+         * @param {string} tendencia - AUMENTO | DISMINUCION | SIN_CAMBIO | PRIMERA
+         * @param {string} moneda - PEN | USD
+         * @return {string} HTML de la celda
+         */
+        function formatDeltaCell(delta, tendencia, moneda) {
+            // Si es primera gestión o delta es null
+            if (tendencia === 'PRIMERA' || delta === null || delta === undefined) {
+                return '<td style="padding:8px 4px;font-size:0.7rem;text-align:center;color:#9CA3AF;" title="Primera gestión registrada">—</td>';
+            }
+
+            // Determinar colores y símbolos según tendencia
+            let bgColor, textColor, icon, deltaFormatted, title;
+
+            if (tendencia === 'AUMENTO') {
+                // Deuda aumentó - ROJO (malo)
+                bgColor = '#FEF2F2';
+                textColor = '#DC2626';
+                icon = '↑';
+                deltaFormatted = '+' + formatNumber(Math.abs(delta));
+                title = 'Deuda aumentó vs gestión anterior';
+            } else if (tendencia === 'DISMINUCION') {
+                // Deuda disminuyó - VERDE (bueno)
+                bgColor = '#F0FDF4';
+                textColor = '#16A34A';
+                icon = '↓';
+                deltaFormatted = '-' + formatNumber(Math.abs(delta));
+                title = 'Deuda disminuyó vs gestión anterior';
+            } else {
+                // Sin cambio
+                bgColor = '#F9FAFB';
+                textColor = '#6B7280';
+                icon = '=';
+                deltaFormatted = '0';
+                title = 'Sin cambio vs gestión anterior';
+            }
+
+            const prefix = moneda === 'PEN' ? 'S/' : '$';
+
+            return '<td style="padding:8px 4px;font-size:0.65rem;text-align:center;" title="' + title + '">' +
+                '<div style="display:inline-flex;align-items:center;gap:2px;background:' + bgColor + ';color:' + textColor + ';padding:2px 6px;border-radius:4px;font-weight:600;border:1px solid ' + textColor + '20;">' +
+                '<span style="font-size:0.75rem;">' + icon + '</span>' +
+                '<span>' + prefix + deltaFormatted + '</span>' +
+                '</div></td>';
+        }
+
+        /**
+         * QUICK WIN: Formatea celda de fecha de compromiso con indicador de vencido
+         * Muestra badge de alerta si el compromiso ya venció y el estado no es cerrado
+         * @param {Date|string|null} fechaCompromiso - Fecha del compromiso
+         * @param {string} estadoGestion - Estado actual de la gestión
+         * @return {string} HTML de la celda
+         */
+        function formatCompromisoCell(fechaCompromiso, estadoGestion) {
+            // Si no hay fecha de compromiso
+            if (!fechaCompromiso) {
+                return '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;"><span style="color:#D1D5DB;">—</span></td>';
+            }
+
+            const fecha = new Date(fechaCompromiso);
+            if (isNaN(fecha.getTime())) {
+                return '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;"><span style="color:#D1D5DB;">—</span></td>';
+            }
+
+            const fechaStr = formatDate(fechaCompromiso);
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            fecha.setHours(0, 0, 0, 0);
+
+            // Estados que ya están "cerrados" - no mostrar alerta
+            const estadosCerrados = ['CERRADO_PAGADO', 'NO_COBRABLE', 'DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES'];
+            const esCerrado = estadosCerrados.includes(estadoGestion);
+
+            // Calcular días de diferencia
+            const diffMs = fecha.getTime() - hoy.getTime();
+            const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+            let html = '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">';
+
+            if (diffDias < 0 && !esCerrado) {
+                // VENCIDO - Compromiso pasado y no cerrado
+                const diasVencido = Math.abs(diffDias);
+                html += '<div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;">';
+                html += '<span>' + fechaStr + '</span>';
+                html += '<span style="display:inline-flex;align-items:center;gap:2px;background:#FEF2F2;color:#DC2626;padding:1px 4px;border-radius:3px;font-size:0.6rem;font-weight:600;border:1px solid #FECACA;" title="Compromiso vencido hace ' + diasVencido + ' días">';
+                html += '⚠️ VENCIDO';
+                html += '</span></div>';
+            } else if (diffDias === 0 && !esCerrado) {
+                // HOY - Compromiso es hoy
+                html += '<div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;">';
+                html += '<span>' + fechaStr + '</span>';
+                html += '<span style="display:inline-flex;align-items:center;gap:2px;background:#FEF3C7;color:#92400E;padding:1px 4px;border-radius:3px;font-size:0.6rem;font-weight:600;border:1px solid #FDE68A;" title="Compromiso vence hoy">';
+                html += '📅 HOY';
+                html += '</span></div>';
+            } else if (diffDias > 0 && diffDias <= 3 && !esCerrado) {
+                // PRÓXIMO - Vence en 1-3 días
+                html += '<div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;">';
+                html += '<span>' + fechaStr + '</span>';
+                html += '<span style="display:inline-flex;align-items:center;gap:2px;background:#EFF6FF;color:#1D4ED8;padding:1px 4px;border-radius:3px;font-size:0.6rem;font-weight:600;border:1px solid #BFDBFE;" title="Vence en ' + diffDias + ' día(s)">';
+                html += '🕐 ' + diffDias + 'd';
+                html += '</span></div>';
+            } else {
+                // Normal o cerrado
+                html += fechaStr;
+            }
+
+            html += '</td>';
+            return html;
         }
 
         function ordenarBitacora(campo) {
@@ -5272,6 +5511,16 @@
                         valA = a.snapshotVencidoUSD || 0;
                         valB = b.snapshotVencidoUSD || 0;
                         break;
+                    case 'deltaVencidoPEN':
+                        // Ordenar por delta PEN (nulls al final)
+                        valA = a.deltaVencidoPEN !== null ? a.deltaVencidoPEN : (BITACORA_SORT_ORDER === 'asc' ? Infinity : -Infinity);
+                        valB = b.deltaVencidoPEN !== null ? b.deltaVencidoPEN : (BITACORA_SORT_ORDER === 'asc' ? Infinity : -Infinity);
+                        break;
+                    case 'deltaVencidoUSD':
+                        // Ordenar por delta USD (nulls al final)
+                        valA = a.deltaVencidoUSD !== null ? a.deltaVencidoUSD : (BITACORA_SORT_ORDER === 'asc' ? Infinity : -Infinity);
+                        valB = b.deltaVencidoUSD !== null ? b.deltaVencidoUSD : (BITACORA_SORT_ORDER === 'asc' ? Infinity : -Infinity);
+                        break;
                     default:
                         valA = a[campo] || '';
                         valB = b[campo] || '';
@@ -5312,13 +5561,26 @@
         /**
          * Registra una gestión desde el formulario embebido
          */
+        // ════════════════════════════════════════════════════════════════════════════════
+        // FLAG GLOBAL ANTI DOBLE-CLIC (P0 Auditoría)
+        // ════════════════════════════════════════════════════════════════════════════════
+        let _isSubmittingGestion = false;
+
         /**
          * REGISTRAR GESTIÓN EMBEBIDO - VERSIÓN UNIFICADA v2.1 PRO
          * - Canal de Contacto se deriva automáticamente de Tipo de Gestión
          * - Fecha de Gestión se genera automáticamente (siempre actual)
+         * - MEJORADO: Protección robusta contra doble-clic
          */
         function registrarGestionEmbedded(event) {
             if (event) event.preventDefault();
+
+            // ════ PREVENCIÓN DOBLE-CLIC (P0) ════
+            if (_isSubmittingGestion) {
+                console.warn('[registrarGestionEmbedded] ⚠️ Operación en progreso, ignorando doble-clic');
+                return false;
+            }
+            _isSubmittingGestion = true;
 
             // Mapeo Tipo de Gestión → Canal de Contacto (automático)
             const TIPO_A_CANAL = {
@@ -5348,18 +5610,21 @@
             // Validación de campos obligatorios (sin canalContacto ya que es derivado)
             if (!asegurado || !tipoGestion || !estadoGestion || !proximaAccion) {
                 showGestionStatusEmb('error', 'Por favor completa todos los campos obligatorios');
+                _isSubmittingGestion = false; // RESET FLAG
                 return false;
             }
 
             // Validar Fecha Envío EECC
             if (!fechaEnvioEECC) {
                 showGestionStatusEmb('error', 'Por favor ingresa o carga la Fecha de Envío EECC');
+                _isSubmittingGestion = false; // RESET FLAG
                 return false;
             }
 
             // Validar que sea una fecha válida
             if (isNaN(new Date(fechaEnvioEECC).getTime())) {
                 showGestionStatusEmb('error', 'La Fecha de Envío EECC no es válida');
+                _isSubmittingGestion = false; // RESET FLAG
                 return false;
             }
 
@@ -5367,6 +5632,7 @@
             if ((estadoGestion === 'COMPROMISO_PAGO' || estadoGestion === 'REPROGRAMADO')) {
                 if (!fechaCompromiso) {
                     showGestionStatusEmb('error', 'El estado ' + estadoGestion.replace(/_/g, ' ') + ' requiere Fecha de Compromiso');
+                    _isSubmittingGestion = false; // RESET FLAG
                     return false;
                 }
             }
@@ -5375,6 +5641,7 @@
             const estadosRequierenObs = ['DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES', 'NO_COBRABLE'];
             if (estadosRequierenObs.includes(estadoGestion) && !observaciones) {
                 showGestionStatusEmb('error', 'El estado ' + estadoGestion.replace(/_/g, ' ') + ' requiere Observaciones');
+                _isSubmittingGestion = false; // RESET FLAG
                 return false;
             }
 
@@ -5404,6 +5671,9 @@
             google.script.run
                 .withSuccessHandler(function (result) {
                     console.log('[registrarGestionEmbedded] ✅ Resultado:', result);
+
+                    // RESET FLAG ANTI DOBLE-CLIC
+                    _isSubmittingGestion = false;
 
                     if (btn) {
                         btn.disabled = false;
@@ -5436,6 +5706,10 @@
                 })
                 .withFailureHandler(function (err) {
                     console.error('[registrarGestionEmbedded] ❌ Error:', err);
+
+                    // RESET FLAG ANTI DOBLE-CLIC
+                    _isSubmittingGestion = false;
+
                     showGestionStatusEmb('error', '❌ Error: ' + err.message);
                     if (btn) {
                         btn.disabled = false;
@@ -5460,6 +5734,7 @@
 
         /**
          * Limpiar formulario de gestión embebido
+         * FIX BUG FECHA REPROGRAMACIÓN: Usar classList + style.display para consistencia
          */
         function limpiarFormGestionEmb() {
             const form = document.getElementById('formGestionEmb');
@@ -5481,9 +5756,12 @@
             // Resetear campos de fecha
             resetearCamposFechaEmb();
 
-            // Ocultar grupo de fecha compromiso
+            // FIX: Ocultar grupo de fecha compromiso usando AMBOS classList y style.display
             const grupoCompromiso = document.getElementById('grupoFechaCompromisoEmb');
-            if (grupoCompromiso) grupoCompromiso.classList.add('hidden');
+            if (grupoCompromiso) {
+                grupoCompromiso.classList.add('hidden');
+                grupoCompromiso.style.display = 'none';
+            }
 
             // Ocultar asteriscos obligatorios
             const reqCompromiso = document.getElementById('requiredCompromisoEmb');
@@ -6254,11 +6532,23 @@
             const estado = document.getElementById('filtroEstadoEmb')?.value || '';
             const resp = document.getElementById('filtroResponsableEmb')?.value || '';
             const dias = document.getElementById('filtroDiasEmb')?.value || '';
+            const compromiso = document.getElementById('filtroCompromisoEmb')?.value || '';
+            const tendencia = document.getElementById('filtroTendenciaEmb')?.value || '';
+
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
 
             BITACORA_FILTERED = BITACORA_DATA.filter(function (g) {
+                // Filtro por asegurado
                 if (aseg && g.asegurado !== aseg) return false;
+                
+                // Filtro por estado
                 if (estado && g.estadoGestion !== estado) return false;
+                
+                // Filtro por responsable
                 if (resp && g.responsable !== resp) return false;
+                
+                // Filtro por días (antigüedad)
                 if (dias) {
                     const d = g.diasDesdeRegistro || 0;
                     if (dias === '0-7' && d > 7) return false;
@@ -6266,10 +6556,130 @@
                     if (dias === '31-60' && (d < 31 || d > 60)) return false;
                     if (dias === '61-' && d < 61) return false;
                 }
+                
+                // Filtro por compromisos
+                if (compromiso) {
+                    const tieneCompromiso = g.fechaCompromiso && g.fechaCompromiso !== '';
+                    if (compromiso === 'con' && !tieneCompromiso) return false;
+                    if (compromiso === 'sin' && tieneCompromiso) return false;
+                    if (compromiso === 'vencidos') {
+                        if (!tieneCompromiso) return false;
+                        const fechaComp = new Date(g.fechaCompromiso);
+                        fechaComp.setHours(0, 0, 0, 0);
+                        // Vencido = fecha compromiso < hoy Y no está cerrado
+                        const estadosCerrados = ['CERRADO_PAGADO', 'NO_COBRABLE', 'DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES'];
+                        if (fechaComp >= hoy || estadosCerrados.includes(g.estadoGestion)) return false;
+                    }
+                }
+                
+                // QUICK WIN: Filtro por tendencia de deuda
+                if (tendencia) {
+                    // Usar tendenciaPEN como indicador principal (o USD si no hay PEN)
+                    const tendenciaItem = g.tendenciaPEN || g.tendenciaUSD || 'PRIMERA';
+                    if (tendencia !== tendenciaItem) return false;
+                }
+                
                 return true;
             });
 
             renderBitacoraTableEmb();
+            
+            // Actualizar contador
+            const countEl = document.getElementById('bitacoraCountEmb');
+            if (countEl) countEl.textContent = BITACORA_FILTERED.length;
+        }
+
+        /**
+         * QUICK WIN: Aplicar filtro rápido predefinido
+         * @param {string} tipo - Tipo de filtro: 'vencidos', 'deuda_aumento', 'criticos', 'sin_respuesta', 'hoy'
+         */
+        function aplicarFiltroRapido(tipo) {
+            // Primero limpiar filtros existentes (sin trigger)
+            const filtros = ['filtroAseguradoEmb', 'filtroEstadoEmb', 'filtroResponsableEmb', 'filtroDiasEmb', 'filtroCompromisoEmb', 'filtroTendenciaEmb'];
+            filtros.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.selectedIndex = 0;
+            });
+            
+            // Aplicar filtro específico
+            switch (tipo) {
+                case 'vencidos':
+                    document.getElementById('filtroCompromisoEmb').value = 'vencidos';
+                    showToast('Mostrando compromisos vencidos', 'info');
+                    break;
+                case 'deuda_aumento':
+                    document.getElementById('filtroTendenciaEmb').value = 'AUMENTO';
+                    showToast('Mostrando clientes con deuda en aumento', 'warning');
+                    break;
+                case 'criticos':
+                    document.getElementById('filtroDiasEmb').value = '61-';
+                    showToast('Mostrando casos críticos (+60 días)', 'warning');
+                    break;
+                case 'sin_respuesta':
+                    document.getElementById('filtroEstadoEmb').value = 'SIN_RESPUESTA';
+                    showToast('Mostrando sin respuesta', 'info');
+                    break;
+                case 'hoy':
+                    // Para "vencen hoy" aplicamos filtro de compromisos con fecha de hoy
+                    // Implementamos filtro custom
+                    filtrarCompromisosHoy();
+                    return;
+            }
+            
+            // Ejecutar filtro
+            filtrarBitacoraEmbedded();
+        }
+        
+        /**
+         * Filtro especial: Compromisos que vencen hoy
+         */
+        function filtrarCompromisosHoy() {
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            const estadosCerrados = ['CERRADO_PAGADO', 'NO_COBRABLE', 'DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES'];
+            
+            BITACORA_FILTERED = BITACORA_DATA.filter(function (g) {
+                if (!g.fechaCompromiso) return false;
+                
+                const fechaComp = new Date(g.fechaCompromiso);
+                fechaComp.setHours(0, 0, 0, 0);
+                
+                // Vence hoy y no está cerrado
+                return fechaComp.getTime() === hoy.getTime() && !estadosCerrados.includes(g.estadoGestion);
+            });
+            
+            renderBitacoraTableEmb();
+            
+            const countEl = document.getElementById('bitacoraCountEmb');
+            if (countEl) countEl.textContent = BITACORA_FILTERED.length;
+            
+            showToast('Mostrando ' + BITACORA_FILTERED.length + ' compromisos que vencen hoy', 'info');
+        }
+
+        /**
+         * QUICK WIN: Limpiar todos los filtros de bitácora
+         */
+        function limpiarFiltrosBitacora() {
+            // Resetear todos los selects de filtro
+            const filtros = [
+                'filtroAseguradoEmb',
+                'filtroEstadoEmb',
+                'filtroResponsableEmb',
+                'filtroDiasEmb',
+                'filtroCompromisoEmb',
+                'filtroTendenciaEmb'
+            ];
+            
+            filtros.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.selectedIndex = 0;
+            });
+            
+            // Reaplicar filtros (ahora sin ninguno activo)
+            filtrarBitacoraEmbedded();
+            
+            showToast('Filtros limpiados', 'info');
         }
 
         function switchBitacoraTabEmbedded(tab) {
@@ -7335,8 +7745,14 @@
                 return;
             }
 
-            // Definir columnas (corregidas + snapshots)
-            const headers = ['Asegurado', 'Estado', 'Tipo', 'Canal', 'Responsable', 'Fecha Registro', 'Días Desde Registro', 'Fecha Compromiso', 'Próxima Acción', 'Vencido PEN', 'Vencido USD', 'Observaciones'];
+            // Definir columnas (corregidas + snapshots + deltas)
+            const headers = [
+                'Asegurado', 'Estado', 'Tipo', 'Canal', 'Responsable', 'Fecha Registro',
+                'Días Desde Registro', 'Fecha Compromiso', 'Próxima Acción',
+                'Vencido PEN', 'Delta PEN', 'Tendencia PEN',
+                'Vencido USD', 'Delta USD', 'Tendencia USD',
+                'Observaciones'
+            ];
 
             // Helper para escapar campos CSV
             function escapeCsvField(value) {
@@ -7349,19 +7765,23 @@
                 return str;
             }
 
-            // Construir filas con campos corregidos
+            // Construir filas con campos corregidos + variación de deuda
             const rows = BITACORA_FILTERED.map(item => [
                 escapeCsvField(item.asegurado),
                 escapeCsvField(item.estadoGestion),
                 escapeCsvField(item.tipoGestion),
                 escapeCsvField(item.canalContacto),
                 escapeCsvField(item.responsable),
-                escapeCsvField(item.fechaRegistro),         // Corregido: era fechaGestion
-                escapeCsvField(item.diasDesdeRegistro),     // Corregido: era diasPendientes
+                escapeCsvField(item.fechaRegistro),
+                escapeCsvField(item.diasDesdeRegistro),
                 escapeCsvField(item.fechaCompromiso),
                 escapeCsvField(item.proximaAccion),
-                escapeCsvField(item.snapshotVencidoPEN),    // NUEVO
-                escapeCsvField(item.snapshotVencidoUSD),    // NUEVO
+                escapeCsvField(item.snapshotVencidoPEN),
+                escapeCsvField(item.deltaVencidoPEN),       // NUEVO: Delta PEN
+                escapeCsvField(item.tendenciaPEN),          // NUEVO: Tendencia PEN
+                escapeCsvField(item.snapshotVencidoUSD),
+                escapeCsvField(item.deltaVencidoUSD),       // NUEVO: Delta USD
+                escapeCsvField(item.tendenciaUSD),          // NUEVO: Tendencia USD
                 escapeCsvField(item.observaciones)
             ]);
 
@@ -9167,6 +9587,27 @@
         }
 
         // ════════════════════════════════════════════════════════════════════════════════
+        // QUICK WIN: Contador de caracteres para textareas
+        // ════════════════════════════════════════════════════════════════════════════════
+        function updateCharCounter(inputId, counterId, maxLength) {
+            const input = document.getElementById(inputId);
+            const counter = document.getElementById(counterId);
+            if (!input || !counter) return;
+            
+            const currentLength = input.value.length;
+            counter.textContent = currentLength + '/' + maxLength;
+            
+            // Cambiar color según proximidad al límite
+            if (currentLength >= maxLength * 0.9) {
+                counter.style.color = '#DC2626'; // Rojo - muy cerca del límite
+            } else if (currentLength >= maxLength * 0.75) {
+                counter.style.color = '#F59E0B'; // Amarillo - acercándose
+            } else {
+                counter.style.color = 'var(--tp-text-tertiary)'; // Normal
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
         // VALIDACIÓN DEL FORMULARIO CON INDICADOR DE COMPLETITUD
         // ════════════════════════════════════════════════════════════════════════════════
         function validateFormV4() {
@@ -9257,17 +9698,36 @@
 
         // ════════════════════════════════════════════════════════════════════════════════
         // CAMBIO DE ESTADO - MOSTRAR/OCULTAR CAMPOS CONDICIONALES
+        // FIX BUG FECHA REPROGRAMACIÓN: Usar tanto classList como style.display
+        // para evitar conflictos con .hidden { display: none !important; }
         // ════════════════════════════════════════════════════════════════════════════════
         function onEstadoChangeEmbV4() {
             const estado = document.getElementById('gestionEstadoEmb')?.value;
             const grupoFechaCompromiso = document.getElementById('grupoFechaCompromisoEmb');
+            const inputFechaCompromiso = document.getElementById('gestionFechaCompromisoEmb');
             const requiredObs = document.getElementById('requiredObsEmb');
             const obsHelper = document.getElementById('obsHelperText');
 
             // Mostrar/ocultar fecha de compromiso
+            // FIX: Usar classList.remove/add para evitar que !important de .hidden bloquee style.display
             const needsFechaCompromiso = ['COMPROMISO_PAGO', 'REPROGRAMADO'].includes(estado);
             if (grupoFechaCompromiso) {
-                grupoFechaCompromiso.style.display = needsFechaCompromiso ? 'block' : 'none';
+                if (needsFechaCompromiso) {
+                    grupoFechaCompromiso.classList.remove('hidden');
+                    grupoFechaCompromiso.style.display = 'block';
+                    // Asegurar que el input esté habilitado y visible
+                    if (inputFechaCompromiso) {
+                        inputFechaCompromiso.disabled = false;
+                        inputFechaCompromiso.style.display = '';
+                    }
+                } else {
+                    grupoFechaCompromiso.classList.add('hidden');
+                    grupoFechaCompromiso.style.display = 'none';
+                    // Limpiar el valor cuando se oculta
+                    if (inputFechaCompromiso) {
+                        inputFechaCompromiso.value = '';
+                    }
+                }
             }
 
             // Mostrar/ocultar asterisco en observaciones
@@ -9335,6 +9795,7 @@
 
         // ════════════════════════════════════════════════════════════════════════════════
         // LIMPIAR FORMULARIO v4
+        // FIX BUG FECHA REPROGRAMACIÓN: Usar classList + style.display para consistencia
         // ════════════════════════════════════════════════════════════════════════════════
         function limpiarFormGestionEmbV4() {
             // Limpiar campos de texto
@@ -9356,15 +9817,27 @@
                 if (el) el.selectedIndex = 0;
             });
 
-            // Limpiar fechas
-            document.getElementById('gestionFechaCompromisoEmb').value = '';
+            // Limpiar fecha de compromiso
+            const inputFechaCompromiso = document.getElementById('gestionFechaCompromisoEmb');
+            if (inputFechaCompromiso) {
+                inputFechaCompromiso.value = '';
+            }
 
             // Reiniciar fecha de gestión a ahora
             setFechaGestionAhora();
 
-            // Ocultar campos condicionales
-            document.getElementById('grupoFechaCompromisoEmb').style.display = 'none';
-            document.getElementById('requiredObsEmb').style.display = 'none';
+            // FIX: Ocultar campos condicionales usando AMBOS classList y style.display
+            // Esto asegura que cuando onEstadoChangeEmbV4() se llame, pueda mostrar el campo correctamente
+            const grupoFechaCompromiso = document.getElementById('grupoFechaCompromisoEmb');
+            if (grupoFechaCompromiso) {
+                grupoFechaCompromiso.classList.add('hidden');
+                grupoFechaCompromiso.style.display = 'none';
+            }
+            
+            const requiredObs = document.getElementById('requiredObsEmb');
+            if (requiredObs) {
+                requiredObs.style.display = 'none';
+            }
 
             // Limpiar status
             const status = document.getElementById('gestionStatusEmb');
@@ -9388,14 +9861,23 @@
 
         // ════════════════════════════════════════════════════════════════════════════════
         // REGISTRAR GESTIÓN v4 (adaptado del original)
+        // MEJORADO: Protección robusta contra doble-clic
         // ════════════════════════════════════════════════════════════════════════════════
         function registrarGestionEmbeddedV4(event) {
             if (event) event.preventDefault();
 
             // Si la función original existe, usarla para mantener compatibilidad
+            // (ya tiene protección anti-doble-clic)
             if (typeof registrarGestionEmbedded === 'function') {
                 return registrarGestionEmbedded(event);
             }
+
+            // ════ PREVENCIÓN DOBLE-CLIC (P0) - FALLBACK ════
+            if (_isSubmittingGestion) {
+                console.warn('[registrarGestionEmbeddedV4] ⚠️ Operación en progreso, ignorando doble-clic');
+                return false;
+            }
+            _isSubmittingGestion = true;
 
             // Fallback: lógica propia
             const TIPO_A_CANAL = {
@@ -9421,6 +9903,7 @@
             // Validaciones
             if (!validateFormV4()) {
                 showGestionStatusEmbV4('error', 'Por favor completa todos los campos obligatorios');
+                _isSubmittingGestion = false; // RESET FLAG
                 return false;
             }
 
@@ -9451,6 +9934,9 @@
             if (typeof google !== 'undefined' && google.script) {
                 google.script.run
                     .withSuccessHandler(function (result) {
+                        // RESET FLAG ANTI DOBLE-CLIC
+                        _isSubmittingGestion = false;
+
                         if (btn) {
                             btn.disabled = false;
                             btn.innerHTML = '<span>💾</span> Registrar Gestión';
@@ -9474,6 +9960,9 @@
                         }
                     })
                     .withFailureHandler(function (err) {
+                        // RESET FLAG ANTI DOBLE-CLIC
+                        _isSubmittingGestion = false;
+
                         if (btn) {
                             btn.disabled = false;
                             btn.innerHTML = '<span>💾</span> Registrar Gestión';
@@ -9481,6 +9970,9 @@
                         showGestionStatusEmbV4('error', '❌ Error: ' + err.message);
                     })
                     .registrarGestionManualBitacora(payload, TOKEN);
+            } else {
+                // Si google.script no está disponible, resetear el flag
+                _isSubmittingGestion = false;
             }
 
             return false;

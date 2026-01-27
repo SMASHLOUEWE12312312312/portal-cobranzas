@@ -659,13 +659,58 @@ var BitacoraService = BitacoraService || {
         // Contar cuántos ciclos diferentes tiene este asegurado
         const ciclosUnicos = [...new Set(todasGestionesAsegurado.map(g => g.idCiclo))];
 
-        Logger.info(context, `Asegurado: ${nombreOriginal}`, {
+        // ========== NUEVO: Calcular variación de deuda vs gestión anterior ==========
+        let deltaVencidoPEN = null;
+        let deltaVencidoUSD = null;
+        let deltaPercentPEN = null;
+        let deltaPercentUSD = null;
+        let tendenciaPEN = 'SIN_CAMBIO';  // SIN_CAMBIO | AUMENTO | DISMINUCION | PRIMERA
+        let tendenciaUSD = 'SIN_CAMBIO';
+
+        if (todasGestionesAsegurado.length > 1) {
+          // Tomar la gestión anterior (segunda más reciente)
+          const gestionAnterior = todasGestionesAsegurado[1];
+
+          const vencidoPENActual = ultimaGestion.snapshotVencidoPEN || 0;
+          const vencidoPENAnterior = gestionAnterior.snapshotVencidoPEN || 0;
+          const vencidoUSDActual = ultimaGestion.snapshotVencidoUSD || 0;
+          const vencidoUSDAnterior = gestionAnterior.snapshotVencidoUSD || 0;
+
+          // Calcular deltas
+          deltaVencidoPEN = Math.round((vencidoPENActual - vencidoPENAnterior) * 100) / 100;
+          deltaVencidoUSD = Math.round((vencidoUSDActual - vencidoUSDAnterior) * 100) / 100;
+
+          // Calcular porcentaje de variación (solo si anterior > 0)
+          if (vencidoPENAnterior > 0) {
+            deltaPercentPEN = Math.round((deltaVencidoPEN / vencidoPENAnterior) * 10000) / 100; // 2 decimales
+          }
+          if (vencidoUSDAnterior > 0) {
+            deltaPercentUSD = Math.round((deltaVencidoUSD / vencidoUSDAnterior) * 10000) / 100;
+          }
+
+          // Determinar tendencia
+          if (deltaVencidoPEN > 0) tendenciaPEN = 'AUMENTO';
+          else if (deltaVencidoPEN < 0) tendenciaPEN = 'DISMINUCION';
+          else tendenciaPEN = 'SIN_CAMBIO';
+
+          if (deltaVencidoUSD > 0) tendenciaUSD = 'AUMENTO';
+          else if (deltaVencidoUSD < 0) tendenciaUSD = 'DISMINUCION';
+          else tendenciaUSD = 'SIN_CAMBIO';
+        } else {
+          // Primera gestión del asegurado
+          tendenciaPEN = 'PRIMERA';
+          tendenciaUSD = 'PRIMERA';
+        }
+
+        Logger.debug(context, `Asegurado: ${nombreOriginal}`, {
           normalizado: aseguradoNormalizado,
           totalGestiones: todasGestionesAsegurado.length,
           totalCiclos: ciclosUnicos.length,
           cicloActual: ultimaGestion.idCiclo,
-          ultimaFecha: ultimaGestion.fechaRegistro,
-          ultimaFechaISO: ultimaGestion.fechaRegistro ? ultimaGestion.fechaRegistro.toISOString() : 'null'
+          deltaVencidoPEN: deltaVencidoPEN,
+          deltaVencidoUSD: deltaVencidoUSD,
+          tendenciaPEN: tendenciaPEN,
+          tendenciaUSD: tendenciaUSD
         });
 
         // Calcular días desde INICIO DEL CICLO ACTUAL (fechaEnvioEECC)
@@ -677,7 +722,14 @@ var BitacoraService = BitacoraService || {
           asegurado: nombreOriginal,  // Usar el nombre original para mostrar
           diasDesdeRegistro: diasDesdeCiclo,  // Días desde inicio del ciclo actual
           numGestiones: todasGestionesAsegurado.length,  // Total de gestiones del asegurado (todos los ciclos)
-          numCiclos: ciclosUnicos.length  // Total de ciclos del asegurado
+          numCiclos: ciclosUnicos.length,  // Total de ciclos del asegurado
+          // NUEVO: Campos de variación de deuda
+          deltaVencidoPEN: deltaVencidoPEN,
+          deltaVencidoUSD: deltaVencidoUSD,
+          deltaPercentPEN: deltaPercentPEN,
+          deltaPercentUSD: deltaPercentUSD,
+          tendenciaPEN: tendenciaPEN,
+          tendenciaUSD: tendenciaUSD
         });
       });
 
