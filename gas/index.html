@@ -346,6 +346,7 @@
                                     <input type="text" id="aseguradoSelect" class="autocomplete-input"
                                         placeholder="Escribe o selecciona un cliente..." autocomplete="off"
                                         oninput="filtrarAutocompleteEECC()"
+                                        onkeydown="handleAutocompleteKeydownEECC(event)"
                                         onfocus="mostrarDropdownAutocompleteEECC()" />
                                     <button type="button" class="autocomplete-dropdown-btn"
                                         onclick="toggleDropdownAutocompleteEECC()" title="Ver todas las opciones">
@@ -3596,6 +3597,13 @@
             }
         }
 
+        // ════════════════════════════════════════════════════════════════════════════════
+        // AUTOCOMPLETE NIVEL PRO - Search as you type (instantáneo)
+        // ════════════════════════════════════════════════════════════════════════════════
+        
+        let AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1; // Índice de opción destacada para navegación con teclado
+        let AUTOCOMPLETE_EECC_SEARCH_CACHE = {};    // Cache de búsquedas previas
+        
         function filtrarAutocompleteEECC() {
             toggleGenerarBtnState();  // Enable/Disable on typing
             const input = document.getElementById('aseguradoSelect');
@@ -3607,42 +3615,170 @@
             if (!input || !dropdown || !optionsContainer) return;
 
             const searchText = input.value;
+            const searchKey = searchText.toLowerCase().trim();
             clearBtn.style.display = searchText ? 'flex' : 'none';
+            
+            // Resetear índice de highlight
+            AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;
 
-            // MODE: Grupo (Client Side)
+            // ═══ MODE: Grupo (Client Side - INSTANTÁNEO) ═══
             if (EECC_MODE === 'grupo') {
                 const normalized = normalizeText(searchText);
+                
                 if (!searchText) {
                     AUTOCOMPLETE_EECC_FILTERED = [...ALL_GRUPOS];
                 } else {
-                    AUTOCOMPLETE_EECC_FILTERED = ALL_GRUPOS.filter(o => normalizeText(o).includes(normalized));
+                    // Filtrado instantáneo con ranking de relevancia
+                    AUTOCOMPLETE_EECC_FILTERED = ALL_GRUPOS
+                        .map(grupo => {
+                            const normalizedGrupo = normalizeText(grupo);
+                            const index = normalizedGrupo.indexOf(normalized);
+                            return { grupo, index, startsWith: index === 0 };
+                        })
+                        .filter(item => item.index !== -1)
+                        .sort((a, b) => {
+                            // Priorizar los que empiezan con el texto buscado
+                            if (a.startsWith && !b.startsWith) return -1;
+                            if (!a.startsWith && b.startsWith) return 1;
+                            // Luego por posición del match
+                            return a.index - b.index;
+                        })
+                        .map(item => item.grupo);
                 }
-                renderAutocompleteOptionsEECC();
-                if (searchText) dropdown.style.display = 'block';
+                
+                // Mostrar contador
+                mostrarContadorEECC(AUTOCOMPLETE_EECC_FILTERED.length, ALL_GRUPOS.length);
+                
+                renderAutocompleteOptionsEECC(searchText);
+                dropdown.style.display = 'block';
                 return;
             }
 
-            // MODE: Asegurado (Server Side Paged - Debounced)
+            // ═══ MODE: Asegurado (Server Side Paged - Debounce reducido) ═══
             if (SEARCH_TIMEOUT) clearTimeout(SEARCH_TIMEOUT);
-
+            
+            // Mostrar "buscando..." inmediatamente
+            if (searchText && searchText !== ASEGURADOS_DS.search) {
+                optionsContainer.innerHTML = '<div class="autocomplete-option disabled" style="color:var(--tp-primary);">🔍 Buscando...</div>';
+            }
+            
+            // Debounce ultra-corto de 100ms para server-side
             SEARCH_TIMEOUT = setTimeout(() => {
-                // If search changed, fetch new
-                if (searchText !== ASEGURADOS_DS.search) {
+                // Verificar cache local primero
+                if (AUTOCOMPLETE_EECC_SEARCH_CACHE[searchKey] && !searchText) {
+                    ASEGURADOS_DS.items = AUTOCOMPLETE_EECC_SEARCH_CACHE[searchKey];
+                    renderAutocompleteOptionsEECC(searchText);
+                } else if (searchText !== ASEGURADOS_DS.search) {
                     fetchAseguradosPaged(searchText, null, true);
                 }
                 dropdown.style.display = 'block';
-            }, 300);
+            }, 100); // Reducido de 300ms a 100ms
+        }
+        
+        /**
+         * PRO: Mostrar contador de resultados
+         */
+        function mostrarContadorEECC(filtrados, total) {
+            const counter = document.getElementById('autocompleteCounterEECC');
+            if (!counter) return;
+            
+            if (filtrados === total) {
+                counter.style.display = 'none';
+            } else {
+                counter.style.display = 'block';
+                counter.textContent = `${filtrados} de ${total} resultados`;
+                counter.style.padding = '0.5rem 1rem';
+                counter.style.fontSize = '0.75rem';
+                counter.style.color = 'var(--tp-text-secondary)';
+                counter.style.borderBottom = '1px solid var(--tp-border-light)';
+                counter.style.background = 'var(--tp-surface-secondary)';
+            }
+        }
+        
+        /**
+         * PRO: Navegación con teclado (flechas + Enter + Escape)
+         */
+        function handleAutocompleteKeydownEECC(event) {
+            const dropdown = document.getElementById('autocompleteDropdownEECC');
+            const options = document.querySelectorAll('#autocompleteOptionsEECC .autocomplete-option:not(.disabled):not(.load-more)');
+            
+            if (!dropdown || dropdown.style.display === 'none') {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    dropdown.style.display = 'block';
+                    return;
+                }
+                return;
+            }
+            
+            const maxIndex = options.length - 1;
+            
+            switch (event.key) {
+                case 'ArrowDown':
+                    event.preventDefault();
+                    AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = Math.min(AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX + 1, maxIndex);
+                    highlightAutocompleteOptionEECC(AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX);
+                    scrollToHighlightedOption();
+                    break;
+                    
+                case 'ArrowUp':
+                    event.preventDefault();
+                    AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = Math.max(AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX - 1, 0);
+                    highlightAutocompleteOptionEECC(AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX);
+                    scrollToHighlightedOption();
+                    break;
+                    
+                case 'Enter':
+                    event.preventDefault();
+                    if (AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX >= 0 && options[AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX]) {
+                        options[AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX].click();
+                    } else if (options.length === 1) {
+                        // Si solo hay una opción, seleccionarla
+                        options[0].click();
+                    }
+                    break;
+                    
+                case 'Escape':
+                    event.preventDefault();
+                    dropdown.style.display = 'none';
+                    AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;
+                    break;
+                    
+                case 'Tab':
+                    // Permitir tab normal pero cerrar dropdown
+                    dropdown.style.display = 'none';
+                    break;
+            }
+        }
+        
+        /**
+         * PRO: Scroll automático a opción destacada
+         */
+        function scrollToHighlightedOption() {
+            const highlighted = document.querySelector('#autocompleteOptionsEECC .autocomplete-option-highlighted');
+            if (highlighted) {
+                highlighted.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
         }
 
-        function renderAutocompleteOptionsEECC() {
+        /**
+         * PRO: Renderizado optimizado con highlight del texto buscado
+         * @param {string} searchText - Texto de búsqueda para highlight
+         */
+        function renderAutocompleteOptionsEECC(searchText = '') {
             const optionsContainer = document.getElementById('autocompleteOptionsEECC');
+            const input = document.getElementById('aseguradoSelect');
             if (!optionsContainer) return;
+            
+            // Obtener texto de búsqueda si no se proporcionó
+            if (!searchText && input) {
+                searchText = input.value;
+            }
 
             optionsContainer.innerHTML = '';
 
             // Loading Indicator
             if (EECC_MODE === 'asegurado' && ASEGURADOS_DS.loading && ASEGURADOS_DS.items.length === 0) {
-                optionsContainer.innerHTML = '<div class="autocomplete-option disabled">⏳ Cargando...</div>';
+                optionsContainer.innerHTML = '<div class="autocomplete-option disabled" style="color:var(--tp-primary);">⏳ Cargando asegurados...</div>';
                 return;
             }
 
@@ -3655,22 +3791,59 @@
 
             if (list.length === 0) {
                 if (EECC_MODE === 'asegurado' && ASEGURADOS_DS.loading) {
-                    // Loading more...
+                    optionsContainer.innerHTML = '<div class="autocomplete-option disabled" style="color:var(--tp-primary);">🔍 Buscando...</div>';
                 } else {
-                    optionsContainer.innerHTML = '<div class="autocomplete-option disabled">❌ Sin resultados</div>';
-                    return;
+                    optionsContainer.innerHTML = '<div class="autocomplete-option disabled">❌ Sin resultados para "' + escapeHtml(searchText) + '"</div>';
                 }
+                return;
             }
+            
+            // PRO: Limitar a 100 items para performance (virtual scrolling ligero)
+            const MAX_VISIBLE = 100;
+            const displayList = list.slice(0, MAX_VISIBLE);
+            const hasMoreItems = list.length > MAX_VISIBLE;
 
-            list.forEach(opt => {
+            // PRO: Usar DocumentFragment para mejor performance
+            const fragment = document.createDocumentFragment();
+            
+            displayList.forEach((opt, index) => {
                 const div = document.createElement('div');
                 div.className = 'autocomplete-option';
-                div.textContent = opt;
+                div.setAttribute('data-index', index);
+                
+                // PRO: Highlight del texto buscado
+                if (searchText && searchText.trim()) {
+                    div.innerHTML = highlightSearchText(opt, searchText);
+                } else {
+                    div.textContent = opt;
+                }
+                
                 div.onclick = () => seleccionarOpcionAutocompleteEECC(opt);
-                optionsContainer.appendChild(div);
+                
+                // PRO: Hover y highlight con mouse
+                div.onmouseenter = () => {
+                    AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = index;
+                    highlightAutocompleteOptionEECC(index);
+                };
+                
+                fragment.appendChild(div);
             });
+            
+            optionsContainer.appendChild(fragment);
+            
+            // Mostrar indicador si hay más items
+            if (hasMoreItems) {
+                const moreIndicator = document.createElement('div');
+                moreIndicator.className = 'autocomplete-option disabled';
+                moreIndicator.style.textAlign = 'center';
+                moreIndicator.style.fontSize = '0.75rem';
+                moreIndicator.style.color = 'var(--tp-text-secondary)';
+                moreIndicator.style.borderTop = '1px solid var(--tp-border-light)';
+                moreIndicator.textContent = `... y ${list.length - MAX_VISIBLE} más. Escribe para filtrar.`;
+                optionsContainer.appendChild(moreIndicator);
+            }
 
-            // Load More Indicator (Carga automática - v2.1)
+            // Load More Indicator para Asegurados (Server Side)
             if (EECC_MODE === 'asegurado' && ASEGURADOS_DS.hasMore) {
                 const loadMore = document.createElement('div');
                 loadMore.className = 'autocomplete-option load-more';
@@ -3680,14 +3853,53 @@
                 loadMore.style.borderTop = '1px solid var(--tp-border-light)';
                 loadMore.style.cursor = 'default';
 
-                // Siempre mostrar estado de carga (carga automática)
                 const progress = ASEGURADOS_DS.totalExpected > 0
                     ? Math.round((ASEGURADOS_DS.items.length / ASEGURADOS_DS.totalExpected) * 100)
                     : 0;
-                loadMore.textContent = `⏳ Cargando asegurados... ${progress}%`;
+                loadMore.textContent = `⏳ Cargando... ${progress}%`;
 
                 optionsContainer.appendChild(loadMore);
             }
+            
+            // Mostrar contador para modo asegurado
+            if (EECC_MODE === 'asegurado') {
+                mostrarContadorEECC(list.length, ASEGURADOS_DS.totalExpected || list.length);
+            }
+        }
+        
+        /**
+         * PRO: Highlight del texto buscado en el resultado
+         * @param {string} text - Texto completo
+         * @param {string} search - Texto a resaltar
+         * @return {string} HTML con highlight
+         */
+        function highlightSearchText(text, search) {
+            if (!search || !search.trim()) return escapeHtml(text);
+            
+            const normalizedText = text.toLowerCase();
+            const normalizedSearch = search.toLowerCase().trim();
+            const index = normalizedText.indexOf(normalizedSearch);
+            
+            if (index === -1) return escapeHtml(text);
+            
+            const before = text.substring(0, index);
+            const match = text.substring(index, index + search.length);
+            const after = text.substring(index + search.length);
+            
+            return escapeHtml(before) + 
+                   '<mark style="background:#FEF3C7;color:#92400E;padding:0 2px;border-radius:2px;font-weight:600;">' + 
+                   escapeHtml(match) + 
+                   '</mark>' + 
+                   escapeHtml(after);
+        }
+        
+        /**
+         * Helper: Escape HTML para prevenir XSS
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function seleccionarOpcionAutocompleteEECC(value) {
@@ -3784,15 +3996,32 @@
         }
 
         function highlightAutocompleteOptionEECC(index) {
-            const options = document.querySelectorAll('#autocompleteOptionsEECC .autocomplete-option');
+            const options = document.querySelectorAll('#autocompleteOptionsEECC .autocomplete-option:not(.disabled):not(.load-more)');
             options.forEach((opt, i) => {
                 if (i === index) {
                     opt.classList.add('autocomplete-option-highlighted');
+                    opt.style.background = 'var(--tp-primary-pale, #FEE2E2)';
+                    opt.style.borderLeft = '3px solid var(--tp-primary)';
                 } else {
                     opt.classList.remove('autocomplete-option-highlighted');
+                    opt.style.background = '';
+                    opt.style.borderLeft = '';
                 }
             });
         }
+        
+        /**
+         * PRO: Cerrar dropdown de EECC al hacer clic fuera
+         */
+        document.addEventListener('click', function(e) {
+            const wrapper = document.querySelector('.autocomplete-wrapper');
+            const dropdown = document.getElementById('autocompleteDropdownEECC');
+            
+            if (wrapper && dropdown && !wrapper.contains(e.target)) {
+                dropdown.style.display = 'none';
+                AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;
+            }
+        });
 
         // ============================================================
         // ACTUALIZAR BASE DE DATOS (UPLOAD)
