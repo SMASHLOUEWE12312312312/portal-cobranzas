@@ -663,3 +663,182 @@ function testEmailsPRO() {
         weekly: { ok: weekly.ok, sizeKB: weekly.sizeKB, semana: weekly.data?.semana }
     };
 }
+
+// ========== FUNCIONES DE ENVÍO DE PRUEBA ==========
+
+/**
+ * Envía el reporte DIARIO de prueba a los admins configurados
+ * Ejecutar desde Apps Script para probar el email diario PRO
+ */
+function enviarReporteDiarioPrueba() {
+    console.log('📧 Enviando reporte DIARIO de prueba...\n');
+    
+    try {
+        // Verificar que ReportScheduler existe
+        if (typeof ReportScheduler === 'undefined') {
+            throw new Error('ReportScheduler no está disponible');
+        }
+        
+        // Generar y enviar el reporte diario
+        const result = ReportScheduler.generateDailySummary();
+        
+        if (result.ok) {
+            console.log('✅ Reporte diario enviado exitosamente');
+            console.log('   Destinatarios: ' + (result.recipients || 'admins configurados'));
+            console.log('   Datos incluidos:');
+            console.log('     - KPIs del día');
+            console.log('     - Prioridades');
+            console.log('     - Cuentas en riesgo');
+            console.log('     - PTPs próximos');
+        } else {
+            console.log('❌ Error enviando reporte: ' + (result.error || 'desconocido'));
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.log('❌ Error: ' + error.message);
+        return { ok: false, error: error.message };
+    }
+}
+
+/**
+ * Envía el reporte SEMANAL de prueba a los admins configurados
+ * Ejecutar desde Apps Script para probar el email semanal PRO
+ */
+function enviarReporteSemanalPrueba() {
+    console.log('📈 Enviando reporte SEMANAL de prueba...\n');
+    
+    try {
+        // Verificar que ReportScheduler existe
+        if (typeof ReportScheduler === 'undefined') {
+            throw new Error('ReportScheduler no está disponible');
+        }
+        
+        // Generar y enviar el reporte semanal
+        const result = ReportScheduler.generateWeeklyReport();
+        
+        if (result.ok) {
+            console.log('✅ Reporte semanal enviado exitosamente');
+            console.log('   Destinatarios: ' + (result.recipients || 'admins configurados'));
+            console.log('   Semana: ' + (result.semana || 'actual'));
+            console.log('   Datos incluidos:');
+            console.log('     - Executive Summary');
+            console.log('     - Scoreboard semanal');
+            console.log('     - Aging Distribution');
+            console.log('     - Performance por responsable');
+            console.log('     - Acciones recomendadas');
+        } else {
+            console.log('❌ Error enviando reporte: ' + (result.error || 'desconocido'));
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.log('❌ Error: ' + error.message);
+        return { ok: false, error: error.message };
+    }
+}
+
+/**
+ * Envía AMBOS reportes de prueba (diario + semanal)
+ * Ejecutar desde Apps Script para probar ambos emails PRO
+ */
+function enviarAmbosReportesPrueba() {
+    console.log('🚀 Enviando AMBOS reportes de prueba...\n');
+    console.log('═'.repeat(50) + '\n');
+    
+    const dailyResult = enviarReporteDiarioPrueba();
+    
+    console.log('\n' + '─'.repeat(50) + '\n');
+    
+    const weeklyResult = enviarReporteSemanalPrueba();
+    
+    console.log('\n' + '═'.repeat(50));
+    console.log('📊 RESUMEN DE ENVÍOS');
+    console.log('═'.repeat(50));
+    console.log('Reporte Diario: ' + (dailyResult.ok ? '✅ ENVIADO' : '❌ ERROR'));
+    console.log('Reporte Semanal: ' + (weeklyResult.ok ? '✅ ENVIADO' : '❌ ERROR'));
+    console.log('═'.repeat(50) + '\n');
+    
+    return {
+        ok: dailyResult.ok && weeklyResult.ok,
+        daily: dailyResult,
+        weekly: weeklyResult
+    };
+}
+
+/**
+ * Configura los triggers de automatización (incluyendo reporte semanal los miércoles 8am)
+ * Ejecutar UNA VEZ para activar la programación automática
+ */
+function configurarTriggersAutomaticos() {
+    console.log('⚙️ Configurando triggers automáticos...\n');
+    
+    try {
+        if (typeof AutomationEngine === 'undefined') {
+            throw new Error('AutomationEngine no está disponible');
+        }
+        
+        const result = AutomationEngine.setupTriggers();
+        
+        if (result.ok) {
+            console.log('✅ Triggers configurados exitosamente');
+            console.log('\n📅 Programación activa:');
+            console.log('   • Resumen Diario: Todos los días a las 7:00 AM (Lima)');
+            console.log('   • Reporte Semanal: Todos los MIÉRCOLES a las 8:00 AM (Lima)');
+            console.log('   • Automatización: Cada hora');
+            console.log('\n⚠️ Los triggers ya están activos. No es necesario ejecutar esto de nuevo.');
+        } else {
+            console.log('❌ Error: ' + (result.error || 'desconocido'));
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.log('❌ Error: ' + error.message);
+        return { ok: false, error: error.message };
+    }
+}
+
+/**
+ * Muestra el estado actual de los triggers y la configuración
+ */
+function verEstadoTriggers() {
+    console.log('📊 Estado de Triggers y Configuración\n');
+    console.log('═'.repeat(50));
+    
+    // Configuración
+    const weeklyDay = getConfig('AUTOMATION.WEEKLY_REPORT_DAY', 1);
+    const weeklyHour = getConfig('AUTOMATION.WEEKLY_REPORT_HOUR', 8);
+    const dailyHour = getConfig('AUTOMATION.DAILY_SUMMARY_HOUR', 7);
+    const adminEmails = getConfig('AUTOMATION.ADMIN_EMAILS', []);
+    
+    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    
+    console.log('\n📧 Configuración de Reportes:');
+    console.log('   Diario: Todos los días a las ' + dailyHour + ':00 AM');
+    console.log('   Semanal: ' + dias[weeklyDay] + ' a las ' + weeklyHour + ':00 AM');
+    console.log('   Destinatarios: ' + (adminEmails.length > 0 ? adminEmails.join(', ') : '(no configurados)'));
+    
+    // Triggers activos
+    console.log('\n⚡ Triggers Activos:');
+    const triggers = ScriptApp.getProjectTriggers();
+    if (triggers.length === 0) {
+        console.log('   ⚠️ No hay triggers configurados');
+        console.log('   → Ejecuta configurarTriggersAutomaticos() para activarlos');
+    } else {
+        triggers.forEach(trigger => {
+            const handler = trigger.getHandlerFunction();
+            const type = trigger.getEventType();
+            console.log('   • ' + handler + ' (' + type + ')');
+        });
+    }
+    
+    console.log('\n' + '═'.repeat(50));
+    
+    return {
+        config: { weeklyDay: dias[weeklyDay], weeklyHour, dailyHour, adminEmails },
+        triggersCount: triggers.length
+    };
+}

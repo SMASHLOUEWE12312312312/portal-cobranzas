@@ -101,7 +101,7 @@ const AutomationEngine = {
             const dailyTrigger = ScriptApp.newTrigger('runDailySummary').timeBased().atHour(7).everyDays(1).inTimezone('America/Lima').create();
             triggers.push({ name: 'daily_summary', id: dailyTrigger.getUniqueId() });
 
-            const weeklyTrigger = ScriptApp.newTrigger('runWeeklyReport').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).inTimezone('America/Lima').create();
+            const weeklyTrigger = ScriptApp.newTrigger('runWeeklyReport').timeBased().onWeekDay(ScriptApp.WeekDay.WEDNESDAY).atHour(8).inTimezone('America/Lima').create();
             triggers.push({ name: 'weekly_report', id: weeklyTrigger.getUniqueId() });
 
             Logger.info(context, 'Triggers configurados', { count: triggers.length });

@@ -352,7 +352,7 @@ const CONFIG = {
     ADMIN_EMAILS: ['csarapura@transperuana.com.pe'],  // Emails de administradores para reportes
     REPLY_TO_EMAIL: '',                // Email de respuesta (opcional)
     DAILY_SUMMARY_HOUR: 7,             // Hora para resumen diario (7 AM)
-    WEEKLY_REPORT_DAY: 1,              // Día para reporte semanal (1=Lunes)
+    WEEKLY_REPORT_DAY: 3,              // Día para reporte semanal (3=Miércoles) - 0=Dom, 1=Lun, 2=Mar, 3=Mie, 4=Jue, 5=Vie, 6=Sab
     WEEKLY_REPORT_HOUR: 8,             // Hora para reporte semanal (8 AM)
     MAX_EMAILS_PER_RUN: 50,            // Máximo emails por ejecución
     PTP_REMINDER_DAYS_BEFORE: 3        // Días antes para recordatorio PTP
