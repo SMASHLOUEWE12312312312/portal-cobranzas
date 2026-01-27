@@ -3825,10 +3825,9 @@
                 return;
             }
             
-            // PRO: Limitar a 100 items para performance (virtual scrolling ligero)
-            const MAX_VISIBLE = 100;
-            const displayList = list.slice(0, MAX_VISIBLE);
-            const hasMoreItems = list.length > MAX_VISIBLE;
+            // Mostrar TODOS los items (sin límite)
+            const displayList = list;
+            const hasMoreItems = false;
 
             // PRO: Usar DocumentFragment para mejor performance
             const fragment = document.createDocumentFragment();
@@ -3858,17 +3857,7 @@
             
             optionsContainer.appendChild(fragment);
             
-            // Mostrar indicador si hay más items
-            if (hasMoreItems) {
-                const moreIndicator = document.createElement('div');
-                moreIndicator.className = 'autocomplete-option disabled';
-                moreIndicator.style.textAlign = 'center';
-                moreIndicator.style.fontSize = '0.75rem';
-                moreIndicator.style.color = 'var(--tp-text-secondary)';
-                moreIndicator.style.borderTop = '1px solid var(--tp-border-light)';
-                moreIndicator.textContent = `... y ${list.length - MAX_VISIBLE} más. Escribe para filtrar.`;
-                optionsContainer.appendChild(moreIndicator);
-            }
+            // (Eliminado límite - ahora se muestran todos los items)
 
             // Load More Indicator para Asegurados (Server Side)
             if (EECC_MODE === 'asegurado' && ASEGURADOS_DS.hasMore) {
