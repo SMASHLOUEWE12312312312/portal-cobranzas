@@ -3598,81 +3598,97 @@
         }
 
         // ════════════════════════════════════════════════════════════════════════════════
-        // AUTOCOMPLETE NIVEL PRO - Search as you type (instantáneo)
+        // AUTOCOMPLETE NIVEL DIOS - Filtrado 100% Client-Side Instantáneo
         // ════════════════════════════════════════════════════════════════════════════════
         
-        let AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1; // Índice de opción destacada para navegación con teclado
-        let AUTOCOMPLETE_EECC_SEARCH_CACHE = {};    // Cache de búsquedas previas
+        let AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;  // Índice de opción destacada para navegación con teclado
+        let ASEGURADOS_FILTERED = [];                // Lista filtrada de asegurados (client-side)
         
+        /**
+         * FILTRADO ESTRICTO - Solo muestra coincidencias exactas
+         * - Filtrado 100% client-side (instantáneo)
+         * - Funciona igual para Asegurado y Grupo
+         * - Si no hay coincidencias, muestra "Sin resultados"
+         */
         function filtrarAutocompleteEECC() {
             toggleGenerarBtnState();  // Enable/Disable on typing
             const input = document.getElementById('aseguradoSelect');
             const dropdown = document.getElementById('autocompleteDropdownEECC');
             const optionsContainer = document.getElementById('autocompleteOptionsEECC');
             const clearBtn = document.getElementById('clearAseguradoEECC');
-            const counter = document.getElementById('autocompleteCounterEECC');
 
             if (!input || !dropdown || !optionsContainer) return;
 
-            const searchText = input.value;
-            const searchKey = searchText.toLowerCase().trim();
+            const searchText = input.value.trim();
+            const normalized = normalizeText(searchText);
             clearBtn.style.display = searchText ? 'flex' : 'none';
             
             // Resetear índice de highlight
             AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;
 
-            // ═══ MODE: Grupo (Client Side - INSTANTÁNEO) ═══
+            // ═══ FILTRADO UNIFICADO CLIENT-SIDE (INSTANTÁNEO) ═══
+            let sourceList = [];
+            let totalCount = 0;
+            
             if (EECC_MODE === 'grupo') {
-                const normalized = normalizeText(searchText);
-                
-                if (!searchText) {
-                    AUTOCOMPLETE_EECC_FILTERED = [...ALL_GRUPOS];
+                sourceList = ALL_GRUPOS || [];
+                totalCount = ALL_GRUPOS.length;
+            } else {
+                // Asegurado - usar lista cargada en memoria
+                sourceList = ASEGURADOS_DS.items || [];
+                totalCount = sourceList.length;
+            }
+            
+            // Si no hay búsqueda, mostrar todos
+            if (!searchText) {
+                if (EECC_MODE === 'grupo') {
+                    AUTOCOMPLETE_EECC_FILTERED = [...sourceList];
                 } else {
-                    // Filtrado instantáneo con ranking de relevancia
-                    AUTOCOMPLETE_EECC_FILTERED = ALL_GRUPOS
-                        .map(grupo => {
-                            const normalizedGrupo = normalizeText(grupo);
-                            const index = normalizedGrupo.indexOf(normalized);
-                            return { grupo, index, startsWith: index === 0 };
-                        })
-                        .filter(item => item.index !== -1)
-                        .sort((a, b) => {
-                            // Priorizar los que empiezan con el texto buscado
-                            if (a.startsWith && !b.startsWith) return -1;
-                            if (!a.startsWith && b.startsWith) return 1;
-                            // Luego por posición del match
-                            return a.index - b.index;
-                        })
-                        .map(item => item.grupo);
+                    ASEGURADOS_FILTERED = [...sourceList];
                 }
-                
-                // Mostrar contador
-                mostrarContadorEECC(AUTOCOMPLETE_EECC_FILTERED.length, ALL_GRUPOS.length);
-                
+                mostrarContadorEECC(sourceList.length, totalCount);
                 renderAutocompleteOptionsEECC(searchText);
                 dropdown.style.display = 'block';
                 return;
             }
-
-            // ═══ MODE: Asegurado (Server Side Paged - Debounce reducido) ═══
-            if (SEARCH_TIMEOUT) clearTimeout(SEARCH_TIMEOUT);
             
-            // Mostrar "buscando..." inmediatamente
-            if (searchText && searchText !== ASEGURADOS_DS.search) {
-                optionsContainer.innerHTML = '<div class="autocomplete-option disabled" style="color:var(--tp-primary);">🔍 Buscando...</div>';
+            // ═══ FILTRADO ESTRICTO CON RANKING ═══
+            const filteredWithRank = sourceList
+                .map(item => {
+                    const normalizedItem = normalizeText(item);
+                    const index = normalizedItem.indexOf(normalized);
+                    const exactMatch = normalizedItem === normalized;
+                    const startsWith = index === 0;
+                    return { item, index, exactMatch, startsWith };
+                })
+                .filter(entry => entry.index !== -1)  // Solo coincidencias
+                .sort((a, b) => {
+                    // 1. Coincidencia exacta primero
+                    if (a.exactMatch && !b.exactMatch) return -1;
+                    if (!a.exactMatch && b.exactMatch) return 1;
+                    // 2. Empieza con el texto buscado
+                    if (a.startsWith && !b.startsWith) return -1;
+                    if (!a.startsWith && b.startsWith) return 1;
+                    // 3. Por posición del match
+                    if (a.index !== b.index) return a.index - b.index;
+                    // 4. Alfabético
+                    return a.item.localeCompare(b.item);
+                })
+                .map(entry => entry.item);
+            
+            // Guardar resultados filtrados
+            if (EECC_MODE === 'grupo') {
+                AUTOCOMPLETE_EECC_FILTERED = filteredWithRank;
+            } else {
+                ASEGURADOS_FILTERED = filteredWithRank;
             }
             
-            // Debounce ultra-corto de 100ms para server-side
-            SEARCH_TIMEOUT = setTimeout(() => {
-                // Verificar cache local primero
-                if (AUTOCOMPLETE_EECC_SEARCH_CACHE[searchKey] && !searchText) {
-                    ASEGURADOS_DS.items = AUTOCOMPLETE_EECC_SEARCH_CACHE[searchKey];
-                    renderAutocompleteOptionsEECC(searchText);
-                } else if (searchText !== ASEGURADOS_DS.search) {
-                    fetchAseguradosPaged(searchText, null, true);
-                }
-                dropdown.style.display = 'block';
-            }, 100); // Reducido de 300ms a 100ms
+            // Mostrar contador
+            mostrarContadorEECC(filteredWithRank.length, totalCount);
+            
+            // Renderizar resultados
+            renderAutocompleteOptionsEECC(searchText);
+            dropdown.style.display = 'block';
         }
         
         /**
@@ -3786,7 +3802,8 @@
             if (EECC_MODE === 'grupo') {
                 list = AUTOCOMPLETE_EECC_FILTERED;
             } else {
-                list = ASEGURADOS_DS.items;
+                // Usar lista FILTRADA (no la completa)
+                list = ASEGURADOS_FILTERED.length > 0 || searchText ? ASEGURADOS_FILTERED : ASEGURADOS_DS.items;
             }
 
             if (list.length === 0) {
@@ -3934,16 +3951,27 @@
 
             if (!dropdown || !input) return;
 
-            // Phase 2: Ensure initial data
+            const searchText = input.value.trim();
+
+            // Asegurar que los datos estén cargados
             if (EECC_MODE === 'asegurado') {
                 if (ASEGURADOS_DS.items.length === 0 && !ASEGURADOS_DS.loading) {
                     fetchAseguradosPaged('', null, true);
+                } else if (!searchText) {
+                    // Si no hay búsqueda, mostrar todos los asegurados
+                    ASEGURADOS_FILTERED = [...ASEGURADOS_DS.items];
+                    renderAutocompleteOptionsEECC('');
                 }
             } else if (EECC_MODE === 'grupo') {
-                if (!input.value.trim()) {
+                if (!searchText) {
                     AUTOCOMPLETE_EECC_FILTERED = [...ALL_GRUPOS];
-                    renderAutocompleteOptionsEECC();
+                    renderAutocompleteOptionsEECC('');
                 }
+            }
+            
+            // Aplicar filtro si hay texto
+            if (searchText) {
+                filtrarAutocompleteEECC();
             }
 
             dropdown.style.display = 'block';
@@ -3956,8 +3984,20 @@
             if (!dropdown) return;
 
             if (dropdown.style.display === 'none' || !dropdown.style.display) {
-                AUTOCOMPLETE_EECC_FILTERED = [...AUTOCOMPLETE_EECC_OPTIONS];
-                renderAutocompleteOptionsEECC();
+                // Inicializar lista según modo
+                if (EECC_MODE === 'grupo') {
+                    AUTOCOMPLETE_EECC_FILTERED = [...ALL_GRUPOS];
+                } else {
+                    ASEGURADOS_FILTERED = [...ASEGURADOS_DS.items];
+                }
+                
+                // Si hay texto, aplicar filtro
+                if (input && input.value.trim()) {
+                    filtrarAutocompleteEECC();
+                } else {
+                    renderAutocompleteOptionsEECC('');
+                }
+                
                 dropdown.style.display = 'block';
 
                 if (input) {
@@ -3991,6 +4031,11 @@
             if (counter) {
                 counter.style.display = 'none';
             }
+            
+            // Resetear listas filtradas
+            AUTOCOMPLETE_EECC_FILTERED = [];
+            ASEGURADOS_FILTERED = [];
+            AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;
 
             console.log('[limpiarAutocompleteEECC] Autocomplete limpiado');
         }
