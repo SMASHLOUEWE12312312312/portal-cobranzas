@@ -1492,5 +1492,55 @@ var BitacoraService = BitacoraService || {
       Logger.error(context, 'Error en backfill', error);
       return { ok: false, error: error.message };
     }
+  },
+
+  // ========== CICLOS ACTIVOS (para AlertService) ==========
+
+  /**
+   * Obtiene ciclos activos (no cerrados) con última gestión
+   * Usado por AlertService para generar alertas de "sin gestión"
+   * @returns {Array} Lista de ciclos activos con info de última gestión
+   */
+  getCiclosActivos() {
+    const context = 'BitacoraService.getCiclosActivos';
+
+    try {
+      // Estados que consideramos "cerrados" o "inactivos"
+      const estadosInactivos = [
+        'CERRADO_PAGADO',
+        'NO_COBRABLE',
+        'NO_CONTACTABLE'
+      ];
+
+      // Obtener resumen de ciclos (1 por asegurado)
+      const resultado = this.obtenerResumenCiclos({}, { page: 1, pageSize: 1000 });
+      
+      if (!resultado || !resultado.data) {
+        return [];
+      }
+
+      // Filtrar solo los activos
+      const ciclosActivos = resultado.data.filter(ciclo => {
+        return !estadosInactivos.includes(ciclo.estadoGestion);
+      });
+
+      // Transformar al formato esperado por AlertService
+      return ciclosActivos.map(ciclo => ({
+        idCiclo: ciclo.idCiclo,
+        asegurado: ciclo.asegurado,
+        ruc: ciclo.ruc,
+        responsable: ciclo.responsable,
+        estadoGestion: ciclo.estadoGestion,
+        ultimaGestion: ciclo.fechaRegistro,  // Fecha de última gestión
+        fechaEnvioEECC: ciclo.fechaEnvioEECC,
+        diasDesdeRegistro: ciclo.diasDesdeRegistro,
+        snapshotVencidoPEN: ciclo.snapshotVencidoPEN || 0,
+        snapshotVencidoUSD: ciclo.snapshotVencidoUSD || 0
+      }));
+
+    } catch (error) {
+      Logger.error(context, 'Error obteniendo ciclos activos', error);
+      return [];
+    }
   }
 };

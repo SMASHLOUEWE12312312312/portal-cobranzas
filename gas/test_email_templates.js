@@ -60,10 +60,15 @@ function testEmailTemplateKit() {
         results.tests.push({ name: 'formatPct', passed: true });
         results.passed++;
 
-        // Test: formatDate
-        const date = kit.formatDate(new Date('2026-01-27'));
-        if (!date.includes('27') || !date.includes('01') || !date.includes('2026')) {
-            throw new Error(`formatDate failed: ${date}`);
+        // Test: formatDate (usar fecha actual para evitar problemas de timezone)
+        const testDate = new Date();
+        const date = kit.formatDate(testDate);
+        const day = testDate.getDate().toString().padStart(2, '0');
+        const month = (testDate.getMonth() + 1).toString().padStart(2, '0');
+        const year = testDate.getFullYear().toString();
+        // Verificar que contiene día, mes y año (en cualquier formato)
+        if (!date.includes(day) || !date.includes(month) || !date.includes(year)) {
+            throw new Error(`formatDate failed: ${date} (expected ${day}/${month}/${year})`);
         }
         console.log(`✅ formatDate: ${date}`);
         results.tests.push({ name: 'formatDate', passed: true });
