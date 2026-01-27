@@ -5812,26 +5812,47 @@
             renderBitacoraTableEmb();
         }
 
+        /**
+         * Poblar filtros de Bitácora Estado Actual
+         * CORREGIDO: Ya no intenta llenar el autocomplete como select
+         */
         function populateFiltrosEmb() {
-            // Poblar asegurados en filtro
+            console.log('[populateFiltrosEmb] 📋 Poblando filtros con', BITACORA_DATA.length, 'registros');
+            
+            // ═══ FILTRO: Asegurados ═══
             const asegSelect = document.getElementById('filtroAseguradoEmb');
             if (asegSelect && BITACORA_DATA.length > 0) {
-                const asegurados = [...new Set(BITACORA_DATA.map(g => g.asegurado))].sort();
-                asegSelect.innerHTML = '<option value="">Todos</option>' + asegurados.map(a => '<option value="' + a + '">' + a + '</option>').join('');
+                const valorActual = asegSelect.value; // Preservar selección actual
+                const asegurados = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
+                asegSelect.innerHTML = '<option value="">Todos</option>' + 
+                    asegurados.map(a => '<option value="' + escapeHtml(a) + '">' + escapeHtml(a) + '</option>').join('');
+                // Restaurar valor si existe
+                if (valorActual && asegurados.includes(valorActual)) {
+                    asegSelect.value = valorActual;
+                }
+                console.log('[populateFiltrosEmb] ✅ Asegurados:', asegurados.length);
             }
 
-            // Poblar responsables en filtro
+            // ═══ FILTRO: Responsables ═══
             const respSelect = document.getElementById('filtroResponsableEmb');
             if (respSelect && BITACORA_DATA.length > 0) {
+                const valorActual = respSelect.value;
                 const responsables = [...new Set(BITACORA_DATA.map(g => g.responsable).filter(r => r))].sort();
-                respSelect.innerHTML = '<option value="">Todos</option>' + responsables.map(r => '<option value="' + r + '">' + r.replace(/@.*/, '') + '</option>').join('');
+                respSelect.innerHTML = '<option value="">Todos</option>' + 
+                    responsables.map(r => '<option value="' + escapeHtml(r) + '">' + escapeHtml(r.replace(/@.*/, '')) + '</option>').join('');
+                if (valorActual && responsables.includes(valorActual)) {
+                    respSelect.value = valorActual;
+                }
+                console.log('[populateFiltrosEmb] ✅ Responsables:', responsables.length);
             }
 
-            // Poblar asegurados en formulario de registro
-            const gestionAsegSelect = document.getElementById('gestionAseguradoEmb');
-            if (gestionAsegSelect && BITACORA_DATA.length > 0) {
-                const asegurados = [...new Set(BITACORA_DATA.map(g => g.asegurado))].sort();
-                gestionAsegSelect.innerHTML = '<option value="">Seleccionar...</option>' + asegurados.map(a => '<option value="' + a + '">' + a + '</option>').join('');
+            // ═══ ACTUALIZAR AUTOCOMPLETE del formulario de registro ═══
+            // Ya no llenamos como select, solo actualizamos la lista de opciones para el autocomplete
+            if (BITACORA_DATA.length > 0) {
+                const aseguradosUnicos = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
+                // Actualizar las opciones del autocomplete embebido
+                AUTOCOMPLETE_EMB_OPTIONS = aseguradosUnicos;
+                console.log('[populateFiltrosEmb] ✅ Autocomplete actualizado con', aseguradosUnicos.length, 'asegurados');
             }
         }
 
@@ -5965,18 +5986,28 @@
                         // Limpiar formulario
                         limpiarFormGestionEmb();
 
-                        // Invalidar cachés
+                        // ════ RECARGA COMPLETA POST-REGISTRO ════
+                        // Invalidar TODOS los cachés para forzar datos frescos
                         BITACORA_EMB_LOADED = false;
+                        BITACORA_DATA = [];
+                        BITACORA_FILTERED = [];
+                        BITACORA_PAGE = 1;
                         Object.keys(TIMELINE_CACHE).forEach(key => delete TIMELINE_CACHE[key]);
                         NOTIFICACIONES_CACHE = null;
                         NOTIFICACIONES_CACHE_TIME = null;
+                        localStorage.removeItem('bitacora_data_cache');
+                        window.bitacoraDataPreload = null;
+                        
+                        console.log('[registrarGestionEmbedded] 🔄 Cachés invalidados, recargando datos frescos...');
 
-                        // Recargar datos después de un momento
+                        // Recargar datos con reset=true para forzar recarga completa
                         setTimeout(() => {
-                            loadBitacoraEmbeddedData();
-                            switchBitacoraTabEmbedded('estado');
+                            loadBitacoraEmbeddedData(true).then(() => {
+                                console.log('[registrarGestionEmbedded] ✅ Datos recargados, mostrando Estado Actual');
+                                switchBitacoraTabEmbedded('estado');
+                            });
                             inicializarNotificaciones();
-                        }, 1000);
+                        }, 500); // Reducido a 500ms para respuesta más rápida
                     } else {
                         showGestionStatusEmb('error', '❌ Error: ' + (result?.message || 'Error desconocido'));
                     }
@@ -7153,11 +7184,23 @@
                 if (registrarPane) registrarPane.style.display = 'none';
                 if (estadoBtn) { estadoBtn.style.color = 'var(--tp-primary)'; estadoBtn.style.borderBottom = '3px solid var(--tp-primary)'; estadoBtn.style.fontWeight = '600'; }
                 if (registrarBtn) { registrarBtn.style.color = 'var(--tp-text-secondary)'; registrarBtn.style.borderBottom = 'none'; registrarBtn.style.fontWeight = '500'; }
+                
+                // ════ AUTO-RECARGAR datos si no están cargados o están vacíos ════
+                if (!BITACORA_EMB_LOADED || BITACORA_DATA.length === 0) {
+                    console.log('[switchBitacoraTabEmbedded] 🔄 Estado Actual necesita recarga, cargando datos...');
+                    loadBitacoraEmbeddedData(true);
+                }
             } else {
                 if (estadoPane) estadoPane.style.display = 'none';
                 if (registrarPane) registrarPane.style.display = 'block';
                 if (estadoBtn) { estadoBtn.style.color = 'var(--tp-text-secondary)'; estadoBtn.style.borderBottom = 'none'; estadoBtn.style.fontWeight = '500'; }
                 if (registrarBtn) { registrarBtn.style.color = 'var(--tp-primary)'; registrarBtn.style.borderBottom = '3px solid var(--tp-primary)'; registrarBtn.style.fontWeight = '600'; }
+                
+                // ════ Asegurar que el autocomplete tenga opciones ════
+                if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
+                    console.log('[switchBitacoraTabEmbedded] 🔄 Autocomplete sin opciones, cargando...');
+                    loadClientesAutocompleteEmbSafe();
+                }
             }
         }
 
