@@ -607,3 +607,54 @@ function saveEmailPreviewsToSheet() {
         return { ok: false, error: error.message };
     }
 }
+
+/**
+ * Test rápido de emails PRO - Ejecutar desde Apps Script
+ * Muestra resultados en Logger
+ */
+function testEmailsPRO() {
+    console.log('🚀 Iniciando test de emails PRO...\n');
+    
+    // 1. Test de componentes
+    console.log('📦 1. Testing EmailTemplateKit...');
+    var kitTest = testEmailTemplateKit();
+    console.log('   Kit Test: ' + kitTest.passed + '/' + (kitTest.passed + kitTest.failed) + ' pasaron\n');
+    
+    // 2. Preview email diario
+    console.log('📧 2. Generando preview email diario...');
+    var daily = previewDailyEmail_API();
+    console.log('   Daily Email: ' + (daily.ok ? '✅ OK' : '❌ ERROR') + ' - ' + (daily.sizeKB || 'N/A') + ' KB');
+    console.log('   Estado del día: ' + (daily.data ? daily.data.dayStatus : 'N/A'));
+    console.log('   Gestiones: ' + (daily.data ? daily.data.gestionesHoy : 'N/A'));
+    console.log('   Alertas críticas: ' + (daily.data ? daily.data.alertasCriticas : 'N/A') + '\n');
+    
+    // 3. Preview email semanal
+    console.log('📈 3. Generando preview email semanal...');
+    var weekly = previewWeeklyEmail_API();
+    console.log('   Weekly Email: ' + (weekly.ok ? '✅ OK' : '❌ ERROR') + ' - ' + (weekly.sizeKB || 'N/A') + ' KB');
+    console.log('   Semana: ' + (weekly.data ? weekly.data.semana : 'N/A'));
+    console.log('   Tasa cumplimiento: ' + (weekly.data ? weekly.data.tasaCumplimiento + '%' : 'N/A'));
+    console.log('   DSO promedio: ' + (weekly.data ? weekly.data.dsoPromedio + ' días' : 'N/A') + '\n');
+    
+    // 4. Guardar previews en hoja para revisar visualmente
+    console.log('💾 4. Guardando previews en hoja...');
+    var saveResult = saveEmailPreviewsToSheet();
+    console.log('   ' + (saveResult.ok ? '✅ Previews guardados en hoja "Email_Previews"' : '❌ Error: ' + saveResult.error));
+    
+    // Resumen final
+    console.log('\n════════════════════════════════════════');
+    console.log('📊 RESUMEN');
+    console.log('════════════════════════════════════════');
+    console.log('Kit components: ' + kitTest.passed + ' OK');
+    console.log('Daily email: ' + (daily.ok ? daily.sizeKB + ' KB' : 'ERROR'));
+    console.log('Weekly email: ' + (weekly.ok ? weekly.sizeKB + ' KB' : 'ERROR'));
+    console.log('Previews saved: ' + (saveResult.ok ? 'YES' : 'NO'));
+    console.log('════════════════════════════════════════\n');
+    
+    return {
+        ok: kitTest.failed === 0 && daily.ok && weekly.ok,
+        kit: kitTest,
+        daily: { ok: daily.ok, sizeKB: daily.sizeKB, dayStatus: daily.data?.dayStatus },
+        weekly: { ok: weekly.ok, sizeKB: weekly.sizeKB, semana: weekly.data?.semana }
+    };
+}
