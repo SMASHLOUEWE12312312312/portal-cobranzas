@@ -312,8 +312,30 @@ const CONFIG = {
   KPI: {
     CACHE_TTL_SECONDS: 300,            // 5 minutos de cache
     DSO_BENCHMARK: 35,                 // Días objetivo para DSO
-    VENCIDO_THRESHOLD_WARN: 15,        // % para mostrar warning
-    VENCIDO_THRESHOLD_ERROR: 25        // % para mostrar error/critical
+    // ========== UMBRALES AGRESIVOS (alertar temprano) ==========
+    DSO_WARN_THRESHOLD: 36,            // DSO para mostrar warning (benchmark + 1)
+    DSO_CRITICAL_THRESHOLD: 42,        // DSO para mostrar critical (benchmark + 7)
+    VENCIDO_THRESHOLD_WARN: 10,        // % cartera vencida para warning
+    VENCIDO_THRESHOLD_ERROR: 18,       // % cartera vencida para critical
+    BUCKET_90_WARN: 3,                 // % en bucket 90+ para warning
+    BUCKET_90_CRITICAL: 6,             // % en bucket 90+ para critical
+    BUCKET_61_90_WARN: 7,              // % en bucket 61-90 para warning
+    BUCKET_61_90_CRITICAL: 12          // % en bucket 61-90 para critical
+  },
+
+  // ========== PORTAL URLs (para emails con CTAs) ==========
+  PORTAL: {
+    // Base URL del portal web (Google Apps Script WebApp)
+    BASE_URL: 'https://script.google.com/a/macros/transperuana.com.pe/s/AKfycbyQp9rD0W4TGmf9yIeOtnwEueqJjrmAjWvjfsTh_wc/dev',
+    
+    // Rutas específicas (para WebApp de GAS, usar parámetros ?view=)
+    ROUTES: {
+      DASHBOARD: '?view=dashboard',
+      ALERTAS: '?view=alertas',
+      PTPS: '?view=ptps',
+      BITACORA: '?view=bitacora',
+      REPORTES: '?view=reportes'
+    }
   },
 
   WORKFLOW: {
