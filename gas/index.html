@@ -1010,6 +1010,7 @@
                                                         placeholder="Escribe o selecciona un cliente..."
                                                         autocomplete="off" required
                                                         oninput="filtrarAutocompleteEmb(); validateFormV4();"
+                                                        onkeydown="handleAutocompleteKeydownEmb(event)"
                                                         onfocus="mostrarDropdownAutocompleteEmb()"
                                                         style="width: 100%; padding: 0.75rem 2.5rem 0.75rem 2.5rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; transition: border-color 0.15s ease, box-shadow 0.15s ease;">
                                                     <button type="button" class="autocomplete-dropdown-btn"
@@ -6599,7 +6600,13 @@
         }
 
         /**
-         * Filtrar opciones del autocomplete embebido según texto ingresado
+         * ════════════════════════════════════════════════════════════════════════════════
+         * FILTRO PRO BITÁCORA - 100% Client-Side Instantáneo
+         * ════════════════════════════════════════════════════════════════════════════════
+         * - Filtrado estricto: solo muestra coincidencias
+         * - Ranking: exacto > empieza con > contiene > alfabético
+         * - Sin límite de items visibles
+         * - Funciona igual para Individual y Grupo Económico
          */
         function filtrarAutocompleteEmb() {
             const input = document.getElementById('gestionAseguradoEmb');
@@ -6610,58 +6617,228 @@
 
             if (!input || !dropdown || !options) return;
 
-            const searchText = input.value.trim().toLowerCase();
+            const searchText = input.value.trim();
+            const normalized = normalizeText(searchText);
+            const hasSearchText = searchText.length > 0;
 
             // Mostrar/ocultar botón de limpiar
-            if (clearBtn) clearBtn.style.display = searchText ? 'flex' : 'none';
+            if (clearBtn) clearBtn.style.display = hasSearchText ? 'flex' : 'none';
 
-            // Filtrar opciones
-            if (searchText.length > 0) {
-                AUTOCOMPLETE_EMB_FILTERED = AUTOCOMPLETE_EMB_OPTIONS.filter(opt =>
-                    opt.toLowerCase().includes(searchText)
-                );
-            } else {
+            // Resetear índice de highlight
+            AUTOCOMPLETE_EMB_INDEX = -1;
+
+            // ═══ SIN BÚSQUEDA = MOSTRAR TODOS ═══
+            if (!hasSearchText) {
                 AUTOCOMPLETE_EMB_FILTERED = [...AUTOCOMPLETE_EMB_OPTIONS];
+                renderizarOpcionesEmb();
+                dropdown.style.display = 'block';
+                
+                // Actualizar contador (todos)
+                if (counter) {
+                    counter.style.display = 'none'; // Ocultar si muestra todos
+                }
+                return;
             }
+
+            // ═══ FILTRADO ESTRICTO CON RANKING ═══
+            AUTOCOMPLETE_EMB_FILTERED = AUTOCOMPLETE_EMB_OPTIONS
+                .map(item => {
+                    const normalizedItem = normalizeText(item);
+                    const index = normalizedItem.indexOf(normalized);
+                    const exactMatch = normalizedItem === normalized;
+                    const startsWith = index === 0;
+                    return { item, index, exactMatch, startsWith };
+                })
+                .filter(entry => entry.index !== -1)  // Solo coincidencias
+                .sort((a, b) => {
+                    // 1. Coincidencia exacta primero
+                    if (a.exactMatch && !b.exactMatch) return -1;
+                    if (!a.exactMatch && b.exactMatch) return 1;
+                    // 2. Empieza con el texto buscado
+                    if (a.startsWith && !b.startsWith) return -1;
+                    if (!a.startsWith && b.startsWith) return 1;
+                    // 3. Por posición del match
+                    if (a.index !== b.index) return a.index - b.index;
+                    // 4. Alfabético
+                    return a.item.localeCompare(b.item);
+                })
+                .map(entry => entry.item);
 
             // Renderizar opciones
             renderizarOpcionesEmb();
 
-            // Mostrar dropdown si hay opciones
-            dropdown.style.display = AUTOCOMPLETE_EMB_FILTERED.length > 0 ? 'block' : 'none';
+            // Mostrar dropdown siempre (incluso para "Sin resultados")
+            dropdown.style.display = 'block';
 
             // Actualizar contador
             if (counter) {
-                counter.style.display = 'block';
-                counter.textContent = AUTOCOMPLETE_EMB_FILTERED.length + ' de ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' resultados';
+                if (AUTOCOMPLETE_EMB_FILTERED.length < AUTOCOMPLETE_EMB_OPTIONS.length) {
+                    counter.style.display = 'block';
+                    counter.textContent = AUTOCOMPLETE_EMB_FILTERED.length + ' de ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' resultados';
+                } else {
+                    counter.style.display = 'none';
+                }
             }
-
-            AUTOCOMPLETE_EMB_INDEX = -1;
         }
 
         /**
-         * Renderizar opciones del dropdown embebido
+         * Renderizar opciones del dropdown embebido (PRO - sin límite)
          */
         function renderizarOpcionesEmb() {
             const options = document.getElementById('autocompleteOptionsEmb');
             if (!options) return;
 
+            const input = document.getElementById('gestionAseguradoEmb');
+            const searchText = input?.value?.trim() || '';
+            const hasSearchText = searchText.length > 0;
+
+            // Sin resultados (solo si hay búsqueda activa)
             if (AUTOCOMPLETE_EMB_FILTERED.length === 0) {
-                options.innerHTML = '<div class="autocomplete-option disabled">No se encontraron resultados</div>';
+                if (hasSearchText) {
+                    options.innerHTML = '<div class="autocomplete-option disabled">❌ Sin resultados para "' + escapeHtml(searchText) + '"</div>';
+                } else if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
+                    options.innerHTML = '<div class="autocomplete-option disabled" style="color:var(--tp-text-secondary);">📋 No hay datos disponibles</div>';
+                } else {
+                    options.innerHTML = '<div class="autocomplete-option disabled" style="color:var(--tp-primary);">⏳ Cargando...</div>';
+                }
                 return;
             }
 
-            const searchText = document.getElementById('gestionAseguradoEmb')?.value?.toLowerCase() || '';
+            // PRO: Usar DocumentFragment para mejor performance
+            const fragment = document.createDocumentFragment();
 
-            options.innerHTML = AUTOCOMPLETE_EMB_FILTERED.slice(0, 50).map((opt, idx) => {
-                // Resaltar texto de búsqueda
-                let displayText = opt;
-                if (searchText) {
-                    const regex = new RegExp('(' + searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-                    displayText = opt.replace(regex, '<strong>$1</strong>');
+            // Mostrar TODOS los items (sin límite)
+            AUTOCOMPLETE_EMB_FILTERED.forEach((opt, idx) => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-option';
+                div.setAttribute('data-index', idx);
+                
+                // PRO: Highlight del texto buscado
+                if (hasSearchText) {
+                    div.innerHTML = highlightSearchTextEmb(opt, searchText);
+                } else {
+                    div.textContent = opt;
                 }
-                return '<div class="autocomplete-option" data-index="' + idx + '" onclick="seleccionarOpcionEmb(' + idx + ')">' + displayText + '</div>';
-            }).join('');
+                
+                div.onclick = () => seleccionarOpcionEmb(idx);
+                
+                // PRO: Hover y highlight con mouse
+                div.onmouseenter = () => {
+                    AUTOCOMPLETE_EMB_INDEX = idx;
+                    highlightAutocompleteOptionEmb(idx);
+                };
+                
+                fragment.appendChild(div);
+            });
+
+            options.innerHTML = '';
+            options.appendChild(fragment);
+        }
+        
+        /**
+         * PRO: Highlight del texto buscado en Bitácora
+         */
+        function highlightSearchTextEmb(text, search) {
+            if (!search || !search.trim()) return escapeHtml(text);
+            
+            const normalizedText = text.toLowerCase();
+            const normalizedSearch = search.toLowerCase().trim();
+            const index = normalizedText.indexOf(normalizedSearch);
+            
+            if (index === -1) return escapeHtml(text);
+            
+            const before = text.substring(0, index);
+            const match = text.substring(index, index + search.length);
+            const after = text.substring(index + search.length);
+            
+            return escapeHtml(before) + 
+                   '<mark style="background:#FEF3C7;color:#92400E;padding:0 2px;border-radius:2px;font-weight:600;">' + 
+                   escapeHtml(match) + 
+                   '</mark>' + 
+                   escapeHtml(after);
+        }
+        
+        /**
+         * PRO: Highlight de opción seleccionada con teclado en Bitácora
+         */
+        function highlightAutocompleteOptionEmb(index) {
+            const options = document.querySelectorAll('#autocompleteOptionsEmb .autocomplete-option:not(.disabled)');
+            options.forEach((opt, i) => {
+                if (i === index) {
+                    opt.classList.add('autocomplete-option-highlighted');
+                    opt.style.background = 'var(--tp-primary-pale, #FEE2E2)';
+                    opt.style.borderLeft = '3px solid var(--tp-primary)';
+                } else {
+                    opt.classList.remove('autocomplete-option-highlighted');
+                    opt.style.background = '';
+                    opt.style.borderLeft = '';
+                }
+            });
+        }
+        
+        /**
+         * PRO: Navegación con teclado para Bitácora (↑↓ + Enter + Escape)
+         */
+        function handleAutocompleteKeydownEmb(event) {
+            const dropdown = document.getElementById('autocompleteDropdownEmb');
+            const options = document.querySelectorAll('#autocompleteOptionsEmb .autocomplete-option:not(.disabled)');
+            
+            if (!dropdown || dropdown.style.display === 'none') {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    dropdown.style.display = 'block';
+                    return;
+                }
+                return;
+            }
+            
+            const maxIndex = options.length - 1;
+            
+            switch (event.key) {
+                case 'ArrowDown':
+                    event.preventDefault();
+                    AUTOCOMPLETE_EMB_INDEX = Math.min(AUTOCOMPLETE_EMB_INDEX + 1, maxIndex);
+                    highlightAutocompleteOptionEmb(AUTOCOMPLETE_EMB_INDEX);
+                    scrollToHighlightedOptionEmb();
+                    break;
+                    
+                case 'ArrowUp':
+                    event.preventDefault();
+                    AUTOCOMPLETE_EMB_INDEX = Math.max(AUTOCOMPLETE_EMB_INDEX - 1, 0);
+                    highlightAutocompleteOptionEmb(AUTOCOMPLETE_EMB_INDEX);
+                    scrollToHighlightedOptionEmb();
+                    break;
+                    
+                case 'Enter':
+                    event.preventDefault();
+                    if (AUTOCOMPLETE_EMB_INDEX >= 0 && options[AUTOCOMPLETE_EMB_INDEX]) {
+                        options[AUTOCOMPLETE_EMB_INDEX].click();
+                    } else if (options.length === 1) {
+                        // Si solo hay una opción, seleccionarla
+                        options[0].click();
+                    }
+                    break;
+                    
+                case 'Escape':
+                    event.preventDefault();
+                    dropdown.style.display = 'none';
+                    AUTOCOMPLETE_EMB_INDEX = -1;
+                    break;
+                    
+                case 'Tab':
+                    // Permitir tab normal pero cerrar dropdown
+                    dropdown.style.display = 'none';
+                    break;
+            }
+        }
+        
+        /**
+         * PRO: Scroll automático a opción destacada en Bitácora
+         */
+        function scrollToHighlightedOptionEmb() {
+            const highlighted = document.querySelector('#autocompleteOptionsEmb .autocomplete-option-highlighted');
+            if (highlighted) {
+                highlighted.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
         }
 
         /**
@@ -6697,21 +6874,28 @@
         }
 
         /**
-         * Mostrar dropdown del autocomplete embebido
+         * Mostrar dropdown del autocomplete embebido (PRO)
          */
         function mostrarDropdownAutocompleteEmb() {
             const dropdown = document.getElementById('autocompleteDropdownEmb');
+            const input = document.getElementById('gestionAseguradoEmb');
+            const searchText = input?.value?.trim() || '';
 
             // Cargar opciones si no están cargadas
             if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
-                loadClientesAutocompleteEmb();
+                loadClientesAutocompleteEmbSafe();
             }
 
-            // Mostrar todas las opciones
-            AUTOCOMPLETE_EMB_FILTERED = [...AUTOCOMPLETE_EMB_OPTIONS];
-            renderizarOpcionesEmb();
+            // Si hay texto, aplicar filtro; si no, mostrar todos
+            if (searchText) {
+                filtrarAutocompleteEmb();
+            } else {
+                // Mostrar TODAS las opciones
+                AUTOCOMPLETE_EMB_FILTERED = [...AUTOCOMPLETE_EMB_OPTIONS];
+                renderizarOpcionesEmb();
+            }
 
-            if (dropdown && AUTOCOMPLETE_EMB_FILTERED.length > 0) {
+            if (dropdown) {
                 dropdown.style.display = 'block';
             }
         }
