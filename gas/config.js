@@ -325,8 +325,8 @@ const CONFIG = {
 
   // ========== PORTAL URLs (para emails con CTAs) ==========
   PORTAL: {
-    // Base URL del portal web (Google Apps Script WebApp)
-    BASE_URL: 'https://script.google.com/a/macros/transperuana.com.pe/s/AKfycbyQp9rD0W4TGmf9yIeOtnwEueqJjrmAjWvjfsTh_wc/dev',
+    // Base URL del portal web (Google Apps Script WebApp - PRODUCCIÓN)
+    BASE_URL: 'https://script.google.com/a/macros/transperuana.com.pe/s/AKfycbxDtcmAtePCa2x0YHFh3BT-qSTTqUz_cdhPn8GRvE0o0XNqq1MYptKpSksU6Fi2eekb/exec',
     
     // Rutas específicas (para WebApp de GAS, usar parámetros ?view=)
     ROUTES: {
