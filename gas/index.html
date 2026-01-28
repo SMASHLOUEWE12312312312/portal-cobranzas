@@ -8297,6 +8297,21 @@
                 }
                 return str;
             }
+            
+            // Helper para formatear fechas a dd/mm/yyyy
+            function formatearFechaCSV(fechaStr) {
+                if (!fechaStr) return '';
+                try {
+                    const fecha = new Date(fechaStr);
+                    if (isNaN(fecha.getTime())) return '';
+                    const dia = String(fecha.getDate()).padStart(2, '0');
+                    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                    const anio = fecha.getFullYear();
+                    return `${dia}/${mes}/${anio}`;
+                } catch (e) {
+                    return '';
+                }
+            }
 
             // Construir filas con campos corregidos + variación de deuda
             const rows = BITACORA_FILTERED.map(item => [
@@ -8305,9 +8320,9 @@
                 escapeCsvField(item.tipoGestion),
                 escapeCsvField(item.canalContacto),
                 escapeCsvField(item.responsable),
-                escapeCsvField(item.fechaRegistro),
+                escapeCsvField(formatearFechaCSV(item.fechaRegistro)),      // Formato dd/mm/yyyy
                 escapeCsvField(item.diasDesdeRegistro),
-                escapeCsvField(item.fechaCompromiso),
+                escapeCsvField(formatearFechaCSV(item.fechaCompromiso)),    // Formato dd/mm/yyyy
                 escapeCsvField(item.proximaAccion),
                 escapeCsvField(item.snapshotVencidoPEN),
                 escapeCsvField(item.deltaVencidoPEN),       // NUEVO: Delta PEN
