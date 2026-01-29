@@ -52,9 +52,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         }
 
         // Call GAS API
-        const response = await callGASAuthenticated<{
-            data: Gestion[];
-        }>('bitacoraGetGestionesPorCiclo', {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response = await callGASAuthenticated<any>('bitacoraGetGestionesPorCiclo', {
             idCiclo: id,
         }, gasToken);
 
@@ -66,10 +65,16 @@ export async function GET(request: Request, { params }: RouteParams) {
             }, { status: 500 });
         }
 
+        // GAS returns { ok: true, data: [...gestiones...] }
+        // Handle both nested and direct structures
+        const gestiones = Array.isArray(response.data) 
+            ? response.data 
+            : (response.data?.data || []);
+
         return NextResponse.json({
             ok: true,
             correlationId: response.correlationId,
-            data: response.data?.data || [],
+            data: gestiones,
         }, {
             status: 200,
             headers: {

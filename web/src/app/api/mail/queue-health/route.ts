@@ -31,7 +31,8 @@ export async function GET() {
             }, { status: 401 });
         }
 
-        const response = await callGASAuthenticated<MailQueueHealth>(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response = await callGASAuthenticated<any>(
             'getMailQueueHealth',
             {},
             gasToken
@@ -45,10 +46,24 @@ export async function GET() {
             }, { status: 500 });
         }
 
+        // Transform GAS response to expected format
+        // GAS returns: { pendingCount, processingCount, failedCount24h, oldestPendingAgeMinutes, ... }
+        const gasData = response.data || {};
+        const health: MailQueueHealth = {
+            pending: gasData.pendingCount || 0,
+            processing: gasData.processingCount || 0,
+            failed24h: gasData.failedCount24h || 0,
+            staleCount: gasData.oldestProcessingAgeMinutes > 30 ? gasData.processingCount : 0,
+            oldestPending: gasData.oldestPendingAgeMinutes 
+                ? `${gasData.oldestPendingAgeMinutes} min` 
+                : undefined,
+            lastProcessed: gasData.lastProcessedAt || undefined,
+        };
+
         return NextResponse.json({
             ok: true,
             correlationId: response.correlationId,
-            data: response.data,
+            data: health,
         }, {
             status: 200,
             headers: { 'Cache-Control': 'max-age=30' },

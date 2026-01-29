@@ -33,7 +33,8 @@ export async function GET() {
             }, { status: 401 });
         }
 
-        const response = await callGASAuthenticated<{ insurers: Insurer[] }>(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response = await callGASAuthenticated<any>(
             'conciliacion.getInsurers',
             {},
             gasToken
@@ -47,10 +48,13 @@ export async function GET() {
             }, { status: 500 });
         }
 
+        // GAS returns { ok: true, insurers: [...] } directly (not nested in data)
+        const insurers = response.data?.insurers || (response as unknown as { insurers?: Insurer[] }).insurers || [];
+
         return NextResponse.json({
             ok: true,
             correlationId: response.correlationId,
-            data: response.data?.insurers || [],
+            data: insurers,
         }, {
             status: 200,
             headers: { 'Cache-Control': 'max-age=3600' },
