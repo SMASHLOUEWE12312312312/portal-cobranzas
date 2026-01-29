@@ -31,7 +31,8 @@ export async function GET() {
             }, { status: 401 });
         }
 
-        const response = await callGASAuthenticated<{ templates: MailTemplate[] }>(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response = await callGASAuthenticated<any>(
             'getMailTemplates',
             {},
             gasToken
@@ -45,10 +46,13 @@ export async function GET() {
             }, { status: 500 });
         }
 
+        // GAS returns { ok, templates } directly (not nested in data)
+        const templates = response.data?.templates || (response as unknown as { templates?: MailTemplate[] }).templates || [];
+
         return NextResponse.json({
             ok: true,
             correlationId: response.correlationId,
-            data: response.data?.templates || [],
+            data: templates,
         }, {
             status: 200,
             headers: { 'Cache-Control': 'max-age=300' },

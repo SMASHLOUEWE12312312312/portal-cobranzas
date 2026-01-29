@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 
 interface ConciliacionStatus {
-    loaded: boolean;
+    loaded?: boolean;  // Legacy
+    bdCruceStatus?: 'loaded' | 'empty';  // New
     rows?: number;
+    rowCount?: number;  // New
     lastUpdated?: string;
+    lastUpdate?: string;  // New
 }
 
 interface Insurer {
@@ -166,21 +169,23 @@ export default function ConciliacionPage() {
             <div className="card">
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
                     📊 Estado de BD Cruce
-                    {status?.loaded && (
+                    {(status?.loaded || status?.bdCruceStatus === 'loaded') && (
                         <span className="badge badge-success">Cargada</span>
                     )}
                 </h3>
                 
-                {status?.loaded ? (
+                {(status?.loaded || status?.bdCruceStatus === 'loaded') ? (
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-green-50 rounded-lg">
-                            <p className="text-2xl font-bold text-green-700">{status.rows || 0}</p>
+                            <p className="text-2xl font-bold text-green-700">
+                                {(status.rowCount || status.rows || 0).toLocaleString()}
+                            </p>
                             <p className="text-sm text-green-600">Filas cargadas</p>
                         </div>
-                        {status.lastUpdated && (
+                        {(status.lastUpdated || status.lastUpdate) && (
                             <div className="p-4 bg-gray-50 rounded-lg">
                                 <p className="text-sm text-gray-600">Última actualización</p>
-                                <p className="font-medium">{status.lastUpdated}</p>
+                                <p className="font-medium">{status.lastUpdated || status.lastUpdate}</p>
                             </div>
                         )}
                     </div>

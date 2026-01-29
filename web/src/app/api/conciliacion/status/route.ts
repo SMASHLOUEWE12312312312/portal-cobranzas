@@ -33,7 +33,8 @@ export async function GET() {
             }, { status: 401 });
         }
 
-        const response = await callGASAuthenticated<ConciliacionStatus>(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response = await callGASAuthenticated<any>(
             'conciliacion.getStatus',
             {},
             gasToken
@@ -47,10 +48,18 @@ export async function GET() {
             }, { status: 500 });
         }
 
+        // GAS returns { ok, loaded, rows } directly (not nested in data)
+        const gasData = response.data || response;
+        const status: ConciliacionStatus = {
+            bdCruceStatus: gasData.loaded ? 'loaded' : 'empty',
+            lastUpdate: gasData.lastUpdate || null,
+            rowCount: gasData.rows || 0,
+        };
+
         return NextResponse.json({
             ok: true,
             correlationId: response.correlationId,
-            data: response.data,
+            data: status,
         }, {
             status: 200,
             headers: { 'Cache-Control': 'max-age=30' },

@@ -41,12 +41,8 @@ export async function GET(request: Request) {
 
         if (paged) {
             // Paginated endpoint
-            const response = await callGASAuthenticated<{
-                items: string[];
-                nextCursor: string | null;
-                total: number;
-                hasMore: boolean;
-            }>('getAseguradosPaged', {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const response = await callGASAuthenticated<any>('getAseguradosPaged', {
                 options: { limit, cursor, search },
             }, gasToken);
 
@@ -58,20 +54,25 @@ export async function GET(request: Request) {
                 }, { status: 500 });
             }
 
+            // GAS returns { ok, items, nextCursor, total, hasMore } directly
+            const gasData = response.data || response;
             return NextResponse.json({
                 ok: true,
                 correlationId: response.correlationId,
-                data: response.data,
+                data: {
+                    items: gasData.items || [],
+                    nextCursor: gasData.nextCursor || null,
+                    total: gasData.total || 0,
+                    hasMore: gasData.hasMore || false,
+                },
             }, {
                 status: 200,
                 headers: { 'Cache-Control': 'max-age=60' },
             });
         } else {
             // Full list (safe)
-            const response = await callGASAuthenticated<{
-                list: string[];
-                cached: boolean;
-            }>('getAseguradosSafe', {}, gasToken);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const response = await callGASAuthenticated<any>('getAseguradosSafe', {}, gasToken);
 
             if (!response.ok) {
                 return NextResponse.json({
@@ -81,11 +82,15 @@ export async function GET(request: Request) {
                 }, { status: 500 });
             }
 
+            // GAS returns { ok, list, cached } directly (not nested in data)
+            const list = response.data?.list || (response as unknown as { list?: string[] }).list || [];
+            const cached = response.data?.cached ?? (response as unknown as { cached?: boolean }).cached ?? false;
+
             return NextResponse.json({
                 ok: true,
                 correlationId: response.correlationId,
-                data: response.data?.list || [],
-                cached: response.data?.cached,
+                data: list,
+                cached: cached,
             }, {
                 status: 200,
                 headers: { 'Cache-Control': 'max-age=300' },
