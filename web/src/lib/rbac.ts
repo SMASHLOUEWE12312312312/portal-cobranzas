@@ -34,12 +34,19 @@ export type Permission =
     | 'EECC:READ'
     | 'EECC:GENERATE'
     | 'EECC:EXPORT'
+    // Base/Upload permissions
+    | 'BASE:READ'
+    | 'BASE:WRITE'
     // Grupos permissions
     | 'GRUPOS:READ'
     | 'GRUPOS:WRITE'
     // Dashboard permissions
     | 'DASHBOARD:READ'
     | 'DASHBOARD:ADMIN'
+    // Conciliación permissions
+    | 'CONCILIACION:READ'
+    | 'CONCILIACION:WRITE'
+    | 'CONCILIACION:PROCESS'
     // Admin permissions
     | 'ADMIN:USERS'
     | 'ADMIN:SYSTEM'
@@ -61,8 +68,13 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
         'EECC:READ',
         'EECC:GENERATE',
         'EECC:EXPORT',
+        'BASE:READ',
+        'BASE:WRITE',
         'GRUPOS:READ',
         'DASHBOARD:READ',
+        'CONCILIACION:READ',
+        'CONCILIACION:WRITE',
+        'CONCILIACION:PROCESS',
     ],
 
     SUPERVISOR: [
@@ -74,16 +86,23 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
         'EECC:READ',
         'EECC:GENERATE',
         'EECC:EXPORT',
+        'BASE:READ',
+        'BASE:WRITE',
         'GRUPOS:READ',
         'DASHBOARD:READ',
         'DASHBOARD:ADMIN',
+        'CONCILIACION:READ',
+        'CONCILIACION:WRITE',
+        'CONCILIACION:PROCESS',
     ],
 
     LECTURA: [
         'BITACORA:READ',
         'EECC:READ',
+        'BASE:READ',
         'GRUPOS:READ',
         'DASHBOARD:READ',
+        'CONCILIACION:READ',
     ],
 
     COMERCIAL: [
@@ -272,10 +291,15 @@ export function getPermissionLabel(permission: Permission): string {
         'EECC:READ': 'Ver EECC',
         'EECC:GENERATE': 'Generar EECC',
         'EECC:EXPORT': 'Exportar EECC',
+        'BASE:READ': 'Ver Base de Datos',
+        'BASE:WRITE': 'Actualizar Base de Datos',
         'GRUPOS:READ': 'Ver Grupos',
         'GRUPOS:WRITE': 'Editar Grupos',
         'DASHBOARD:READ': 'Ver Dashboard',
         'DASHBOARD:ADMIN': 'Dashboard Admin',
+        'CONCILIACION:READ': 'Ver Conciliación',
+        'CONCILIACION:WRITE': 'Cargar Conciliación',
+        'CONCILIACION:PROCESS': 'Procesar Conciliación',
         'ADMIN:USERS': 'Gestionar Usuarios',
         'ADMIN:SYSTEM': 'Configuración Sistema',
         '*': 'Acceso Total',

@@ -59,14 +59,26 @@ function setupBffSharedSecret() {
 }
 
 /**
- * ⚠️ FUNCIÓN ESPECIAL: Configura el MISMO secret que ya está en Vercel
- * Ejecutar esto para sincronizar GAS con Vercel
+ * ⚠️ FUNCIÓN ESPECIAL: Configura un secret específico desde Vercel
+ * Ejecutar esto para sincronizar GAS con un secret existente en Vercel
+ * 
+ * INSTRUCCIONES:
+ * 1. Copia el secret que ya configuraste en Vercel
+ * 2. Reemplaza 'TU_SECRET_DE_VERCEL_AQUI' con ese valor
+ * 3. Ejecuta esta función
+ * 4. IMPORTANTE: Borra el secret de este archivo después de ejecutar
  */
 function sincronizarSecretConVercel() {
     const props = PropertiesService.getScriptProperties();
 
-    // Este es el secret que ya está configurado en Vercel
-    const VERCEL_SECRET = 'yd6j9zNRTRMmAxS+CaRJMDGjuabz4acvo00N9ZxWZ5M=';
+    // ⚠️ REEMPLAZA ESTO CON TU SECRET DE VERCEL (mínimo 32 caracteres)
+    const VERCEL_SECRET = 'TU_SECRET_DE_VERCEL_AQUI';
+    
+    if (VERCEL_SECRET === 'TU_SECRET_DE_VERCEL_AQUI') {
+        console.log('❌ ERROR: Debes reemplazar el placeholder con tu secret real');
+        console.log('Edita esta función y cambia VERCEL_SECRET');
+        return { success: false, message: 'Placeholder no reemplazado' };
+    }
 
     props.setProperty('BFF_SHARED_SECRET', VERCEL_SECRET);
 
@@ -74,6 +86,8 @@ function sincronizarSecretConVercel() {
     console.log('Secret configurado:', VERCEL_SECRET.substring(0, 8) + '...');
     console.log('');
     console.log('🎯 Ahora el login debería funcionar');
+    console.log('');
+    console.log('⚠️ IMPORTANTE: Borra el secret de este archivo por seguridad');
 
     return {
         success: true,

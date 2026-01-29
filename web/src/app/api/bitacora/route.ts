@@ -78,11 +78,21 @@ export async function GET(request: Request) {
             }, { status: 500 });
         }
 
+        // GAS returns { ok, data: [...], pagination: {...} } directly
+        // Handle both structures for compatibility
+        const responseData = response.data;
+        const ciclos = Array.isArray(responseData) 
+            ? responseData 
+            : (responseData?.data || []);
+        const pagination = Array.isArray(responseData) 
+            ? (response as unknown as { pagination?: Pagination }).pagination 
+            : responseData?.pagination;
+
         return NextResponse.json({
             ok: true,
             correlationId: response.correlationId,
-            data: response.data?.data || [],
-            pagination: response.data?.pagination,
+            data: ciclos,
+            pagination: pagination,
         }, {
             status: 200,
             headers: {

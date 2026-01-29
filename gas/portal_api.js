@@ -2043,9 +2043,11 @@ function registrarGestionManualBitacora(payload, token) {
 
     if (!idCiclo) {
       // Buscar último ciclo del asegurado
-      const ciclos = BitacoraService.obtenerResumenCiclos({
+      // obtenerResumenCiclos devuelve { data: [], pagination: {} }
+      const resultado = BitacoraService.obtenerResumenCiclos({
         asegurado: payload.asegurado
-      });
+      }, { page: 1, pageSize: 1 });
+      const ciclos = resultado && resultado.data ? resultado.data : [];
 
       if (ciclos.length > 0) {
         // Usar el ciclo más reciente
@@ -2200,7 +2202,9 @@ function getUltimoCicloPorAsegurado(asegurado, token) {
     }
 
     // Intentar obtener ciclo existente
-    const ciclos = BitacoraService.obtenerResumenCiclos({ asegurado });
+    // obtenerResumenCiclos devuelve { data: [], pagination: {} }
+    const resultado = BitacoraService.obtenerResumenCiclos({ asegurado }, { page: 1, pageSize: 1 });
+    const ciclos = resultado && resultado.data ? resultado.data : [];
 
     if (ciclos.length > 0) {
       // El primero es el más reciente (ya está ordenado)
@@ -2301,7 +2305,9 @@ function getResponsablesUnicos(token) {
   try {
     AuthService.validateSession(token);
 
-    const ciclos = BitacoraService.obtenerResumenCiclos();
+    // obtenerResumenCiclos devuelve { data: [], pagination: {} }
+    const resultado = BitacoraService.obtenerResumenCiclos({}, { page: 1, pageSize: 10000 });
+    const ciclos = resultado && resultado.data ? resultado.data : [];
 
     // Extraer responsables únicos
     const responsablesSet = new Set();

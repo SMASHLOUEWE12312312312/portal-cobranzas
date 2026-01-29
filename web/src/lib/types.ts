@@ -1,6 +1,7 @@
 /**
  * Type definitions for Portal Cobranzas BFF
  * @module types
+ * @version 2.0.0 - Complete types for Vercel migration
  */
 
 // =============================================================================
@@ -30,7 +31,9 @@ export interface Pagination {
     pageSize: number;
     total: number;
     totalPages: number;
-    hasMore: boolean;
+    hasMore?: boolean;
+    hasNext?: boolean;
+    hasPrev?: boolean;
 }
 
 // =============================================================================
@@ -65,8 +68,33 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
+    token: string;
     user: User;
     expiresAt: number;
+}
+
+// =============================================================================
+// Dashboard Types
+// =============================================================================
+
+export interface DashboardStats {
+    eeccToday: number;
+    eeccWeek: number;
+    mailSent24h: number;
+    mailQueued: number;
+    errors24h: number;
+    lastUpdated: string;
+}
+
+export interface MailQueueHealth {
+    pending: number;
+    processing: number;
+    failed24h: number;
+    staleCount: number;
+    oldestPending?: string;
+    lastProcessed?: string;
+    status: 'OK' | 'WARNING' | 'ERROR';
+    reasons?: string[];
 }
 
 // =============================================================================
@@ -75,36 +103,42 @@ export interface LoginResponse {
 
 export interface Ciclo {
     idCiclo: string;
+    idGestion?: string;
+    origenRegistro?: string;
     asegurado: string;
     ruc?: string;
     responsable: string;
     tipoGestion: TipoGestion;
     estadoGestion: EstadoGestion;
     canalContacto?: CanalContacto;
+    fechaEnvioEECC?: string;
     fechaRegistro: string;
     fechaCompromiso?: string;
     proximaAccion?: string;
     observaciones?: string;
     diasDesdeRegistro: number;
-    snapshotVencidoPEN?: number;  // Total vencido PEN al momento del registro
-    snapshotVencidoUSD?: number;  // Total vencido USD al momento del registro
+    numGestiones?: number;
+    snapshotVencidoPEN?: number;
+    snapshotVencidoUSD?: number;
 }
 
 export interface Gestion {
     idGestion: string;
     idCiclo: string;
+    origenRegistro?: string;
     asegurado: string;
     ruc?: string;
     responsable: string;
     tipoGestion: TipoGestion;
     estadoGestion: EstadoGestion;
     canalContacto?: CanalContacto;
+    fechaEnvioEECC?: string;
     fechaRegistro: string;
     fechaCompromiso?: string;
     proximaAccion?: string;
     observaciones?: string;
-    snapshotVencidoPEN?: number;  // Total vencido PEN al momento del registro
-    snapshotVencidoUSD?: number;  // Total vencido USD al momento del registro
+    snapshotVencidoPEN?: number;
+    snapshotVencidoUSD?: number;
 }
 
 export type TipoGestion =
@@ -149,8 +183,20 @@ export interface GestionInput {
     tipoGestion: TipoGestion;
     estadoGestion: EstadoGestion;
     canalContacto?: CanalContacto;
+    fechaEnvioEECC?: string;
+    fechaGestion?: string;
     fechaCompromiso?: string;
     proximaAccion?: string;
+    observaciones?: string;
+}
+
+export interface CompromisoActivo {
+    idCiclo: string;
+    asegurado: string;
+    fechaCompromiso: string;
+    estadoGestion: EstadoGestion;
+    tipoGestion: TipoGestion;
+    responsable: string;
     observaciones?: string;
 }
 
@@ -167,30 +213,49 @@ export interface MailQueueItem {
     error?: string;
 }
 
-export interface MailQueueHealth {
-    pending: number;
-    processing: number;
-    staleCount: number;
-    oldestPending?: string;
+export interface MailTemplate {
+    id: string;
+    name: string;
+    subject: string;
+    body: string;
+    active: boolean;
 }
 
 export interface SendMailRequest {
     items: Array<{ aseguradoId: string }>;
     options?: {
-        template?: string;
-        subject?: string;
+        templateId?: string;
+        adjuntarPdf?: boolean;
+        adjuntarXlsx?: boolean;
+        fechaCorte?: string;
     };
 }
 
 export interface SendMailResponse {
     sent: number;
     failed: number;
-    errors: string[];
+    errors: Array<{ aseguradoId: string; error: string }>;
     details: Array<{
-        asegurado: string;
-        status: 'sent' | 'failed';
+        aseguradoId: string;
+        status: 'sent' | 'error' | 'queued';
+        messageId?: string;
         error?: string;
     }>;
+    correlationId: string;
+    queued?: boolean;
+    metrics?: {
+        totalMs: number;
+        loadContactsMs?: number;
+        sendEmailsMs?: number;
+    };
+}
+
+export interface ScheduleJobRequest {
+    tipo: 'EECC_INDIVIDUAL' | 'EECC_GRUPO' | 'EECC_BATCH';
+    destino: string | string[];
+    fecha: string;
+    hora: string;
+    options?: Record<string, unknown>;
 }
 
 // =============================================================================
@@ -203,56 +268,151 @@ export interface Asegurado {
     grupo?: string;
 }
 
-export interface EECCPreview {
-    asegurado: string;
-    rows: number;
-    totalImporte: number;
-    moneda: string;
-    data: Array<Record<string, unknown>>;
+export interface GrupoEconomico {
+    nombre: string;
+    asegurados: string[];
+    count: number;
 }
 
-export interface GenerateEECCRequest {
-    asegurado: string;
-    options?: {
-        exportPdf?: boolean;
-        exportXlsx?: boolean;
-        includeObs?: boolean;
-        obsForRAM?: boolean;
-        rowsToSkip?: number;
-    };
+export interface PreviewData {
+    headers: string[];
+    rows: Array<Array<string | number | null>>;
+    total: number;
+    rams: string[];
+}
+
+export interface GenerateEECCOptions {
+    exportPdf?: boolean;
+    exportXlsx?: boolean;
+    includeObs?: boolean;
+    obsForRAM?: string | string[];
+    rowsToSkip?: number[];
 }
 
 export interface GenerateEECCResponse {
-    success: boolean;
-    files: Array<{
-        name: string;
-        url: string;
-        type: 'pdf' | 'xlsx';
-    }>;
+    ok: boolean;
+    pdfUrl?: string;
+    xlsxUrl?: string;
+    pipelineId?: string;
+    error?: string;
+}
+
+export interface ZipResponse {
+    ok: boolean;
+    url?: string;
+    error?: string;
+}
+
+// =============================================================================
+// Base/Upload Types
+// =============================================================================
+
+export interface UploadPayload {
+    dataBase64: string;
+    name: string;
+    mimeType: string;
+    tieneEncabezado: boolean;
+}
+
+export interface UploadResponse {
+    ok: boolean;
+    filas?: number;
+    mensaje: string;
+    duplicatesRemoved?: number;
+    t?: { total: number };
+}
+
+// =============================================================================
+// Conciliación Types
+// =============================================================================
+
+export interface Insurer {
+    key: string;
+    name: string;
+    enabled: boolean;
+}
+
+export interface ConciliacionStatus {
+    ok: boolean;
+    loaded: boolean;
+    rows?: number;
+    lastUpdated?: string;
+    error?: string;
+}
+
+export interface ConciliacionResult {
+    ok: boolean;
+    stats?: {
+        totalRows: number;
+        matched: number;
+        unmatched: number;
+    };
+    cruce?: {
+        encontrados: number;
+        noEncontrados: number;
+    };
+    exports?: {
+        cruceUrl?: string;
+        reportUrl?: string;
+    };
+    error?: string;
 }
 
 // =============================================================================
 // GAS Client Types
 // =============================================================================
 
+/**
+ * Complete list of GAS actions supported by doPost
+ * @version 5.0.0
+ */
 export type GASAction =
+    // Auth
     | 'ping'
     | 'login'
     | 'loginPassword'
     | 'logout'
     | 'validateSession'
-    | 'getBitacoraResumen'
-    | 'registrarGestionManualBitacora'
-    | 'bitacoraGetGestionesPorCiclo'
-    | 'getClientesConCiclosActivos'
+    | 'healthCheck'
+    // Dashboard
+    | 'getDashboardStats'
     | 'getMailQueueHealth'
-    | 'sendEmailsNow'
-    | 'getMailTemplates'
-    | 'previewAsegurado'
-    | 'generateForAsegurado_API'
+    // Base/Upload
+    | 'subirArchivoBase'
+    // EECC/Generar
+    | 'getAseguradosSafe'
+    | 'getAseguradosPaged'
     | 'getGrupos_API'
     | 'getAseguradosPorGrupo_API'
-    | 'getDashboardStats';
+    | 'previewAsegurado'
+    | 'generateForAsegurado_API'
+    | 'generateHeadless_API'
+    | 'generateByGrupo_API'
+    | 'createZip_API'
+    // Mail/Enviar
+    | 'getMailTemplates'
+    | 'sendEmailsNow'
+    | 'sendTestEmail'
+    | 'queueEmailsBatch_API'
+    | 'listGrupos'
+    | 'sendEmailsByGrupo_API'
+    | 'scheduleJob_API'
+    // Bitácora
+    | 'getBitacoraResumen'
+    | 'bitacoraGetGestionesPorCiclo'
+    | 'registrarGestionManualBitacora'
+    | 'getClientesConCiclosActivos'
+    | 'getUltimoCicloPorAsegurado'
+    | 'getResponsablesUnicos'
+    | 'bitacoraGetResumenCiclos'
+    | 'bitacoraGetGestionesPorAsegurado'
+    | 'bitacoraGetCompromisosActivos'
+    | 'getGestionesCiclo' // Legacy alias
+    // Conciliación
+    | 'conciliacion.getInsurers'
+    | 'conciliacion.getStatus'
+    | 'conciliacion.uploadBDSisnet'
+    | 'conciliacion.process';
 
 export interface GASRequestPayload {
     action: GASAction;
@@ -261,4 +421,29 @@ export interface GASRequestPayload {
     timestamp: number;
     nonce: string;
     correlationId: string;
+}
+
+// =============================================================================
+// UI State Types
+// =============================================================================
+
+export interface NavItem {
+    id: string;
+    label: string;
+    icon: string;
+    href: string;
+}
+
+export interface ToastMessage {
+    id: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message?: string;
+    duration?: number;
+}
+
+export interface ModalState {
+    isOpen: boolean;
+    title?: string;
+    content?: React.ReactNode;
 }

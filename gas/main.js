@@ -369,14 +369,17 @@ function doGet(e) {
 /**
  * doPost - Handles BFF API requests with HMAC authentication
  * This endpoint receives signed requests from the Next.js BFF and routes them
- * to existing portal functions (loginPassword, logout, etc.)
+ * to existing portal functions.
  * 
  * BFF sends: { action, params, token, timestamp, nonce, correlationId }
  * 
  * Required for Next.js + Vercel BFF pattern (P0-1)
+ * 
+ * @version 5.0.0 - Complete router with ALL actions for Vercel migration
  */
 function doPost(e) {
   const context = 'doPost';
+  let correlationId = 'unknown';
 
   try {
     Logger.log('doPost called');
@@ -386,53 +389,52 @@ function doPost(e) {
 
     if (!validation.ok) {
       Logger.log('BFF validation failed: ' + validation.error);
-      return ContentService.createTextOutput(JSON.stringify({
+      return _jsonResponse({
         ok: false,
-        error: validation.error
-      })).setMimeType(ContentService.MimeType.JSON);
+        error: { code: 'AUTH_FAILED', message: validation.error },
+        correlationId: 'validation-failed'
+      });
     }
 
     // BFF sends: { action, params, token, timestamp, nonce, correlationId }
     const { action, params = {}, token } = validation.data;
-    Logger.log('BFF action: ' + action);
-    Logger.log('BFF params: ' + JSON.stringify(params).substring(0, 100));
+    correlationId = validation.data.correlationId || Utilities.getUuid();
+    
+    Logger.log('BFF action: ' + action + ' | correlationId: ' + correlationId);
+    Logger.log('BFF params: ' + JSON.stringify(params).substring(0, 200));
 
     let result;
 
     // Route to appropriate handler
     switch (action) {
+      // ========== AUTHENTICATION ==========
       case 'login':
-        // Login uses params.username and params.password
+      case 'loginPassword':
         result = loginPassword(params.username, params.password);
         break;
 
       case 'logout':
-        result = AuthService.logout(token);
+        // Support token from payload.token OR params.token (compat)
+        const logoutToken = token || params.token;
+        result = AuthService.logout(logoutToken);
         break;
 
       case 'validateSession':
         try {
           const username = AuthService.validateSession(token);
-          // Inferir rol (función definida en portal_api.js)
           let userRole = 'LECTURA';
           if (typeof _inferUserRole === 'function') {
             userRole = _inferUserRole(username);
           } else {
-            // Fallback: inferir rol localmente
             const lowerUser = String(username).toLowerCase();
             if (lowerUser.startsWith('admin')) userRole = 'ADMIN';
             else if (lowerUser.startsWith('cobranzas')) userRole = 'COBRANZAS';
             else if (lowerUser.startsWith('supervisor')) userRole = 'SUPERVISOR';
           }
-          // Retornar estructura consistente con BFF
           result = {
             ok: true,
             data: {
-              user: {
-                username: username,
-                role: userRole,
-                displayName: username
-              }
+              user: { username: username, role: userRole, displayName: username }
             }
           };
         } catch (err) {
@@ -441,84 +443,239 @@ function doPost(e) {
         break;
 
       case 'ping':
-        result = { ok: true, timestamp: new Date().toISOString(), version: 'v4.1-BFF-FIX' };
+        result = { ok: true, data: { timestamp: new Date().toISOString(), version: 'v5.0.0-BFF-COMPLETE' } };
         break;
 
       case 'healthCheck':
-        result = healthCheck(token);
+        result = _wrapApiResponse(healthCheck(token));
         break;
 
+      // ========== DASHBOARD ==========
+      case 'getDashboardStats':
+        result = _wrapApiResponse(getDashboardStats(token));
+        break;
+
+      case 'getMailQueueHealth':
+        result = _wrapApiResponse(getMailQueueHealth(token));
+        break;
+
+      // ========== BASE - ACTUALIZAR ==========
+      case 'subirArchivoBase':
+        result = _wrapApiResponse(subirArchivoBase(params.payload || params, token));
+        break;
+
+      // ========== EECC - GENERAR ==========
+      case 'getAseguradosSafe':
+        result = _wrapApiResponse(getAseguradosSafe(token));
+        break;
+
+      case 'getAseguradosPaged':
+        result = _wrapApiResponse(getAseguradosPaged(token, params.options || params));
+        break;
+
+      case 'getGrupos_API':
+        result = _wrapApiResponse(getGrupos_API(token));
+        break;
+
+      case 'getAseguradosPorGrupo_API':
+        result = _wrapApiResponse(getAseguradosPorGrupo_API(params.grupo, token));
+        break;
+
+      case 'previewAsegurado':
+        try {
+          const previewResult = previewAsegurado(
+            params.asegurado,
+            params.maxRows || 200,
+            params.includeObs || false,
+            params.obsForRAM || '__ALL__',
+            token
+          );
+          // previewAsegurado returns raw object, wrap it
+          result = { ok: true, data: previewResult };
+        } catch (previewErr) {
+          result = { ok: false, error: { code: 'PREVIEW_ERROR', message: previewErr.message } };
+        }
+        break;
+
+      case 'generateForAsegurado_API':
+        result = _wrapApiResponse(generateForAsegurado_API(params.asegurado || params.nombreAseg, params.opts || params.options || {}, token));
+        break;
+
+      case 'generateHeadless_API':
+        result = _wrapApiResponse(generateHeadless_API(params.asegurado, params.opts || params.options || {}, token));
+        break;
+
+      case 'generateByGrupo_API':
+        result = _wrapApiResponse(generateByGrupo_API(params.grupo, params.opts || params.options || {}, token));
+        break;
+
+      case 'createZip_API':
+        result = _wrapApiResponse(createZip_API(params.fileUrls, params.zipName, token));
+        break;
+
+      // ========== MAIL - ENVIAR ==========
+      case 'getMailTemplates':
+        result = _wrapApiResponse(getMailTemplates(token));
+        break;
+
+      case 'sendEmailsNow':
+        result = _wrapApiResponse(sendEmailsNow(params.items, params.options || {}, token));
+        break;
+
+      case 'sendTestEmail':
+        result = _wrapApiResponse(sendTestEmail(params, token));
+        break;
+
+      case 'queueEmailsBatch_API':
+        result = _wrapApiResponse(queueEmailsBatch_API(params.items, params.options || {}, token));
+        break;
+
+      case 'listGrupos':
+        try {
+          const grupos = listGrupos(token);
+          result = { ok: true, data: grupos };
+        } catch (gruposErr) {
+          result = { ok: false, error: { code: 'GRUPOS_ERROR', message: gruposErr.message } };
+        }
+        break;
+
+      case 'sendEmailsByGrupo_API':
+        result = _wrapApiResponse(sendEmailsByGrupo_API(params.grupo, params.opts || params.options || {}, token));
+        break;
+
+      case 'scheduleJob_API':
+        result = _wrapApiResponse(scheduleJob_API(params.jobData || params, token));
+        break;
+
+      // ========== BITÁCORA ==========
       case 'getBitacoraResumen':
-        result = getBitacoraResumen(token, params.options);
+        // FIX: Correct parameter order (filtros, token, opciones)
+        result = _wrapApiResponse(getBitacoraResumen(params.filtros || {}, token, params.opciones || params.options || {}));
+        break;
+
+      case 'bitacoraGetGestionesPorCiclo':
+        result = _wrapApiResponse(bitacoraGetGestionesPorCiclo(params.idCiclo, token));
         break;
 
       case 'registrarGestionManualBitacora':
-        result = registrarGestionManualBitacora(
-          token,
-          params.asegurado,
-          params.tipoGestion,
-          params.estadoGestion,
-          params.canalContacto,
-          params.observaciones,
-          params.fechaCompromiso,
-          params.idCiclo,
-          params.gestionData
-        );
+        // FIX: Correct parameter order (payload, token)
+        result = _wrapApiResponse(registrarGestionManualBitacora(params.payload || params, token));
         break;
 
+      case 'getClientesConCiclosActivos':
+        result = _wrapApiResponse(getClientesConCiclosActivos(token));
+        break;
+
+      case 'getUltimoCicloPorAsegurado':
+        result = _wrapApiResponse(getUltimoCicloPorAsegurado(params.asegurado, token));
+        break;
+
+      case 'getResponsablesUnicos':
+        result = _wrapApiResponse(getResponsablesUnicos(token));
+        break;
+
+      case 'bitacoraGetResumenCiclos':
+        result = _wrapApiResponse(bitacoraGetResumenCiclos(token, params.opciones || params.options || {}));
+        break;
+
+      case 'bitacoraGetGestionesPorAsegurado':
+        result = _wrapApiResponse(bitacoraGetGestionesPorAsegurado(params.asegurado, token));
+        break;
+
+      case 'bitacoraGetCompromisosActivos':
+        result = _wrapApiResponse(bitacoraGetCompromisosActivos(token));
+        break;
+
+      // Legacy alias
       case 'getGestionesCiclo':
-        result = getGestionesCiclo(token, params.idCiclo);
+        result = _wrapApiResponse(bitacoraGetGestionesPorCiclo(params.idCiclo, token));
         break;
 
       // ========== CONCILIACIÓN COBRANZAS ==========
-
       case 'conciliacion.uploadBDSisnet':
-        // Upload BD Sisnet to BD_Cruce sheet
-        result = ConciliacionIO.subirBDSisnet(
+        result = _wrapApiResponse(ConciliacionIO.subirBDSisnet(
           params.base64Data,
           params.fileName,
           params.mimeType
-        );
+        ));
         break;
 
       case 'conciliacion.process':
-        // Process insurer EECC
-        result = ConciliacionService.procesarAseguradora(
+        result = _wrapApiResponse(ConciliacionService.procesarAseguradora(
           params.insurerKey,
           params.base64Data,
           params.fileName,
           params.mimeType,
           token
-        );
+        ));
         break;
 
       case 'conciliacion.getInsurers':
-        // Get enabled insurers list
-        result = ConciliacionService.getInsurers();
+        result = _wrapApiResponse(ConciliacionService.getInsurers());
         break;
 
       case 'conciliacion.getStatus':
-        // Get BD_Cruce status
-        result = ConciliacionService.getBDCruceStatus();
+        result = _wrapApiResponse(ConciliacionService.getBDCruceStatus());
         break;
 
       default:
-        result = { ok: false, error: 'Unknown action: ' + action };
+        result = { ok: false, error: { code: 'UNKNOWN_ACTION', message: 'Unknown action: ' + action } };
     }
 
-    Logger.log('BFF response: ' + JSON.stringify(result).substring(0, 200));
+    // Ensure correlationId is always present
+    if (result && typeof result === 'object') {
+      result.correlationId = correlationId;
+    }
 
-    return ContentService.createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+    Logger.log('BFF response: ' + JSON.stringify(result).substring(0, 300));
+    return _jsonResponse(result);
 
   } catch (error) {
     Logger.log('doPost error: ' + error.toString());
-
-    return ContentService.createTextOutput(JSON.stringify({
+    return _jsonResponse({
       ok: false,
-      error: 'Server error: ' + error.message
-    })).setMimeType(ContentService.MimeType.JSON);
+      error: { code: 'SERVER_ERROR', message: error.message },
+      correlationId: correlationId
+    });
   }
+}
+
+/**
+ * Helper: Create JSON ContentService response
+ * @param {Object} data - Response object
+ * @return {ContentService.TextOutput}
+ */
+function _jsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Helper: Wrap existing function response in ApiResponse format
+ * Ensures consistent { ok, data, error, correlationId } structure
+ * @param {Object} result - Result from existing function
+ * @return {Object} ApiResponse
+ */
+function _wrapApiResponse(result) {
+  // If already has ok property, normalize structure
+  if (result && typeof result === 'object' && 'ok' in result) {
+    // Ensure error is object, not string
+    if (result.error && typeof result.error === 'string') {
+      return {
+        ok: result.ok,
+        data: result.data || (result.ok ? result : null),
+        error: result.ok ? undefined : { code: 'ERROR', message: result.error },
+        pagination: result.pagination
+      };
+    }
+    return result;
+  }
+  
+  // Raw result - wrap in data
+  return {
+    ok: true,
+    data: result
+  };
 }
 
 

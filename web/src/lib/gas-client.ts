@@ -265,7 +265,8 @@ export async function checkGASConnection(): Promise<{
     const start = Date.now();
 
     try {
-        const response = await callGAS('ping', {}, undefined, { timeoutMs: 5000 });
+        // GAS can take up to 15s on cold start, so use generous timeout
+        const response = await callGAS('ping', {}, undefined, { timeoutMs: 20000 });
         const latencyMs = Date.now() - start;
 
         return {

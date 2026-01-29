@@ -244,8 +244,8 @@ const CONFIG = {
     // Phase 6 Excelencia Operacional (2026-01-12)
     DARK_MODE_ENABLED: false,            // Dark theme toggle
     KEYBOARD_SHORTCUTS_ENABLED: false,   // Additional keyboard shortcuts
-    TEMPLATE_VIEWER_ENABLED: false,      // View mail templates (admin only)
-    HEALTH_CHECK_ENABLED: false,         // System health check endpoint
+    TEMPLATE_VIEWER_ENABLED: true,       // View mail templates (enabled for BFF)
+    HEALTH_CHECK_ENABLED: true,          // System health check endpoint (enabled for BFF)
     // ========== FASE 1: FUNDAMENTOS CRÍTICOS (2026-01-15) ==========
     ENABLE_ERROR_HANDLER: true,        // ErrorHandler centralizado con categorización
     ENABLE_CACHE_HELPER: true,         // CacheHelper con TTL diferenciado
