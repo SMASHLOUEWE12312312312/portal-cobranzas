@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const redirectTo = searchParams.get('from') || '/bitacora';
+    const redirectTo = searchParams.get('from') || '/dashboard';
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');

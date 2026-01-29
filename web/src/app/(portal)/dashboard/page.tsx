@@ -28,11 +28,15 @@ interface QueueHealth {
  * - Quick action cards
  * - Power BI embed (collapsible)
  */
+// Power BI Embed URL (from GAS config)
+const PBI_URL = 'https://app.powerbi.com/view?r=eyJrIjoiNTJmNjA0ZmQtOGU4Yi00Nzk2LWIzOWMtM2NmMTM4N2Y5ZDEzIiwidCI6IjMyMDliNTBiLWI3OWItNDNkYy05ZmM0LThkNDJjNDA2ZGQ2MSIsImMiOjR9';
+
 export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [queueHealth, setQueueHealth] = useState<QueueHealth | null>(null);
     const [loading, setLoading] = useState(true);
     const [pbiExpanded, setPbiExpanded] = useState(false);
+    const [pbiLoaded, setPbiLoaded] = useState(false);
 
     useEffect(() => {
         loadDashboardData();
@@ -95,16 +99,28 @@ export default function DashboardPage() {
                             Visualiza métricas y análisis de cobranzas en tiempo real
                         </p>
                     </div>
-                    <span className={`text-2xl transition-transform ${pbiExpanded ? 'rotate-180' : ''}`}>
+                    <span className={`text-2xl transition-transform duration-200 ${pbiExpanded ? 'rotate-180' : ''}`}>
                         ▼
                     </span>
                 </button>
                 
                 {pbiExpanded && (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <div className="bg-gray-100 dark:bg-gray-800 rounded-lg h-[500px] flex items-center justify-center">
-                            <p className="text-gray-500">Power BI Dashboard</p>
-                            {/* Aquí iría el iframe de Power BI */}
+                        <div className="relative bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden" style={{ minHeight: '600px', height: '70vh' }}>
+                            {!pbiLoaded && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-300 border-t-red-600 mb-4"></div>
+                                    <p className="text-gray-500">Cargando Power BI Dashboard...</p>
+                                </div>
+                            )}
+                            <iframe
+                                src={PBI_URL}
+                                className={`w-full h-full border-0 transition-opacity duration-300 ${pbiLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                style={{ minHeight: '600px', height: '70vh' }}
+                                allowFullScreen
+                                onLoad={() => setPbiLoaded(true)}
+                                title="Power BI Dashboard"
+                            />
                         </div>
                     </div>
                 )}
