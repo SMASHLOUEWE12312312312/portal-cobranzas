@@ -49,11 +49,25 @@ export async function GET() {
         // Transform GAS response to expected format
         // GAS returns: { pendingCount, processingCount, failedCount24h, oldestPendingAgeMinutes, ... }
         const gasData = response.data || {};
+        const pending = gasData.pendingCount || 0;
+        const processing = gasData.processingCount || 0;
+        const failed24h = gasData.failedCount24h || 0;
+        const staleCount = gasData.oldestProcessingAgeMinutes > 30 ? processing : 0;
+
+        // Determine status based on queue health
+        let status: 'OK' | 'WARNING' | 'ERROR' = 'OK';
+        if (failed24h > 10 || staleCount > 0) {
+            status = 'ERROR';
+        } else if (pending > 50 || failed24h > 0) {
+            status = 'WARNING';
+        }
+
         const health: MailQueueHealth = {
-            pending: gasData.pendingCount || 0,
-            processing: gasData.processingCount || 0,
-            failed24h: gasData.failedCount24h || 0,
-            staleCount: gasData.oldestProcessingAgeMinutes > 30 ? gasData.processingCount : 0,
+            pending,
+            processing,
+            failed24h,
+            staleCount,
+            status,
             oldestPending: gasData.oldestPendingAgeMinutes 
                 ? `${gasData.oldestPendingAgeMinutes} min` 
                 : undefined,
