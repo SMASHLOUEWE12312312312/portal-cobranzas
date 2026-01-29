@@ -333,10 +333,13 @@ export interface Insurer {
 }
 
 export interface ConciliacionStatus {
-    ok: boolean;
-    loaded: boolean;
+    ok?: boolean;
+    loaded?: boolean;
+    bdCruceStatus?: 'loaded' | 'empty';
     rows?: number;
+    rowCount?: number;
     lastUpdated?: string;
+    lastUpdate?: string | null;
     error?: string;
 }
 
