@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import Link from 'next/link';
+import NotificationsPanel from '@/components/NotificationsPanel';
 
 /**
  * Protected Portal Layout
@@ -124,10 +125,8 @@ export default async function PortalLayout({
                         Portal Cobranzas
                     </div>
                     <div className="flex items-center gap-4">
-                        {/* Notifications placeholder */}
-                        <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative">
-                            <span className="text-xl">🔔</span>
-                        </button>
+                        {/* Notifications Panel */}
+                        <NotificationsPanel />
                     </div>
                 </header>
 

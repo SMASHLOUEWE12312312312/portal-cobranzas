@@ -2,7 +2,22 @@ import { NextResponse } from 'next/server';
 import { getSession, getGasToken } from '@/lib/session';
 import { hasPermission } from '@/lib/rbac';
 import { callGASAuthenticated } from '@/lib/gas-client';
-import type { CompromisoActivo } from '@/lib/types';
+
+interface GASCompromiso {
+    asegurado: string;
+    fechaCompromiso: string;
+    snapshotVencidoPEN?: number;
+    estadoGestion?: string;
+    responsable?: string;
+}
+
+interface CompromisoNotification {
+    asegurado: string;
+    fechaCompromiso: string;
+    monto?: number;
+    estado: string;
+    diasRestantes: number;
+}
 
 /**
  * Compromisos Activos Endpoint
@@ -33,7 +48,8 @@ export async function GET() {
             }, { status: 401 });
         }
 
-        const response = await callGASAuthenticated<CompromisoActivo[]>(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response = await callGASAuthenticated<any>(
             'bitacoraGetCompromisosActivos',
             {},
             gasToken
@@ -47,10 +63,41 @@ export async function GET() {
             }, { status: 500 });
         }
 
+        // Transform GAS data to notification format
+        const gasData: GASCompromiso[] = response.data || [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const compromisos: CompromisoNotification[] = gasData.map(c => {
+            const fechaComp = c.fechaCompromiso ? new Date(c.fechaCompromiso) : null;
+            let diasRestantes = 999;
+
+            if (fechaComp) {
+                fechaComp.setHours(0, 0, 0, 0);
+                diasRestantes = Math.floor((fechaComp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            }
+
+            // Format date for display
+            const fechaDisplay = fechaComp 
+                ? fechaComp.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                : 'Sin fecha';
+
+            return {
+                asegurado: c.asegurado,
+                fechaCompromiso: fechaDisplay,
+                monto: c.snapshotVencidoPEN || undefined,
+                estado: c.estadoGestion || 'COMPROMISO_PAGO',
+                diasRestantes,
+            };
+        });
+
+        // Sort by urgency (most urgent first)
+        compromisos.sort((a, b) => a.diasRestantes - b.diasRestantes);
+
         return NextResponse.json({
             ok: true,
             correlationId: response.correlationId,
-            data: response.data || [],
+            data: compromisos,
         }, {
             status: 200,
             headers: { 'Cache-Control': 'max-age=60' },
