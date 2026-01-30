@@ -37,10 +37,38 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [pbiExpanded, setPbiExpanded] = useState(false);
     const [pbiLoaded, setPbiLoaded] = useState(false);
+    const [pbiError, setPbiError] = useState(false);
+    const [pbiKey, setPbiKey] = useState(0); // Key para forzar recarga del iframe
 
     useEffect(() => {
         loadDashboardData();
     }, []);
+
+    // Timeout para detectar carga estancada de Power BI (15 segundos)
+    useEffect(() => {
+        if (pbiExpanded && !pbiLoaded && !pbiError) {
+            const timeout = setTimeout(() => {
+                if (!pbiLoaded) {
+                    setPbiError(true);
+                }
+            }, 15000);
+            return () => clearTimeout(timeout);
+        }
+    }, [pbiExpanded, pbiLoaded, pbiError]);
+
+    // Resetear estado cuando se colapsa
+    useEffect(() => {
+        if (!pbiExpanded) {
+            setPbiLoaded(false);
+            setPbiError(false);
+        }
+    }, [pbiExpanded]);
+
+    function handlePbiReload() {
+        setPbiLoaded(false);
+        setPbiError(false);
+        setPbiKey(k => k + 1); // Forzar recarga del iframe
+    }
 
     async function loadDashboardData() {
         try {
@@ -107,20 +135,63 @@ export default function DashboardPage() {
                 {pbiExpanded && (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <div className="relative bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden" style={{ minHeight: '600px', height: '70vh' }}>
-                            {!pbiLoaded && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            {/* Estado de carga */}
+                            {!pbiLoaded && !pbiError && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
                                     <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-300 border-t-red-600 mb-4"></div>
                                     <p className="text-gray-500">Cargando Power BI Dashboard...</p>
+                                    <p className="text-xs text-gray-400 mt-2">Esto puede tomar unos segundos</p>
                                 </div>
                             )}
-                            <iframe
-                                src={PBI_URL}
-                                className={`w-full h-full border-0 transition-opacity duration-300 ${pbiLoaded ? 'opacity-100' : 'opacity-0'}`}
-                                style={{ minHeight: '600px', height: '70vh' }}
-                                allowFullScreen
-                                onLoad={() => setPbiLoaded(true)}
-                                title="Power BI Dashboard"
-                            />
+                            
+                            {/* Estado de error */}
+                            {pbiError && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-gray-100 dark:bg-gray-800">
+                                    <span className="text-5xl mb-4">⚠️</span>
+                                    <p className="text-gray-700 dark:text-gray-300 font-medium mb-2">
+                                        No se pudo cargar el Dashboard
+                                    </p>
+                                    <p className="text-sm text-gray-500 mb-4 text-center max-w-md">
+                                        Verifica tu conexión a internet o que Power BI esté disponible.
+                                        Si el problema persiste, intenta desactivar el bloqueador de anuncios.
+                                    </p>
+                                    <button
+                                        onClick={handlePbiReload}
+                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                                    >
+                                        🔄 Reintentar carga
+                                    </button>
+                                </div>
+                            )}
+                            
+                            {/* Iframe de Power BI */}
+                            {!pbiError && (
+                                <iframe
+                                    key={pbiKey}
+                                    src={PBI_URL}
+                                    className={`w-full h-full border-0 transition-opacity duration-300 ${pbiLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                    style={{ minHeight: '600px', height: '70vh' }}
+                                    allowFullScreen
+                                    onLoad={() => {
+                                        setPbiLoaded(true);
+                                        setPbiError(false);
+                                    }}
+                                    onError={() => setPbiError(true)}
+                                    title="Power BI Dashboard"
+                                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                                />
+                            )}
+                            
+                            {/* Botón de recargar cuando está cargado */}
+                            {pbiLoaded && !pbiError && (
+                                <button
+                                    onClick={handlePbiReload}
+                                    className="absolute top-2 right-2 p-2 bg-white/80 dark:bg-gray-800/80 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors shadow-sm z-10"
+                                    title="Recargar dashboard"
+                                >
+                                    🔄
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}

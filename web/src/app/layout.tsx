@@ -46,11 +46,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* CSP Meta Tag - Additional security layer */}
-        <meta
-          httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://*.vercel.app;"
-        />
+        {/* CSP se maneja via headers HTTP en middleware.ts - no usar meta tag aquí */}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

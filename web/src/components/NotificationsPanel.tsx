@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface Compromiso {
     asegurado: string;
@@ -10,17 +10,114 @@ interface Compromiso {
     diasRestantes: number;
 }
 
+// Caché en memoria para datos de compromisos
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+let cachedCompromisos: Compromiso[] | null = null;
+let cacheTimestamp = 0;
+
+function isCacheValid(): boolean {
+    return cachedCompromisos !== null && (Date.now() - cacheTimestamp) < CACHE_TTL_MS;
+}
+
+function formatTimeAgo(timestamp: number): string {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return 'ahora';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `hace ${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    return `hace ${hours}h`;
+}
+
 /**
  * Notifications Panel Component
  * 
  * Shows payment commitment reminders similar to GAS portal
+ * 
+ * OPTIMIZACIONES:
+ * - Precarga: Carga datos al montar, no al abrir panel
+ * - Caché: Mantiene datos en memoria por 5 min
+ * - Background refresh: Actualiza silenciosamente cada 5 min
  */
 export default function NotificationsPanel() {
     const [isOpen, setIsOpen] = useState(false);
-    const [compromisos, setCompromisos] = useState<Compromiso[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [compromisos, setCompromisos] = useState<Compromiso[]>(cachedCompromisos || []);
+    const [loading, setLoading] = useState(!isCacheValid());
     const [error, setError] = useState<string | null>(null);
+    const [lastFetch, setLastFetch] = useState<number>(cacheTimestamp);
     const panelRef = useRef<HTMLDivElement>(null);
+    const fetchInProgressRef = useRef(false);
+
+    // Función optimizada de carga con AbortController
+    const loadCompromisos = useCallback(async (silent = false) => {
+        // Evitar múltiples fetches simultáneos
+        if (fetchInProgressRef.current) return;
+        
+        // Si hay caché válido y es carga silenciosa, no hacer nada
+        if (silent && isCacheValid()) return;
+        
+        fetchInProgressRef.current = true;
+        if (!silent) {
+            setLoading(true);
+            setError(null);
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+        try {
+            const res = await fetch('/api/bitacora/compromisos', {
+                signal: controller.signal,
+                headers: { 'Cache-Control': 'no-cache' },
+            });
+            clearTimeout(timeoutId);
+            
+            const data = await res.json();
+
+            if (data.ok) {
+                const newCompromisos = data.data || [];
+                setCompromisos(newCompromisos);
+                // Actualizar caché en memoria
+                cachedCompromisos = newCompromisos;
+                cacheTimestamp = Date.now();
+                setLastFetch(cacheTimestamp);
+                setError(null);
+            } else {
+                if (!silent) {
+                    setError(data.error?.message || 'Error al cargar');
+                }
+            }
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (!silent) {
+                if (err instanceof Error && err.name === 'AbortError') {
+                    setError('Tiempo de espera agotado');
+                } else {
+                    setError('Error de conexión');
+                }
+            }
+        } finally {
+            fetchInProgressRef.current = false;
+            if (!silent) {
+                setLoading(false);
+            }
+        }
+    }, []);
+
+    // PRECARGA: Cargar datos inmediatamente al montar el componente
+    useEffect(() => {
+        if (!isCacheValid()) {
+            loadCompromisos(false);
+        }
+    }, [loadCompromisos]);
+
+    // BACKGROUND REFRESH: Actualizar cada 5 minutos si el componente está montado
+    useEffect(() => {
+        const interval = setInterval(() => {
+            loadCompromisos(true); // Carga silenciosa
+        }, CACHE_TTL_MS);
+        
+        return () => clearInterval(interval);
+    }, [loadCompromisos]);
 
     // Close panel when clicking outside
     useEffect(() => {
@@ -39,32 +136,12 @@ export default function NotificationsPanel() {
         };
     }, [isOpen]);
 
-    // Load compromisos when panel opens
+    // Refrescar al abrir si el caché está expirado
     useEffect(() => {
-        if (isOpen && compromisos.length === 0 && !loading) {
-            loadCompromisos();
+        if (isOpen && !isCacheValid() && !loading) {
+            loadCompromisos(false);
         }
-    }, [isOpen]);
-
-    async function loadCompromisos() {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const res = await fetch('/api/bitacora/compromisos');
-            const data = await res.json();
-
-            if (data.ok) {
-                setCompromisos(data.data || []);
-            } else {
-                setError(data.error?.message || 'Error al cargar');
-            }
-        } catch {
-            setError('Error de conexión');
-        } finally {
-            setLoading(false);
-        }
-    }
+    }, [isOpen, loading, loadCompromisos]);
 
     // Count urgent compromisos (today or overdue)
     const urgentCount = compromisos.filter(c => c.diasRestantes <= 0).length;
@@ -131,7 +208,7 @@ export default function NotificationsPanel() {
                             <div className="p-4 text-center">
                                 <p className="text-red-500 text-sm mb-2">{error}</p>
                                 <button
-                                    onClick={loadCompromisos}
+                                    onClick={() => loadCompromisos(false)}
                                     className="text-sm text-red-600 hover:underline"
                                 >
                                     Reintentar
@@ -174,16 +251,29 @@ export default function NotificationsPanel() {
                     </div>
 
                     {/* Footer */}
-                    {compromisos.length > 0 && (
-                        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                    <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-400">
+                                {lastFetch > 0 && `Actualizado: ${formatTimeAgo(lastFetch)}`}
+                            </span>
+                            <button
+                                onClick={() => loadCompromisos(false)}
+                                disabled={loading}
+                                className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                                title="Refrescar"
+                            >
+                                {loading ? '⏳' : '🔄'}
+                            </button>
+                        </div>
+                        {compromisos.length > 0 && (
                             <a
                                 href="/bitacora"
-                                className="block text-center text-sm text-red-600 hover:text-red-700 font-medium"
+                                className="block text-center text-sm text-red-600 hover:text-red-700 font-medium mt-2"
                             >
                                 Ver todos en Bitácora →
                             </a>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             )}
         </div>

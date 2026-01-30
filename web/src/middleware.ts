@@ -10,6 +10,9 @@ const PUBLIC_ROUTES = ['/', '/login', '/api/health', '/api/auth/login'];
 // Routes that are partially public (auth optional)
 const OPTIONAL_AUTH_ROUTES = ['/api/test-gas'];
 
+// Routes that need Power BI iframe (special CSP)
+const POWERBI_ROUTES = ['/dashboard'];
+
 /**
  * Middleware for route protection
  * 
@@ -19,15 +22,16 @@ const OPTIONAL_AUTH_ROUTES = ['/api/test-gas'];
  */
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const needsPowerBI = POWERBI_ROUTES.some(route => pathname === route || pathname.startsWith(route));
 
     // Allow public routes
     if (PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'))) {
-        return addSecurityHeaders(NextResponse.next());
+        return addSecurityHeaders(NextResponse.next(), needsPowerBI);
     }
 
     // Optional auth routes - continue without validation
     if (OPTIONAL_AUTH_ROUTES.some(route => pathname.startsWith(route))) {
-        return addSecurityHeaders(NextResponse.next());
+        return addSecurityHeaders(NextResponse.next(), needsPowerBI);
     }
 
     // Check for session cookie
@@ -48,7 +52,7 @@ export async function middleware(request: NextRequest) {
         await jwtVerify(sessionCookie.value, secretKey);
 
         // Valid session - continue
-        return addSecurityHeaders(NextResponse.next());
+        return addSecurityHeaders(NextResponse.next(), needsPowerBI);
 
     } catch {
         // Invalid or expired token
@@ -75,12 +79,27 @@ function handleUnauthenticated(request: NextRequest, pathname: string): NextResp
 }
 
 /**
+ * CSP para rutas con Power BI embed
+ */
+const POWERBI_CSP = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.powerbi.com https://*.powerbi.com https://*.msecnd.net https://vercel.live https://*.vercel.live",
+    "style-src 'self' 'unsafe-inline' https://app.powerbi.com https://*.powerbi.com",
+    "img-src 'self' data: blob: https: http:",
+    "font-src 'self' data: https://*.powerbi.com https://*.msecnd.net",
+    "connect-src 'self' https://script.google.com https://app.powerbi.com https://*.powerbi.com https://*.analysis.windows.net https://*.microsoftonline.com wss://*.powerbi.com https://vercel.live wss://vercel.live",
+    "frame-src 'self' https://app.powerbi.com https://*.powerbi.com",
+    "child-src 'self' https://app.powerbi.com https://*.powerbi.com blob:",
+    "worker-src 'self' blob:",
+    "frame-ancestors 'self'",
+    "form-action 'self'",
+    "base-uri 'self'",
+].join("; ");
+
+/**
  * Add security headers to response
  */
-function addSecurityHeaders(response: NextResponse): NextResponse {
-    // Prevent clickjacking
-    response.headers.set('X-Frame-Options', 'DENY');
-
+function addSecurityHeaders(response: NextResponse, allowPowerBI = false): NextResponse {
     // Prevent MIME sniffing
     response.headers.set('X-Content-Type-Options', 'nosniff');
 
@@ -92,6 +111,14 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 
     // Permissions policy
     response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+    if (allowPowerBI) {
+        // Para rutas con Power BI: CSP permisiva, sin X-Frame-Options restrictivo
+        response.headers.set('Content-Security-Policy', POWERBI_CSP);
+    } else {
+        // Para otras rutas: más restrictivo
+        response.headers.set('X-Frame-Options', 'DENY');
+    }
 
     return response;
 }
