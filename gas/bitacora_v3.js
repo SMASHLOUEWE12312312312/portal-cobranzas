@@ -1016,6 +1016,8 @@ var BitacoraService = BitacoraService || {
    * IMPORTANTE: Este cálculo se realiza al momento del registro y se guarda como snapshot.
    * No debe recalcularse posteriormente.
    * 
+   * OPTIMIZACIÓN v4.2: Usa caché para evitar lecturas repetidas de BD
+   * 
    * @param {string} asegurado - Nombre del asegurado O nombre del grupo económico
    * @param {boolean} esGrupo - Indica si el asegurado es un grupo económico
    * @return {Object} { vencidoPEN: number, vencidoUSD: number }
@@ -1054,8 +1056,49 @@ var BitacoraService = BitacoraService || {
       // Normalizar nombres para comparación
       const aseguradosNormalizados = aseguradosAProcesar.map(a => Utils.cleanText(a));
 
-      // Leer hoja BD
-      const bdData = SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
+      // OPTIMIZACIÓN v4.2: Usar caché de BD si existe (válido por 60 segundos)
+      let bdData = null;
+      const CACHE_KEY = 'SNAPSHOT_BD_CACHE';
+      const CACHE_TTL = 60; // segundos
+
+      try {
+        const cacheService = CacheService.getScriptCache();
+        const cachedBD = cacheService.get(CACHE_KEY);
+
+        if (cachedBD) {
+          bdData = JSON.parse(cachedBD);
+          Logger.info(context, 'Usando BD desde caché (ahorro ~1-2s)');
+        }
+      } catch (cacheError) {
+        // Caché inválido o error de parse, leer fresh
+        Logger.warn(context, 'Caché BD inválido, leyendo fresh', { error: cacheError.message });
+      }
+
+      if (!bdData) {
+        // Leer hoja BD (operación costosa)
+        bdData = SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
+
+        // Intentar cachear para próximas lecturas
+        try {
+          const cacheService = CacheService.getScriptCache();
+          // Solo cachear si no es muy grande (límite CacheService = 100KB)
+          const bdString = JSON.stringify({
+            headers: bdData.headers,
+            rows: bdData.rows,
+            columnMap: bdData.columnMap
+          });
+
+          if (bdString.length < 95000) { // Dejar margen
+            cacheService.put(CACHE_KEY, bdString, CACHE_TTL);
+            Logger.info(context, 'BD cacheada exitosamente', { sizeKB: Math.round(bdString.length / 1024) });
+          } else {
+            Logger.warn(context, 'BD muy grande para cachear', { sizeKB: Math.round(bdString.length / 1024) });
+          }
+        } catch (cacheError) {
+          // Ignorar error de caché - no es crítico
+          Logger.warn(context, 'No se pudo cachear BD', { error: cacheError.message });
+        }
+      }
 
       if (!bdData || !bdData.rows || bdData.rows.length === 0) {
         Logger.warn(context, 'Hoja BD vacía');
@@ -1514,7 +1557,7 @@ var BitacoraService = BitacoraService || {
 
       // Obtener resumen de ciclos (1 por asegurado)
       const resultado = this.obtenerResumenCiclos({}, { page: 1, pageSize: 1000 });
-      
+
       if (!resultado || !resultado.data) {
         return [];
       }
