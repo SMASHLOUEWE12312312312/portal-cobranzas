@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,6 +39,16 @@ export const viewport: Viewport = {
   ],
 };
 
+// Script to prevent flash of wrong theme
+const themeScript = `
+  (function() {
+    const theme = localStorage.getItem('portal-theme') || 'light';
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -46,7 +57,8 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* CSP se maneja via headers HTTP en middleware.ts - no usar meta tag aquí */}
+        {/* Prevent flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -56,7 +68,9 @@ export default function RootLayout({
           Saltar al contenido principal
         </a>
 
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

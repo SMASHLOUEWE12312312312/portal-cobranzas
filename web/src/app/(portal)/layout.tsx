@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import Link from 'next/link';
 import NotificationsPanel from '@/components/NotificationsPanel';
+import ThemeToggle from '@/components/ThemeToggle';
 
 /**
  * Protected Portal Layout
@@ -124,7 +125,9 @@ export default async function PortalLayout({
                     <div className="text-lg font-semibold text-gray-800 dark:text-white">
                         Portal Cobranzas
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        {/* Theme Toggle */}
+                        <ThemeToggle />
                         {/* Notifications Panel */}
                         <NotificationsPanel />
                     </div>
