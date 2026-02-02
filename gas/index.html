@@ -7067,14 +7067,60 @@
 
         /**
          * Inicializar formulario embebido cuando se carga la vista de Bitácora
+         * FIX DEFINITIVO v3: Cargar DIRECTAMENTE desde backend sin ninguna condición
          */
         function inicializarFormularioEmbedded() {
-            console.log('[inicializarFormularioEmbedded] Inicializando...');
+            console.log('[inicializarFormularioEmbedded] 🚀 Inicializando formulario...');
 
-            // FIX v2: Usar loadClientesAutocompleteEmbSafe que SÍ renderiza las opciones
-            // La función anterior (loadClientesAutocompleteEmb) solo llenaba AUTOCOMPLETE_EMB_OPTIONS
-            // pero NO llamaba renderizarOpcionesEmb(), por eso no se mostraban los clientes
-            loadClientesAutocompleteEmbSafe();
+            // ════════════════════════════════════════════════════════════════════════════════
+            // FIX DEFINITIVO: Cargar lista completa de asegurados DIRECTAMENTE desde backend
+            // No depender de ALL_CLIENTES, ASEGURADOS_DS ni BITACORA_DATA - ir directo a BD
+            // ════════════════════════════════════════════════════════════════════════════════
+
+            console.log('[inicializarFormularioEmbedded] 🔄 Cargando lista COMPLETA de asegurados desde backend...');
+
+            // Mostrar estado de carga mientras se obtienen los datos
+            const optionsContainer = document.getElementById('autocompleteOptionsEmb');
+            if (optionsContainer) {
+                optionsContainer.innerHTML = '<div style="padding: 12px; color: #666; text-align: center;">⏳ Cargando asegurados...</div>';
+            }
+
+            google.script.run
+                .withSuccessHandler(function (result) {
+                    console.log('[inicializarFormularioEmbedded] ✅ Respuesta del backend:', result);
+
+                    if (result && result.ok && result.data && result.data.length > 0) {
+                        // Actualizar TODAS las variables globales
+                        ALL_CLIENTES = result.data;
+                        AUTOCOMPLETE_EMB_OPTIONS = [...result.data].sort();
+
+                        console.log('[inicializarFormularioEmbedded] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' asegurados cargados desde BD');
+
+                        // Renderizar opciones
+                        renderizarOpcionesEmb();
+                    } else {
+                        console.warn('[inicializarFormularioEmbedded] ⚠️ Backend sin datos o error:', result);
+
+                        // Fallback: intentar con datos locales si existen
+                        if (ASEGURADOS_DS && ASEGURADOS_DS.items && ASEGURADOS_DS.items.length > 0) {
+                            AUTOCOMPLETE_EMB_OPTIONS = [...ASEGURADOS_DS.items].sort();
+                            renderizarOpcionesEmb();
+                        } else if (BITACORA_DATA && BITACORA_DATA.length > 0) {
+                            AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
+                            renderizarOpcionesEmb();
+                        }
+                    }
+                })
+                .withFailureHandler(function (err) {
+                    console.error('[inicializarFormularioEmbedded] ❌ Error de conexión:', err);
+
+                    // Fallback: usar datos locales si existen
+                    if (ASEGURADOS_DS && ASEGURADOS_DS.items && ASEGURADOS_DS.items.length > 0) {
+                        AUTOCOMPLETE_EMB_OPTIONS = [...ASEGURADOS_DS.items].sort();
+                        renderizarOpcionesEmb();
+                    }
+                })
+                .getClientesConCiclosActivos(TOKEN);
 
             // Establecer responsable
             const inputResponsable = document.getElementById('gestionResponsableEmb');
@@ -7082,16 +7128,19 @@
                 inputResponsable.value = CURRENT_USER.nombre || CURRENT_USER.email || 'Usuario actual';
             }
 
-            // Cerrar dropdown al hacer clic fuera
-            document.addEventListener('click', function (e) {
-                const wrapper = document.getElementById('autocompleteWrapperEmb');
-                const dropdown = document.getElementById('autocompleteDropdownEmb');
-                if (wrapper && dropdown && !wrapper.contains(e.target)) {
-                    dropdown.style.display = 'none';
-                }
-            });
+            // Cerrar dropdown al hacer clic fuera (solo agregar una vez)
+            if (!window._autocompleteEmbClickHandlerAdded) {
+                document.addEventListener('click', function (e) {
+                    const wrapper = document.getElementById('autocompleteWrapperEmb');
+                    const dropdown = document.getElementById('autocompleteDropdownEmb');
+                    if (wrapper && dropdown && !wrapper.contains(e.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                });
+                window._autocompleteEmbClickHandlerAdded = true;
+            }
 
-            console.log('[inicializarFormularioEmbedded] ✅ Inicialización completada');
+            console.log('[inicializarFormularioEmbedded] ✅ Inicialización disparada');
         }
 
         // Función para limpiar formulario de gestión (legacy - mantener compatibilidad)
