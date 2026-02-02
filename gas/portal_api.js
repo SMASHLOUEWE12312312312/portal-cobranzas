@@ -2086,6 +2086,18 @@ function registrarGestionManualBitacora(payload, token) {
       durationMs: duration
     });
 
+    // Invalidar cache de resumen para que próxima carga refleje el cambio
+    try {
+      const cache = CacheService.getScriptCache();
+      // Invalidar páginas 1-5 (las más comunes)
+      cache.removeAll(['BITACORA_RESUMEN_P1_S100', 'BITACORA_RESUMEN_P1_S50',
+        'BITACORA_RESUMEN_P2_S100', 'BITACORA_RESUMEN_P2_S50',
+        'BITACORA_RESUMEN_P3_S100', 'BITACORA_RESUMEN_P3_S50']);
+      Logger.debug(context, '♻️ Cache de resumen invalidado');
+    } catch (cacheErr) {
+      Logger.warn(context, 'No se pudo invalidar cache', cacheErr);
+    }
+
     // Flush logs
     Logger.flush();
 
@@ -2411,13 +2423,15 @@ function bitacoraGetAllGestiones() {
 }
 
 /**
- * Obtiene el RESUMEN de ciclos (solo la última gestión de cada ciclo)
+ * Obtiene el resumen de ciclos para la vista Estado Actual
  * Para mostrar en la vista "Estado Actual"
+ * OPTIMIZACIÓN: CacheService para respuestas ultra-rápidas (60s TTL)
  * @param {string} token - Token de autenticación
  * @return {Object} { ok, data: [resumen de ciclos] }
  */
 function bitacoraGetResumenCiclos(token, opciones) {
   const context = 'bitacoraGetResumenCiclos';
+  const startTime = Date.now();
 
   const paginationOpts = {
     page: (opciones && opciones.page) || 1,
@@ -2428,7 +2442,22 @@ function bitacoraGetResumenCiclos(token, opciones) {
     // Validar sesión
     AuthService.validateSession(token);
 
-    // Obtener resumen de ciclos (con paginación v4.1+)
+    // ════════════════════════════════════════════════════════════════════════════════
+    // OPTIMIZACIÓN: Cache server-side con CacheService (60s TTL)
+    // ════════════════════════════════════════════════════════════════════════════════
+    const cache = CacheService.getScriptCache();
+    const cacheKey = `BITACORA_RESUMEN_P${paginationOpts.page}_S${paginationOpts.pageSize}`;
+
+    // Intentar obtener del cache
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      const parsed = JSON.parse(cachedData);
+      const elapsed = Date.now() - startTime;
+      Logger.info(context, `⚡ CACHE HIT - ${elapsed}ms (página ${paginationOpts.page})`);
+      return parsed;
+    }
+
+    // Cache miss - obtener datos frescos
     const resumen = BitacoraService.obtenerResumenCiclos({}, paginationOpts);
 
     Logger.info(context, `Página ${paginationOpts.page}: ${resumen.data.length} de ${resumen.pagination.total} ciclos`);
@@ -2447,11 +2476,23 @@ function bitacoraGetResumenCiclos(token, opciones) {
         : ciclo.fechaCompromiso
     }));
 
-    return {
+    const result = {
       ok: true,
       data: dataParsed,
       pagination: resumen.pagination
     };
+
+    // Guardar en cache (60 segundos)
+    try {
+      cache.put(cacheKey, JSON.stringify(result), 60);
+    } catch (cacheErr) {
+      Logger.warn(context, 'No se pudo guardar en cache', cacheErr);
+    }
+
+    const elapsed = Date.now() - startTime;
+    Logger.info(context, `✅ CACHE MISS - procesado en ${elapsed}ms`);
+
+    return result;
 
   } catch (error) {
     Logger.error(context, 'Error al obtener resumen de ciclos', error);
