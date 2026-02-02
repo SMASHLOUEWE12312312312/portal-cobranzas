@@ -7071,27 +7071,10 @@
         function inicializarFormularioEmbedded() {
             console.log('[inicializarFormularioEmbedded] Inicializando...');
 
-            // FIX: Asegurar que la lista de asegurados se cargue primero
-            // ALL_CLIENTES y ASEGURADOS_DS deben tener datos antes de poblar el autocomplete
-            if (ASEGURADOS_DS.items.length === 0 && !ASEGURADOS_DS.loading) {
-                console.log('[inicializarFormularioEmbedded] Cargando asegurados desde backend...');
-                loadAsegurados();
-
-                // Esperar a que cargue y luego actualizar autocomplete
-                const checkInterval = setInterval(() => {
-                    if (!ASEGURADOS_DS.loading && ASEGURADOS_DS.items.length > 0) {
-                        clearInterval(checkInterval);
-                        console.log('[inicializarFormularioEmbedded] ✅ Asegurados cargados, actualizando autocomplete');
-                        loadClientesAutocompleteEmb();
-                    }
-                }, 500);
-
-                // Timeout de seguridad
-                setTimeout(() => clearInterval(checkInterval), 30000);
-            } else {
-                // Ya hay datos, cargar directamente
-                loadClientesAutocompleteEmb();
-            }
+            // FIX v2: Usar loadClientesAutocompleteEmbSafe que SÍ renderiza las opciones
+            // La función anterior (loadClientesAutocompleteEmb) solo llenaba AUTOCOMPLETE_EMB_OPTIONS
+            // pero NO llamaba renderizarOpcionesEmb(), por eso no se mostraban los clientes
+            loadClientesAutocompleteEmbSafe();
 
             // Establecer responsable
             const inputResponsable = document.getElementById('gestionResponsableEmb');
