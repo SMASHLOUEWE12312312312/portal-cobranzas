@@ -6422,26 +6422,37 @@
                 return;
             }
 
-            // Prioridad 2: Fallback a BITACORA_DATA (solo asegurados con gestiones)
-            if (BITACORA_DATA && BITACORA_DATA.length > 0) {
-                AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
-                console.log('[loadClientesAutocompleteEmb] ⚠️ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde BITACORA_DATA (fallback)');
+            // Prioridad 2: ASEGURADOS_DS si tiene datos
+            if (ASEGURADOS_DS && ASEGURADOS_DS.items && ASEGURADOS_DS.items.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...ASEGURADOS_DS.items].sort();
+                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde ASEGURADOS_DS');
                 return;
             }
 
-            // Si no hay datos, cargar desde el backend
-            console.log('[loadClientesAutocompleteEmb] Sin datos locales, cargando desde backend...');
+            // Prioridad 3: Fallback a BITACORA_DATA (solo asegurados con gestiones)
+            if (BITACORA_DATA && BITACORA_DATA.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
+                console.log('[loadClientesAutocompleteEmb] ⚠️ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde BITACORA_DATA (fallback parcial)');
+                // No hacer return - continuar cargando lista completa en background
+            }
+
+            // Si no hay datos o solo hay datos parciales, cargar lista COMPLETA desde backend
+            console.log('[loadClientesAutocompleteEmb] 🔄 Cargando lista COMPLETA de asegurados desde backend...');
             google.script.run
                 .withSuccessHandler(function (result) {
-                    if (result && result.ok && result.data) {
-                        AUTOCOMPLETE_EMB_OPTIONS = [...new Set(result.data.map(g => g.asegurado))].filter(Boolean).sort();
-                        console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde backend');
+                    if (result && result.ok && result.data && result.data.length > 0) {
+                        // Actualizar ALL_CLIENTES para futuras referencias
+                        ALL_CLIENTES = result.data;
+                        AUTOCOMPLETE_EMB_OPTIONS = [...result.data].sort();
+                        console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde backend (BD completa)');
+                    } else {
+                        console.warn('[loadClientesAutocompleteEmb] Backend no devolvió datos:', result);
                     }
                 })
                 .withFailureHandler(function (err) {
-                    console.error('[loadClientesAutocompleteEmb] Error:', err);
+                    console.error('[loadClientesAutocompleteEmb] Error cargando desde backend:', err);
                 })
-                .bitacoraGetResumenCiclos(TOKEN);
+                .getClientesConCiclosActivos(TOKEN);
         }
 
         // ============================================================
@@ -6504,37 +6515,60 @@
                 return;
             }
 
-            // Prioridad 2: Fallback a BITACORA_DATA (solo asegurados con gestiones)
+            // Prioridad 2: Fallback temporal a BITACORA_DATA mientras carga la lista completa
             if (BITACORA_DATA && BITACORA_DATA.length > 0) {
                 AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
-                console.log('[loadClientesAutocompleteEmbSafe] ⚠️', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes de BITACORA_DATA (fallback)');
+                console.log('[loadClientesAutocompleteEmbSafe] ⚠️', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes de BITACORA_DATA (parcial, cargando completo...)');
                 renderizarOpcionesEmb();
-                return;
+                // NO hacer return - continuar cargando lista completa
             }
 
-            // Prioridad 3: Cargar desde backend
+            // Prioridad 3: Cargar lista COMPLETA desde backend
+            // Si ya está cargando, solo mostrar estado de carga
             if (LOAD_STATE.asegurados.loading || ASEGURADOS_DS.loading) {
-                mostrarLoadingEnDropdownEmb('Cargando clientes...');
+                if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
+                    mostrarLoadingEnDropdownEmb('Cargando clientes...');
+                }
+
+                // Suscribirse a cuando termine la carga existente
+                const checkInterval = setInterval(() => {
+                    if (!ASEGURADOS_DS.loading && ASEGURADOS_DS.items.length > 0) {
+                        clearInterval(checkInterval);
+                        AUTOCOMPLETE_EMB_OPTIONS = [...ASEGURADOS_DS.items].sort();
+                        ALL_CLIENTES = ASEGURADOS_DS.items; // Actualizar también ALL_CLIENTES
+                        renderizarOpcionesEmb();
+                        console.log('[loadClientesAutocompleteEmbSafe] ✅ Carga completada:', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes');
+                    }
+                }, 500);
+                setTimeout(() => clearInterval(checkInterval), 30000);
                 return;
             }
 
-            console.log('[loadClientesAutocompleteEmbSafe] Sin datos locales, cargando desde backend...');
-            mostrarLoadingEnDropdownEmb('Cargando clientes...');
+            // Si no hay carga en progreso, cargar directamente desde API
+            console.log('[loadClientesAutocompleteEmbSafe] 🔄 Cargando lista completa desde backend...');
+            if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
+                mostrarLoadingEnDropdownEmb('Cargando clientes...');
+            }
 
-            // Usar la función de carga existente
-            loadAsegurados();
-
-            // Suscribirse a cuando termine la carga
-            const checkInterval = setInterval(() => {
-                if (!ASEGURADOS_DS.loading && ASEGURADOS_DS.items.length > 0) {
-                    clearInterval(checkInterval);
-                    AUTOCOMPLETE_EMB_OPTIONS = [...ASEGURADOS_DS.items].sort();
-                    renderizarOpcionesEmb();
-                }
-            }, 500);
-
-            // Timeout de seguridad
-            setTimeout(() => clearInterval(checkInterval), 30000);
+            google.script.run
+                .withSuccessHandler(function (result) {
+                    if (result && result.ok && result.data && result.data.length > 0) {
+                        ALL_CLIENTES = result.data;
+                        AUTOCOMPLETE_EMB_OPTIONS = [...result.data].sort();
+                        console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes cargados (BD completa)');
+                        renderizarOpcionesEmb();
+                    } else {
+                        console.warn('[loadClientesAutocompleteEmbSafe] Backend sin datos:', result);
+                        if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
+                            mostrarErrorEnDropdownEmb('No se encontraron clientes');
+                        }
+                    }
+                })
+                .withFailureHandler(function (err) {
+                    console.error('[loadClientesAutocompleteEmbSafe] Error:', err);
+                    mostrarErrorEnDropdownEmb('Error de conexión. Click para reintentar.');
+                })
+                .getClientesConCiclosActivos(TOKEN);
         }
 
         /**
