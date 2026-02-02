@@ -586,35 +586,37 @@
 
                         <!-- QUICK WIN: Botones de Filtros Rápidos -->
                         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
-                            <span style="font-size: 0.75rem; color: var(--tp-text-secondary); display: flex; align-items: center; margin-right: 0.5rem;">⚡ Filtros rápidos:</span>
-                            <button onclick="aplicarFiltroRapido('vencidos')" 
-                                class="btn-filtro-rapido" 
+                            <span
+                                style="font-size: 0.75rem; color: var(--tp-text-secondary); display: flex; align-items: center; margin-right: 0.5rem;">⚡
+                                Filtros rápidos:</span>
+                            <button onclick="aplicarFiltroRapido('vencidos')" class="btn-filtro-rapido"
                                 style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
-                                onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                                onmouseover="this.style.background='#FEE2E2'"
+                                onmouseout="this.style.background='#FEF2F2'">
                                 ⚠️ Compromisos vencidos
                             </button>
-                            <button onclick="aplicarFiltroRapido('deuda_aumento')" 
-                                class="btn-filtro-rapido"
+                            <button onclick="aplicarFiltroRapido('deuda_aumento')" class="btn-filtro-rapido"
                                 style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
-                                onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                                onmouseover="this.style.background='#FEE2E2'"
+                                onmouseout="this.style.background='#FEF2F2'">
                                 📈 Deuda en aumento
                             </button>
-                            <button onclick="aplicarFiltroRapido('criticos')" 
-                                class="btn-filtro-rapido"
+                            <button onclick="aplicarFiltroRapido('criticos')" class="btn-filtro-rapido"
                                 style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
-                                onmouseover="this.style.background='#FDE68A'" onmouseout="this.style.background='#FEF3C7'">
+                                onmouseover="this.style.background='#FDE68A'"
+                                onmouseout="this.style.background='#FEF3C7'">
                                 🔴 Críticos (+60 días)
                             </button>
-                            <button onclick="aplicarFiltroRapido('sin_respuesta')" 
-                                class="btn-filtro-rapido"
+                            <button onclick="aplicarFiltroRapido('sin_respuesta')" class="btn-filtro-rapido"
                                 style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #F3F4F6; color: #374151; border: 1px solid #D1D5DB; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
-                                onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                                onmouseover="this.style.background='#E5E7EB'"
+                                onmouseout="this.style.background='#F3F4F6'">
                                 ❌ Sin respuesta
                             </button>
-                            <button onclick="aplicarFiltroRapido('hoy')" 
-                                class="btn-filtro-rapido"
+                            <button onclick="aplicarFiltroRapido('hoy')" class="btn-filtro-rapido"
                                 style="padding: 0.35rem 0.75rem; font-size: 0.7rem; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 20px; cursor: pointer; transition: all 0.15s ease;"
-                                onmouseover="this.style.background='#DBEAFE'" onmouseout="this.style.background='#EFF6FF'">
+                                onmouseover="this.style.background='#DBEAFE'"
+                                onmouseout="this.style.background='#EFF6FF'">
                                 📅 Vencen hoy
                             </button>
                         </div>
@@ -770,10 +772,11 @@
                             <div style="display: flex; align-items: center; gap: 0.75rem;">
                                 <span class="text-muted"><span id="bitacoraCountEmb">0</span> ciclos de gestión</span>
                                 <!-- QUICK WIN: Botón Refresh visible -->
-                                <button id="btnRefreshBitacora" onclick="refreshBitacoraManual()" 
+                                <button id="btnRefreshBitacora" onclick="refreshBitacoraManual()"
                                     title="Actualizar datos (F5)"
                                     style="padding: 0.4rem 0.75rem; font-size: 0.75rem; background: #F3F4F6; border: 1px solid #D1D5DB; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; transition: all 0.15s ease;"
-                                    onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                                    onmouseover="this.style.background='#E5E7EB'"
+                                    onmouseout="this.style.background='#F3F4F6'">
                                     <span id="refreshIconBitacora">🔄</span>
                                     <span>Actualizar</span>
                                 </button>
@@ -1166,16 +1169,18 @@
                                                     id="requiredObsEmb"
                                                     style="display: none; color: var(--tp-primary); font-weight: 700;">*</span>
                                             </label>
-                                            <textarea id="gestionObservacionesEmb" rows="3" 
+                                            <textarea id="gestionObservacionesEmb" rows="3"
                                                 oninput="validateFormV4(); updateCharCounter('gestionObservacionesEmb', 'obsCharCounter', 500)"
                                                 maxlength="500"
                                                 placeholder="Detalles de la gestión (con quién se habló, qué se acordó, etc.)"
                                                 style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; resize: vertical; min-height: 80px; transition: border-color 0.15s ease;"></textarea>
-                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.375rem;">
+                                            <div
+                                                style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.375rem;">
                                                 <p id="obsHelperText"
                                                     style="margin: 0; font-size: 0.75rem; color: var(--tp-text-tertiary);">
                                                     Obligatorio para: Derivaciones, No cobrable</p>
-                                                <span id="obsCharCounter" style="font-size: 0.7rem; color: var(--tp-text-tertiary);">0/500</span>
+                                                <span id="obsCharCounter"
+                                                    style="font-size: 0.7rem; color: var(--tp-text-tertiary);">0/500</span>
                                             </div>
                                         </div>
                                     </div>
@@ -3604,10 +3609,10 @@
         // ════════════════════════════════════════════════════════════════════════════════
         // AUTOCOMPLETE NIVEL DIOS - Filtrado 100% Client-Side Instantáneo
         // ════════════════════════════════════════════════════════════════════════════════
-        
+
         let AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;  // Índice de opción destacada para navegación con teclado
         let ASEGURADOS_FILTERED = [];                // Lista filtrada de asegurados (client-side)
-        
+
         /**
          * FILTRADO ESTRICTO - Solo muestra coincidencias exactas
          * - Filtrado 100% client-side (instantáneo)
@@ -3626,14 +3631,14 @@
             const searchText = input.value.trim();
             const normalized = normalizeText(searchText);
             clearBtn.style.display = searchText ? 'flex' : 'none';
-            
+
             // Resetear índice de highlight
             AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;
 
             // ═══ FILTRADO UNIFICADO CLIENT-SIDE (INSTANTÁNEO) ═══
             let sourceList = [];
             let totalCount = 0;
-            
+
             if (EECC_MODE === 'grupo') {
                 sourceList = ALL_GRUPOS || [];
                 totalCount = ALL_GRUPOS.length;
@@ -3642,22 +3647,22 @@
                 sourceList = ASEGURADOS_DS.items || [];
                 totalCount = sourceList.length;
             }
-            
+
             // ═══ SIN BÚSQUEDA = MOSTRAR TODOS ═══
             if (!searchText) {
                 // Resetear listas filtradas para que renderAutocomplete use la lista completa
                 AUTOCOMPLETE_EECC_FILTERED = [];
                 ASEGURADOS_FILTERED = [];
-                
+
                 // Mostrar contador (todos)
                 mostrarContadorEECC(totalCount, totalCount);
-                
+
                 // Renderizar TODOS los items (sin searchText = lista completa)
                 renderAutocompleteOptionsEECC('');
                 dropdown.style.display = 'block';
                 return;
             }
-            
+
             // ═══ FILTRADO ESTRICTO CON RANKING ═══
             const filteredWithRank = sourceList
                 .map(item => {
@@ -3681,29 +3686,29 @@
                     return a.item.localeCompare(b.item);
                 })
                 .map(entry => entry.item);
-            
+
             // Guardar resultados filtrados
             if (EECC_MODE === 'grupo') {
                 AUTOCOMPLETE_EECC_FILTERED = filteredWithRank;
             } else {
                 ASEGURADOS_FILTERED = filteredWithRank;
             }
-            
+
             // Mostrar contador
             mostrarContadorEECC(filteredWithRank.length, totalCount);
-            
+
             // Renderizar resultados
             renderAutocompleteOptionsEECC(searchText);
             dropdown.style.display = 'block';
         }
-        
+
         /**
          * PRO: Mostrar contador de resultados
          */
         function mostrarContadorEECC(filtrados, total) {
             const counter = document.getElementById('autocompleteCounterEECC');
             if (!counter) return;
-            
+
             if (filtrados === total) {
                 counter.style.display = 'none';
             } else {
@@ -3716,14 +3721,14 @@
                 counter.style.background = 'var(--tp-surface-secondary)';
             }
         }
-        
+
         /**
          * PRO: Navegación con teclado (flechas + Enter + Escape)
          */
         function handleAutocompleteKeydownEECC(event) {
             const dropdown = document.getElementById('autocompleteDropdownEECC');
             const options = document.querySelectorAll('#autocompleteOptionsEECC .autocomplete-option:not(.disabled):not(.load-more)');
-            
+
             if (!dropdown || dropdown.style.display === 'none') {
                 if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                     dropdown.style.display = 'block';
@@ -3731,9 +3736,9 @@
                 }
                 return;
             }
-            
+
             const maxIndex = options.length - 1;
-            
+
             switch (event.key) {
                 case 'ArrowDown':
                     event.preventDefault();
@@ -3741,14 +3746,14 @@
                     highlightAutocompleteOptionEECC(AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX);
                     scrollToHighlightedOption();
                     break;
-                    
+
                 case 'ArrowUp':
                     event.preventDefault();
                     AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = Math.max(AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX - 1, 0);
                     highlightAutocompleteOptionEECC(AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX);
                     scrollToHighlightedOption();
                     break;
-                    
+
                 case 'Enter':
                     event.preventDefault();
                     if (AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX >= 0 && options[AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX]) {
@@ -3758,20 +3763,20 @@
                         options[0].click();
                     }
                     break;
-                    
+
                 case 'Escape':
                     event.preventDefault();
                     dropdown.style.display = 'none';
                     AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;
                     break;
-                    
+
                 case 'Tab':
                     // Permitir tab normal pero cerrar dropdown
                     dropdown.style.display = 'none';
                     break;
             }
         }
-        
+
         /**
          * PRO: Scroll automático a opción destacada
          */
@@ -3790,7 +3795,7 @@
             const optionsContainer = document.getElementById('autocompleteOptionsEECC');
             const input = document.getElementById('aseguradoSelect');
             if (!optionsContainer) return;
-            
+
             // Obtener texto de búsqueda si no se proporcionó
             if (!searchText && input) {
                 searchText = input.value;
@@ -3806,7 +3811,7 @@
 
             let list = [];
             const hasSearchText = searchText && searchText.trim().length > 0;
-            
+
             if (EECC_MODE === 'grupo') {
                 // Grupo: usar lista filtrada si hay búsqueda, o TODOS si no hay búsqueda
                 list = hasSearchText ? AUTOCOMPLETE_EECC_FILTERED : (ALL_GRUPOS || []);
@@ -3828,39 +3833,39 @@
                 }
                 return;
             }
-            
+
             // Mostrar TODOS los items (sin límite)
             const displayList = list;
             const hasMoreItems = false;
 
             // PRO: Usar DocumentFragment para mejor performance
             const fragment = document.createDocumentFragment();
-            
+
             displayList.forEach((opt, index) => {
                 const div = document.createElement('div');
                 div.className = 'autocomplete-option';
                 div.setAttribute('data-index', index);
-                
+
                 // PRO: Highlight del texto buscado
                 if (searchText && searchText.trim()) {
                     div.innerHTML = highlightSearchText(opt, searchText);
                 } else {
                     div.textContent = opt;
                 }
-                
+
                 div.onclick = () => seleccionarOpcionAutocompleteEECC(opt);
-                
+
                 // PRO: Hover y highlight con mouse
                 div.onmouseenter = () => {
                     AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = index;
                     highlightAutocompleteOptionEECC(index);
                 };
-                
+
                 fragment.appendChild(div);
             });
-            
+
             optionsContainer.appendChild(fragment);
-            
+
             // (Eliminado límite - ahora se muestran todos los items)
 
             // Load More Indicator para Asegurados (Server Side)
@@ -3880,13 +3885,13 @@
 
                 optionsContainer.appendChild(loadMore);
             }
-            
+
             // Mostrar contador para modo asegurado
             if (EECC_MODE === 'asegurado') {
                 mostrarContadorEECC(list.length, ASEGURADOS_DS.totalExpected || list.length);
             }
         }
-        
+
         /**
          * PRO: Highlight del texto buscado en el resultado
          * @param {string} text - Texto completo
@@ -3895,24 +3900,24 @@
          */
         function highlightSearchText(text, search) {
             if (!search || !search.trim()) return escapeHtml(text);
-            
+
             const normalizedText = text.toLowerCase();
             const normalizedSearch = search.toLowerCase().trim();
             const index = normalizedText.indexOf(normalizedSearch);
-            
+
             if (index === -1) return escapeHtml(text);
-            
+
             const before = text.substring(0, index);
             const match = text.substring(index, index + search.length);
             const after = text.substring(index + search.length);
-            
-            return escapeHtml(before) + 
-                   '<mark style="background:#FEF3C7;color:#92400E;padding:0 2px;border-radius:2px;font-weight:600;">' + 
-                   escapeHtml(match) + 
-                   '</mark>' + 
-                   escapeHtml(after);
+
+            return escapeHtml(before) +
+                '<mark style="background:#FEF3C7;color:#92400E;padding:0 2px;border-radius:2px;font-weight:600;">' +
+                escapeHtml(match) +
+                '</mark>' +
+                escapeHtml(after);
         }
-        
+
         /**
          * Helper: Escape HTML para prevenir XSS
          */
@@ -3971,7 +3976,7 @@
                     renderAutocompleteOptionsEECC('');
                 }
             }
-            
+
             // Aplicar filtro si hay texto
             if (searchText) {
                 filtrarAutocompleteEECC();
@@ -3993,14 +3998,14 @@
                 } else {
                     ASEGURADOS_FILTERED = [...ASEGURADOS_DS.items];
                 }
-                
+
                 // Si hay texto, aplicar filtro
                 if (input && input.value.trim()) {
                     filtrarAutocompleteEECC();
                 } else {
                     renderAutocompleteOptionsEECC('');
                 }
-                
+
                 dropdown.style.display = 'block';
 
                 if (input) {
@@ -4034,7 +4039,7 @@
             if (counter) {
                 counter.style.display = 'none';
             }
-            
+
             // Resetear listas filtradas
             AUTOCOMPLETE_EECC_FILTERED = [];
             ASEGURADOS_FILTERED = [];
@@ -4057,14 +4062,14 @@
                 }
             });
         }
-        
+
         /**
          * PRO: Cerrar dropdown de EECC al hacer clic fuera
          */
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             const wrapper = document.querySelector('.autocomplete-wrapper');
             const dropdown = document.getElementById('autocompleteDropdownEECC');
-            
+
             if (wrapper && dropdown && !wrapper.contains(e.target)) {
                 dropdown.style.display = 'none';
                 AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;
@@ -5460,18 +5465,18 @@
         function refreshBitacoraManual() {
             const btn = document.getElementById('btnRefreshBitacora');
             const icon = document.getElementById('refreshIconBitacora');
-            
+
             if (!btn || BITACORA_LOADING) return;
-            
+
             // Feedback visual: spinning icon
             btn.disabled = true;
             btn.style.opacity = '0.7';
             if (icon) {
                 icon.style.animation = 'spin 1s linear infinite';
             }
-            
+
             console.log('[refreshBitacoraManual] 🔄 Recargando datos frescos...');
-            
+
             // Limpiar cachés
             localStorage.removeItem('bitacora_data_cache');
             window.bitacoraDataPreload = null;
@@ -5479,7 +5484,7 @@
             BITACORA_FILTERED = [];
             BITACORA_EMB_LOADED = false;
             Object.keys(TIMELINE_CACHE).forEach(key => delete TIMELINE_CACHE[key]);
-            
+
             // Recargar datos
             loadBitacoraEmbeddedData(true).finally(() => {
                 // Restaurar botón
@@ -5556,10 +5561,10 @@
                 const responsable = (g.responsable || '-').replace(/@.*/, '').substring(0, 15);
                 const proximaAccion = (g.proximaAccion || '-').substring(0, 25) + (g.proximaAccion && g.proximaAccion.length > 25 ? '...' : '');
                 const asegurado = (g.asegurado || '-').substring(0, 28) + (g.asegurado && g.asegurado.length > 28 ? '...' : '');
-                
+
                 // QUICK WIN: Badge contador de gestiones
                 const numGestiones = g.numGestiones || 1;
-                const gestionesBadge = numGestiones > 1 
+                const gestionesBadge = numGestiones > 1
                     ? '<span style="display:inline-flex;align-items:center;justify-content:center;background:#E5E7EB;color:#374151;padding:1px 5px;border-radius:10px;font-size:0.6rem;font-weight:600;margin-left:4px;" title="' + numGestiones + ' gestiones registradas">' + numGestiones + '</span>'
                     : '';
 
@@ -5818,13 +5823,13 @@
          */
         function populateFiltrosEmb() {
             console.log('[populateFiltrosEmb] 📋 Poblando filtros con', BITACORA_DATA.length, 'registros');
-            
+
             // ═══ FILTRO: Asegurados ═══
             const asegSelect = document.getElementById('filtroAseguradoEmb');
             if (asegSelect && BITACORA_DATA.length > 0) {
                 const valorActual = asegSelect.value; // Preservar selección actual
                 const asegurados = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
-                asegSelect.innerHTML = '<option value="">Todos</option>' + 
+                asegSelect.innerHTML = '<option value="">Todos</option>' +
                     asegurados.map(a => '<option value="' + escapeHtml(a) + '">' + escapeHtml(a) + '</option>').join('');
                 // Restaurar valor si existe
                 if (valorActual && asegurados.includes(valorActual)) {
@@ -5838,7 +5843,7 @@
             if (respSelect && BITACORA_DATA.length > 0) {
                 const valorActual = respSelect.value;
                 const responsables = [...new Set(BITACORA_DATA.map(g => g.responsable).filter(r => r))].sort();
-                respSelect.innerHTML = '<option value="">Todos</option>' + 
+                respSelect.innerHTML = '<option value="">Todos</option>' +
                     responsables.map(r => '<option value="' + escapeHtml(r) + '">' + escapeHtml(r.replace(/@.*/, '')) + '</option>').join('');
                 if (valorActual && responsables.includes(valorActual)) {
                     respSelect.value = valorActual;
@@ -5980,11 +5985,11 @@
 
                     if (result && result.ok) {
                         showGestionStatusEmb('success', '✅ Gestión registrada exitosamente');
-                        
+
                         // ════ OPTIMIZACIÓN: ACTUALIZACIÓN OPTIMISTA (INSTANTÁNEA) ════
                         // 1. Limpiar formulario INMEDIATAMENTE
                         limpiarFormGestionEmb();
-                        
+
                         // 2. Agregar la nueva gestión a los datos locales (sin esperar servidor)
                         const nuevaGestion = {
                             idGestion: result.data?.idGestion || 'NEW_' + Date.now(),
@@ -6009,35 +6014,35 @@
                             tendenciaPEN: 'PRIMERA',
                             tendenciaUSD: 'PRIMERA'
                         };
-                        
+
                         // 3. Insertar al inicio de los datos locales
                         BITACORA_DATA.unshift(nuevaGestion);
                         BITACORA_FILTERED = [...BITACORA_DATA];
-                        
+
                         // 4. Re-renderizar tabla INMEDIATAMENTE (actualización optimista)
                         renderBitacoraTableEmb();
                         populateFiltrosEmb();
-                        
+
                         // 5. Cambiar al tab Estado Actual INMEDIATAMENTE
                         switchBitacoraTabEmbedded('estado');
-                        
+
                         // 6. Mostrar notificación de éxito
                         mostrarNotificacionExito('✅ Gestión registrada', 'Datos actualizados');
-                        
+
                         console.log('[registrarGestionEmbedded] ⚡ Actualización optimista completada');
-                        
+
                         // 7. BACKGROUND: Sincronizar con servidor (no bloquea UI)
                         // Solo invalidar cachés y recargar en segundo plano para consistencia
                         BITACORA_EMB_LOADED = false;
                         Object.keys(TIMELINE_CACHE).forEach(key => delete TIMELINE_CACHE[key]);
                         NOTIFICACIONES_CACHE = null;
-                        
+
                         // Recargar en background después de 2 segundos (sin bloquear)
                         setTimeout(() => {
                             console.log('[registrarGestionEmbedded] 🔄 Sincronizando con servidor en background...');
                             loadBitacoraEmbeddedData(true).catch(e => console.warn('Background sync failed:', e));
                         }, 2000);
-                        
+
                     } else {
                         showGestionStatusEmb('error', '❌ Error: ' + (result?.message || 'Error desconocido'));
                     }
@@ -6386,17 +6391,18 @@
                 return;
             }
 
-            // MODO INDIVIDUAL (asegurado): Usar BITACORA_DATA o ALL_CLIENTES
-            if (BITACORA_DATA && BITACORA_DATA.length > 0) {
-                AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
-                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde BITACORA_DATA');
+            // MODO INDIVIDUAL (asegurado): Usar ALL_CLIENTES primero (BD completa)
+            // Prioridad 1: ALL_CLIENTES tiene la lista completa de la BD
+            if (ALL_CLIENTES && ALL_CLIENTES.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...ALL_CLIENTES].sort();
+                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde ALL_CLIENTES (BD completa)');
                 return;
             }
 
-            // Fallback: usar ALL_CLIENTES si está disponible
-            if (ALL_CLIENTES && ALL_CLIENTES.length > 0) {
-                AUTOCOMPLETE_EMB_OPTIONS = [...ALL_CLIENTES].sort();
-                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde ALL_CLIENTES');
+            // Prioridad 2: Fallback a BITACORA_DATA (solo asegurados con gestiones)
+            if (BITACORA_DATA && BITACORA_DATA.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
+                console.log('[loadClientesAutocompleteEmb] ⚠️ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde BITACORA_DATA (fallback)');
                 return;
             }
 
@@ -6466,19 +6472,19 @@
             }
 
             // MODO INDIVIDUAL (asegurado)
-            // Prioridad 1: Usar BITACORA_DATA si existe
-            if (BITACORA_DATA && BITACORA_DATA.length > 0) {
-                AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
-                console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes de BITACORA_DATA');
+            // Prioridad 1: Usar ALL_CLIENTES/ASEGURADOS_DS si existe (lista COMPLETA de BD)
+            const clientesDisponibles = ASEGURADOS_DS.items.length > 0 ? ASEGURADOS_DS.items : ALL_CLIENTES;
+            if (clientesDisponibles && clientesDisponibles.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...clientesDisponibles].sort();
+                console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes disponibles (BD completa)');
                 renderizarOpcionesEmb();
                 return;
             }
 
-            // Prioridad 2: Usar ALL_CLIENTES/ASEGURADOS_DS si existe
-            const clientesDisponibles = ASEGURADOS_DS.items.length > 0 ? ASEGURADOS_DS.items : ALL_CLIENTES;
-            if (clientesDisponibles.length > 0) {
-                AUTOCOMPLETE_EMB_OPTIONS = [...clientesDisponibles].sort();
-                console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes disponibles');
+            // Prioridad 2: Fallback a BITACORA_DATA (solo asegurados con gestiones)
+            if (BITACORA_DATA && BITACORA_DATA.length > 0) {
+                AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
+                console.log('[loadClientesAutocompleteEmbSafe] ⚠️', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes de BITACORA_DATA (fallback)');
                 renderizarOpcionesEmb();
                 return;
             }
@@ -6696,7 +6702,7 @@
                 AUTOCOMPLETE_EMB_FILTERED = [...AUTOCOMPLETE_EMB_OPTIONS];
                 renderizarOpcionesEmb();
                 dropdown.style.display = 'block';
-                
+
                 // Actualizar contador (todos)
                 if (counter) {
                     counter.style.display = 'none'; // Ocultar si muestra todos
@@ -6776,52 +6782,52 @@
                 const div = document.createElement('div');
                 div.className = 'autocomplete-option';
                 div.setAttribute('data-index', idx);
-                
+
                 // PRO: Highlight del texto buscado
                 if (hasSearchText) {
                     div.innerHTML = highlightSearchTextEmb(opt, searchText);
                 } else {
                     div.textContent = opt;
                 }
-                
+
                 div.onclick = () => seleccionarOpcionEmb(idx);
-                
+
                 // PRO: Hover y highlight con mouse
                 div.onmouseenter = () => {
                     AUTOCOMPLETE_EMB_INDEX = idx;
                     highlightAutocompleteOptionEmb(idx);
                 };
-                
+
                 fragment.appendChild(div);
             });
 
             options.innerHTML = '';
             options.appendChild(fragment);
         }
-        
+
         /**
          * PRO: Highlight del texto buscado en Bitácora
          */
         function highlightSearchTextEmb(text, search) {
             if (!search || !search.trim()) return escapeHtml(text);
-            
+
             const normalizedText = text.toLowerCase();
             const normalizedSearch = search.toLowerCase().trim();
             const index = normalizedText.indexOf(normalizedSearch);
-            
+
             if (index === -1) return escapeHtml(text);
-            
+
             const before = text.substring(0, index);
             const match = text.substring(index, index + search.length);
             const after = text.substring(index + search.length);
-            
-            return escapeHtml(before) + 
-                   '<mark style="background:#FEF3C7;color:#92400E;padding:0 2px;border-radius:2px;font-weight:600;">' + 
-                   escapeHtml(match) + 
-                   '</mark>' + 
-                   escapeHtml(after);
+
+            return escapeHtml(before) +
+                '<mark style="background:#FEF3C7;color:#92400E;padding:0 2px;border-radius:2px;font-weight:600;">' +
+                escapeHtml(match) +
+                '</mark>' +
+                escapeHtml(after);
         }
-        
+
         /**
          * PRO: Highlight de opción seleccionada con teclado en Bitácora
          */
@@ -6839,14 +6845,14 @@
                 }
             });
         }
-        
+
         /**
          * PRO: Navegación con teclado para Bitácora (↑↓ + Enter + Escape)
          */
         function handleAutocompleteKeydownEmb(event) {
             const dropdown = document.getElementById('autocompleteDropdownEmb');
             const options = document.querySelectorAll('#autocompleteOptionsEmb .autocomplete-option:not(.disabled)');
-            
+
             if (!dropdown || dropdown.style.display === 'none') {
                 if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                     dropdown.style.display = 'block';
@@ -6854,9 +6860,9 @@
                 }
                 return;
             }
-            
+
             const maxIndex = options.length - 1;
-            
+
             switch (event.key) {
                 case 'ArrowDown':
                     event.preventDefault();
@@ -6864,14 +6870,14 @@
                     highlightAutocompleteOptionEmb(AUTOCOMPLETE_EMB_INDEX);
                     scrollToHighlightedOptionEmb();
                     break;
-                    
+
                 case 'ArrowUp':
                     event.preventDefault();
                     AUTOCOMPLETE_EMB_INDEX = Math.max(AUTOCOMPLETE_EMB_INDEX - 1, 0);
                     highlightAutocompleteOptionEmb(AUTOCOMPLETE_EMB_INDEX);
                     scrollToHighlightedOptionEmb();
                     break;
-                    
+
                 case 'Enter':
                     event.preventDefault();
                     if (AUTOCOMPLETE_EMB_INDEX >= 0 && options[AUTOCOMPLETE_EMB_INDEX]) {
@@ -6881,20 +6887,20 @@
                         options[0].click();
                     }
                     break;
-                    
+
                 case 'Escape':
                     event.preventDefault();
                     dropdown.style.display = 'none';
                     AUTOCOMPLETE_EMB_INDEX = -1;
                     break;
-                    
+
                 case 'Tab':
                     // Permitir tab normal pero cerrar dropdown
                     dropdown.style.display = 'none';
                     break;
             }
         }
-        
+
         /**
          * PRO: Scroll automático a opción destacada en Bitácora
          */
@@ -7062,13 +7068,13 @@
             BITACORA_FILTERED = BITACORA_DATA.filter(function (g) {
                 // Filtro por asegurado
                 if (aseg && g.asegurado !== aseg) return false;
-                
+
                 // Filtro por estado
                 if (estado && g.estadoGestion !== estado) return false;
-                
+
                 // Filtro por responsable
                 if (resp && g.responsable !== resp) return false;
-                
+
                 // Filtro por días (antigüedad)
                 if (dias) {
                     const d = g.diasDesdeRegistro || 0;
@@ -7077,7 +7083,7 @@
                     if (dias === '31-60' && (d < 31 || d > 60)) return false;
                     if (dias === '61-' && d < 61) return false;
                 }
-                
+
                 // Filtro por compromisos
                 if (compromiso) {
                     const tieneCompromiso = g.fechaCompromiso && g.fechaCompromiso !== '';
@@ -7092,19 +7098,19 @@
                         if (fechaComp >= hoy || estadosCerrados.includes(g.estadoGestion)) return false;
                     }
                 }
-                
+
                 // QUICK WIN: Filtro por tendencia de deuda
                 if (tendencia) {
                     // Usar tendenciaPEN como indicador principal (o USD si no hay PEN)
                     const tendenciaItem = g.tendenciaPEN || g.tendenciaUSD || 'PRIMERA';
                     if (tendencia !== tendenciaItem) return false;
                 }
-                
+
                 return true;
             });
 
             renderBitacoraTableEmb();
-            
+
             // Actualizar contador
             const countEl = document.getElementById('bitacoraCountEmb');
             if (countEl) countEl.textContent = BITACORA_FILTERED.length;
@@ -7121,7 +7127,7 @@
                 const el = document.getElementById(id);
                 if (el) el.selectedIndex = 0;
             });
-            
+
             // Aplicar filtro específico
             switch (tipo) {
                 case 'vencidos':
@@ -7146,35 +7152,35 @@
                     filtrarCompromisosHoy();
                     return;
             }
-            
+
             // Ejecutar filtro
             filtrarBitacoraEmbedded();
         }
-        
+
         /**
          * Filtro especial: Compromisos que vencen hoy
          */
         function filtrarCompromisosHoy() {
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
-            
+
             const estadosCerrados = ['CERRADO_PAGADO', 'NO_COBRABLE', 'DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES'];
-            
+
             BITACORA_FILTERED = BITACORA_DATA.filter(function (g) {
                 if (!g.fechaCompromiso) return false;
-                
+
                 const fechaComp = new Date(g.fechaCompromiso);
                 fechaComp.setHours(0, 0, 0, 0);
-                
+
                 // Vence hoy y no está cerrado
                 return fechaComp.getTime() === hoy.getTime() && !estadosCerrados.includes(g.estadoGestion);
             });
-            
+
             renderBitacoraTableEmb();
-            
+
             const countEl = document.getElementById('bitacoraCountEmb');
             if (countEl) countEl.textContent = BITACORA_FILTERED.length;
-            
+
             showToast('Mostrando ' + BITACORA_FILTERED.length + ' compromisos que vencen hoy', 'info');
         }
 
@@ -7191,15 +7197,15 @@
                 'filtroCompromisoEmb',
                 'filtroTendenciaEmb'
             ];
-            
+
             filtros.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.selectedIndex = 0;
             });
-            
+
             // Reaplicar filtros (ahora sin ninguno activo)
             filtrarBitacoraEmbedded();
-            
+
             showToast('Filtros limpiados', 'info');
         }
 
@@ -7214,7 +7220,7 @@
                 if (registrarPane) registrarPane.style.display = 'none';
                 if (estadoBtn) { estadoBtn.style.color = 'var(--tp-primary)'; estadoBtn.style.borderBottom = '3px solid var(--tp-primary)'; estadoBtn.style.fontWeight = '600'; }
                 if (registrarBtn) { registrarBtn.style.color = 'var(--tp-text-secondary)'; registrarBtn.style.borderBottom = 'none'; registrarBtn.style.fontWeight = '500'; }
-                
+
                 // ════ OPTIMIZADO: Solo recargar si NO hay datos en absoluto ════
                 // Si ya hay datos (aunque sea de actualización optimista), NO recargar
                 if (BITACORA_DATA.length === 0 && !BITACORA_LOADING) {
@@ -7226,7 +7232,7 @@
                 if (registrarPane) registrarPane.style.display = 'block';
                 if (estadoBtn) { estadoBtn.style.color = 'var(--tp-text-secondary)'; estadoBtn.style.borderBottom = 'none'; estadoBtn.style.fontWeight = '500'; }
                 if (registrarBtn) { registrarBtn.style.color = 'var(--tp-primary)'; registrarBtn.style.borderBottom = '3px solid var(--tp-primary)'; registrarBtn.style.fontWeight = '600'; }
-                
+
                 // ════ OPTIMIZADO: Solo cargar opciones si están vacías ════
                 if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
                     loadClientesAutocompleteEmbSafe();
@@ -8297,7 +8303,7 @@
                 }
                 return str;
             }
-            
+
             // Helper para formatear fechas a dd/mm/yyyy
             function formatearFechaCSV(fechaStr) {
                 if (!fechaStr) return '';
@@ -9479,19 +9485,19 @@
         function executeWithRetry(serverCall, options = {}) {
             const maxRetries = options.maxRetries || 3;
             const baseDelay = options.baseDelay || 2000; // 2 segundos
-            const onRetry = options.onRetry || (() => {});
-            
+            const onRetry = options.onRetry || (() => { });
+
             return new Promise((resolve, reject) => {
                 let attempt = 0;
-                
+
                 function tryCall() {
                     attempt++;
-                    
+
                     serverCall()
                         .then(result => resolve(result))
                         .catch(error => {
                             const errorMsg = error && error.message ? error.message : String(error || 'Error desconocido');
-                            const isRetryable = !errorMsg || 
+                            const isRetryable = !errorMsg ||
                                 errorMsg === 'undefined' ||
                                 errorMsg.includes('502') ||
                                 errorMsg.includes('503') ||
@@ -9499,7 +9505,7 @@
                                 errorMsg.includes('network') ||
                                 errorMsg.includes('Failed to fetch') ||
                                 errorMsg.includes('Script error');
-                            
+
                             if (isRetryable && attempt < maxRetries) {
                                 const delay = baseDelay * attempt; // 2s, 4s, 6s
                                 console.log('[Retry] Attempt ' + attempt + ' failed, retrying in ' + delay + 'ms...');
@@ -9510,7 +9516,7 @@
                             }
                         });
                 }
-                
+
                 tryCall();
             });
         }
@@ -9526,7 +9532,7 @@
                 const runner = google.script.run
                     .withSuccessHandler(result => resolve(result))
                     .withFailureHandler(error => reject(error));
-                
+
                 runner[functionName](...args);
             });
         }
@@ -9730,32 +9736,32 @@
                         }
                     }
                 )
-                .then(result => {
-                    showLoading(false);
-                    btn.disabled = false;
-                    btn.textContent = '📤 Cargar BD Sisnet';
+                    .then(result => {
+                        showLoading(false);
+                        btn.disabled = false;
+                        btn.textContent = '📤 Cargar BD Sisnet';
 
-                    if (result && result.ok) {
-                        const rows = result.rowsLoaded || 0;
-                        showConciliacionStatus('bdSisnetStatus', 'BD cargada exitosamente. ' + rows.toLocaleString() + ' registros.', 'success');
-                        showToast('BD Sisnet cargada: ' + rows.toLocaleString() + ' registros', 'success');
-                        log('✅ BD Sisnet cargada: ' + rows + ' registros', 'success');
-                        fileInput.value = '';
-                        refreshConciliacionStatus();
-                    } else {
-                        const error = result && result.error ? result.error : 'Error desconocido';
-                        showConciliacionStatus('bdSisnetStatus', error, 'error');
-                        log('❌ Error BD Sisnet: ' + error, 'error');
-                    }
-                })
-                .catch(error => {
-                    showLoading(false);
-                    btn.disabled = false;
-                    btn.textContent = '📤 Cargar BD Sisnet';
-                    const errorMsg = error && error.message ? error.message : 'Error de conexión con el servidor';
-                    showConciliacionStatus('bdSisnetStatus', errorMsg + ' (después de 3 reintentos)', 'error');
-                    log('❌ Error BD Sisnet: ' + errorMsg, 'error');
-                });
+                        if (result && result.ok) {
+                            const rows = result.rowsLoaded || 0;
+                            showConciliacionStatus('bdSisnetStatus', 'BD cargada exitosamente. ' + rows.toLocaleString() + ' registros.', 'success');
+                            showToast('BD Sisnet cargada: ' + rows.toLocaleString() + ' registros', 'success');
+                            log('✅ BD Sisnet cargada: ' + rows + ' registros', 'success');
+                            fileInput.value = '';
+                            refreshConciliacionStatus();
+                        } else {
+                            const error = result && result.error ? result.error : 'Error desconocido';
+                            showConciliacionStatus('bdSisnetStatus', error, 'error');
+                            log('❌ Error BD Sisnet: ' + error, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showLoading(false);
+                        btn.disabled = false;
+                        btn.textContent = '📤 Cargar BD Sisnet';
+                        const errorMsg = error && error.message ? error.message : 'Error de conexión con el servidor';
+                        showConciliacionStatus('bdSisnetStatus', errorMsg + ' (después de 3 reintentos)', 'error');
+                        log('❌ Error BD Sisnet: ' + errorMsg, 'error');
+                    });
             };
 
             reader.onerror = () => {
@@ -9819,64 +9825,64 @@
                         }
                     }
                 )
-                .then(result => {
-                    showLoading(false);
-                    btn.disabled = false;
-                    btn.textContent = '⚙️ Procesar Conciliación';
+                    .then(result => {
+                        showLoading(false);
+                        btn.disabled = false;
+                        btn.textContent = '⚙️ Procesar Conciliación';
 
-                    if (result && result.ok) {
-                        CONCILIACION_LAST_RESULT = result;
+                        if (result && result.ok) {
+                            CONCILIACION_LAST_RESULT = result;
 
-                        conciliacionLog('✅ Procesamiento completado para ' + insurerName, 'success');
+                            conciliacionLog('✅ Procesamiento completado para ' + insurerName, 'success');
 
-                        if (result.stats) {
-                            conciliacionLog('📊 Filas cargadas: ' + (result.stats.filasCargadas || 0), 'info');
-                            conciliacionLog('📊 Filas filtradas: ' + (result.stats.filasCancelado || result.stats.filasFiltradas || 0), 'info');
-                            conciliacionLog('📊 Filas escritas en Trama: ' + (result.stats.filasEscritas || 0), 'info');
-                        }
-
-                        if (result.cruce) {
-                            conciliacionLog('🟢 Registrados: ' + (result.cruce.registrado || 0), 'success');
-                            conciliacionLog('🟡 Validar: ' + (result.cruce.validar || 0), 'warning');
-                            conciliacionLog('🔴 No Registrados: ' + (result.cruce.noRegistrado || 0), 'error');
-                        }
-
-                        if (result.exports) {
-                            conciliacionLog('📁 Exportando archivos...', 'info');
-                            if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.ok) {
-                                conciliacionLog('✅ Trama_Registrados: ' + (result.exports.tramaRegistrados.count || 0) + ' registros', 'success');
+                            if (result.stats) {
+                                conciliacionLog('📊 Filas cargadas: ' + (result.stats.filasCargadas || 0), 'info');
+                                conciliacionLog('📊 Filas filtradas: ' + (result.stats.filasCancelado || result.stats.filasFiltradas || 0), 'info');
+                                conciliacionLog('📊 Filas escritas en Trama: ' + (result.stats.filasEscritas || 0), 'info');
                             }
-                            if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.ok) {
-                                conciliacionLog('✅ Estado_Cuenta_Pendientes: ' + (result.exports.estadoCuentaPendientes.count || 0) + ' registros', 'success');
+
+                            if (result.cruce) {
+                                conciliacionLog('🟢 Registrados: ' + (result.cruce.registrado || 0), 'success');
+                                conciliacionLog('🟡 Validar: ' + (result.cruce.validar || 0), 'warning');
+                                conciliacionLog('🔴 No Registrados: ' + (result.cruce.noRegistrado || 0), 'error');
                             }
+
+                            if (result.exports) {
+                                conciliacionLog('📁 Exportando archivos...', 'info');
+                                if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.ok) {
+                                    conciliacionLog('✅ Trama_Registrados: ' + (result.exports.tramaRegistrados.count || 0) + ' registros', 'success');
+                                }
+                                if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.ok) {
+                                    conciliacionLog('✅ Estado_Cuenta_Pendientes: ' + (result.exports.estadoCuentaPendientes.count || 0) + ' registros', 'success');
+                                }
+                            }
+
+                            showConciliacionStatus('conciliacionStatus', 'Procesamiento completado exitosamente', 'success');
+                            showToast(insurerName + ' procesado exitosamente', 'success');
+                            log('✅ EECC ' + insurerName + ' procesado', 'success');
+
+                            displayConciliacionResults(result, insurerName);
+
+                            fileInput.value = '';
+                            insurerSelect.value = '';
+                            updateProcessBtnState();
+
+                        } else {
+                            const error = result && result.error ? result.error : 'Error desconocido';
+                            conciliacionLog('❌ Error: ' + error, 'error');
+                            showConciliacionStatus('conciliacionStatus', error, 'error');
+                            log('❌ Error EECC: ' + error, 'error');
                         }
-
-                        showConciliacionStatus('conciliacionStatus', 'Procesamiento completado exitosamente', 'success');
-                        showToast(insurerName + ' procesado exitosamente', 'success');
-                        log('✅ EECC ' + insurerName + ' procesado', 'success');
-
-                        displayConciliacionResults(result, insurerName);
-
-                        fileInput.value = '';
-                        insurerSelect.value = '';
-                        updateProcessBtnState();
-
-                    } else {
-                        const error = result && result.error ? result.error : 'Error desconocido';
-                        conciliacionLog('❌ Error: ' + error, 'error');
-                        showConciliacionStatus('conciliacionStatus', error, 'error');
-                        log('❌ Error EECC: ' + error, 'error');
-                    }
-                })
-                .catch(error => {
-                    showLoading(false);
-                    btn.disabled = false;
-                    btn.textContent = '⚙️ Procesar Conciliación';
-                    const errorMsg = error && error.message ? error.message : 'Error de conexión con el servidor';
-                    conciliacionLog('❌ Error: ' + errorMsg + ' (después de 3 reintentos)', 'error');
-                    showConciliacionStatus('conciliacionStatus', errorMsg, 'error');
-                    log('❌ Error EECC: ' + errorMsg, 'error');
-                });
+                    })
+                    .catch(error => {
+                        showLoading(false);
+                        btn.disabled = false;
+                        btn.textContent = '⚙️ Procesar Conciliación';
+                        const errorMsg = error && error.message ? error.message : 'Error de conexión con el servidor';
+                        conciliacionLog('❌ Error: ' + errorMsg + ' (después de 3 reintentos)', 'error');
+                        showConciliacionStatus('conciliacionStatus', errorMsg, 'error');
+                        log('❌ Error EECC: ' + errorMsg, 'error');
+                    });
             };
 
             reader.onerror = () => {
@@ -10141,10 +10147,10 @@
             const input = document.getElementById(inputId);
             const counter = document.getElementById(counterId);
             if (!input || !counter) return;
-            
+
             const currentLength = input.value.length;
             counter.textContent = currentLength + '/' + maxLength;
-            
+
             // Cambiar color según proximidad al límite
             if (currentLength >= maxLength * 0.9) {
                 counter.style.color = '#DC2626'; // Rojo - muy cerca del límite
@@ -10381,7 +10387,7 @@
                 grupoFechaCompromiso.classList.add('hidden');
                 grupoFechaCompromiso.style.display = 'none';
             }
-            
+
             const requiredObs = document.getElementById('requiredObsEmb');
             if (requiredObs) {
                 requiredObs.style.display = 'none';
