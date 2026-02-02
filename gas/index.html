@@ -5400,6 +5400,7 @@
 
         /**
          * Carga datos de bitácora con paginación v4.1+
+         * OPTIMIZACIÓN v4.3: Usa localStorage cache para mostrar datos instantáneamente
          * @param {boolean} reset - Si true, reinicia página a 1 y limpia datos
          */
         async function loadBitacoraEmbeddedData(reset = false) {
@@ -5418,13 +5419,70 @@
 
             console.log('[loadBitacoraEmbeddedData] 🚀 Cargando página', BITACORA_PAGE);
 
-            BITACORA_LOADING = true;
-            toggleLoadMoreButton(false, true); // Ocultar y deshabilitar mientras carga
-
             const tbody = document.getElementById('bitacoraTableBodyEmb');
+
+            // ════════════════════════════════════════════════════════════════════════════════
+            // OPTIMIZACIÓN v4.3: CACHE LOCAL - Mostrar datos guardados INMEDIATAMENTE
+            // ════════════════════════════════════════════════════════════════════════════════
+            const CACHE_KEY = 'BITACORA_ESTADO_ACTUAL_CACHE';
+            const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+            try {
+                const cachedRaw = localStorage.getItem(CACHE_KEY);
+                if (cachedRaw && BITACORA_PAGE === 1 && !BITACORA_EMB_LOADED) {
+                    const cached = JSON.parse(cachedRaw);
+                    const cacheAge = Date.now() - (cached.timestamp || 0);
+
+                    if (cached.data && cached.data.length > 0 && cacheAge < CACHE_TTL) {
+                        console.log('[loadBitacoraEmbeddedData] ⚡ Mostrando cache local:', cached.data.length, 'registros, edad:', Math.round(cacheAge / 1000) + 's');
+
+                        // Mostrar datos cacheados INMEDIATAMENTE
+                        BITACORA_DATA = cached.data;
+                        BITACORA_FILTERED = cached.data;
+                        BITACORA_HAS_MORE = cached.hasMore || false;
+                        BITACORA_EMB_LOADED = true;
+
+                        renderBitacoraTableEmb();
+                        populateFiltrosEmb();
+                        actualizarKPIsCompromisosPanel();
+                        toggleLoadMoreButton(BITACORA_HAS_MORE, false);
+
+                        // Indicador visual de "última actualización"
+                        const lastUpdate = new Date(cached.timestamp).toLocaleTimeString('es-PE');
+                        const refreshIndicator = document.getElementById('bitacoraLastUpdate');
+                        if (refreshIndicator) {
+                            refreshIndicator.textContent = `Última act: ${lastUpdate}`;
+                        }
+
+                        // BACKGROUND: Refrescar datos en segundo plano
+                        setTimeout(() => {
+                            console.log('[loadBitacoraEmbeddedData] 🔄 Refrescando datos en background...');
+                            _loadBitacoraFromBackend(reset, CACHE_KEY, tbody, true);
+                        }, 100);
+
+                        return;
+                    }
+                }
+            } catch (cacheErr) {
+                console.warn('[loadBitacoraEmbeddedData] Error leyendo cache:', cacheErr);
+            }
+
+            // Sin cache válido: mostrar loading y cargar
+            BITACORA_LOADING = true;
+            toggleLoadMoreButton(false, true);
+
             if (tbody && BITACORA_PAGE === 1) {
                 tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;"><div class="loader-spinner"></div> Cargando...</td></tr>';
             }
+
+            await _loadBitacoraFromBackend(reset, CACHE_KEY, tbody, false);
+        }
+
+        /**
+         * Helper: Carga datos desde el backend y actualiza cache
+         */
+        async function _loadBitacoraFromBackend(reset, cacheKey, tbody, isBackground) {
+            if (!isBackground) BITACORA_LOADING = true;
 
             try {
                 const result = await runGas('bitacoraGetResumenCiclos', TOKEN, {
@@ -5432,7 +5490,7 @@
                     pageSize: 100
                 });
 
-                console.log('[loadBitacoraEmbeddedData] ✅ Respuesta:', result);
+                console.log('[_loadBitacoraFromBackend] ✅ Respuesta:', result);
 
                 if (result && result.ok && result.data) {
                     // Append o replace según sea reset
@@ -5450,15 +5508,29 @@
                     actualizarKPIsCompromisosPanel();
                     toggleLoadMoreButton(BITACORA_HAS_MORE, false);
 
-                    console.log(`[loadBitacoraEmbeddedData] Total: ${BITACORA_DATA.length}, hasNext: ${BITACORA_HAS_MORE}`);
-                } else {
+                    console.log(`[_loadBitacoraFromBackend] Total: ${BITACORA_DATA.length}, hasNext: ${BITACORA_HAS_MORE}`);
+
+                    // Guardar en cache local
+                    try {
+                        localStorage.setItem(cacheKey, JSON.stringify({
+                            data: BITACORA_DATA,
+                            hasMore: BITACORA_HAS_MORE,
+                            timestamp: Date.now()
+                        }));
+                        console.log('[_loadBitacoraFromBackend] 💾 Cache local actualizado');
+                    } catch (cacheErr) {
+                        console.warn('[_loadBitacoraFromBackend] No se pudo guardar cache:', cacheErr);
+                    }
+                } else if (!isBackground) {
                     showBitacoraEmbError(result?.error || 'No hay datos disponibles');
                     toggleLoadMoreButton(false, false);
                 }
             } catch (err) {
-                console.error('[loadBitacoraEmbeddedData] ❌ Error:', err);
-                showBitacoraEmbError(err.message || 'Error al cargar datos');
-                toggleLoadMoreButton(false, false);
+                console.error('[_loadBitacoraFromBackend] ❌ Error:', err);
+                if (!isBackground) {
+                    showBitacoraEmbError(err.message || 'Error al cargar datos');
+                    toggleLoadMoreButton(false, false);
+                }
             } finally {
                 BITACORA_LOADING = false;
             }
