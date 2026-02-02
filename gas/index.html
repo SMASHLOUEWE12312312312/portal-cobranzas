@@ -3344,6 +3344,12 @@
                         // CARGA COMPLETA - Finalizar
                         ASEGURADOS_DS.loading = false;
                         renderAutocompleteOptionsEECC();
+
+                        // FIX: También actualizar autocomplete de Bitácora si está en modo asegurado
+                        if (BITACORA_MODE === 'asegurado' && typeof loadClientesAutocompleteEmb === 'function') {
+                            loadClientesAutocompleteEmb();
+                        }
+
                         log(`✅ ${ASEGURADOS_DS.items.length} asegurados cargados (100% completo)`, 'success');
                         console.log(`[fetchPage] ✅ Carga completa: ${ASEGURADOS_DS.items.length} asegurados`);
                     }
@@ -7014,8 +7020,27 @@
         function inicializarFormularioEmbedded() {
             console.log('[inicializarFormularioEmbedded] Inicializando...');
 
-            // Cargar clientes para el autocomplete
-            loadClientesAutocompleteEmb();
+            // FIX: Asegurar que la lista de asegurados se cargue primero
+            // ALL_CLIENTES y ASEGURADOS_DS deben tener datos antes de poblar el autocomplete
+            if (ASEGURADOS_DS.items.length === 0 && !ASEGURADOS_DS.loading) {
+                console.log('[inicializarFormularioEmbedded] Cargando asegurados desde backend...');
+                loadAsegurados();
+
+                // Esperar a que cargue y luego actualizar autocomplete
+                const checkInterval = setInterval(() => {
+                    if (!ASEGURADOS_DS.loading && ASEGURADOS_DS.items.length > 0) {
+                        clearInterval(checkInterval);
+                        console.log('[inicializarFormularioEmbedded] ✅ Asegurados cargados, actualizando autocomplete');
+                        loadClientesAutocompleteEmb();
+                    }
+                }, 500);
+
+                // Timeout de seguridad
+                setTimeout(() => clearInterval(checkInterval), 30000);
+            } else {
+                // Ya hay datos, cargar directamente
+                loadClientesAutocompleteEmb();
+            }
 
             // Establecer responsable
             const inputResponsable = document.getElementById('gestionResponsableEmb');
