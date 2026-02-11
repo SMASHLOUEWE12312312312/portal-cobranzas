@@ -35,6 +35,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transperuana · Portal Cobranzas</title>
 
+    <!-- PSI: Preconnect a dominios externos para reducir LCP -->
+    <link rel="preconnect" href="https://i.imgur.com" crossorigin>
+    <link rel="dns-prefetch" href="https://i.imgur.com">
+    <link rel="preconnect" href="https://app.powerbi.com" crossorigin>
+    <link rel="dns-prefetch" href="https://app.powerbi.com">
+
     <!-- Incluir el archivo de estilos -->
     <?!= include('styles'); ?>
 
@@ -44,7 +50,8 @@
     <!-- LOGIN -->
     <section id="loginSection" class="login-container">
         <div class="login-card">
-            <img src="https://i.imgur.com/RUhA0kt.png" alt="Transperuana Logo" class="login-logo" />
+            <img src="https://i.imgur.com/RUhA0kt.png" alt="Transperuana Logo" class="login-logo" width="200"
+                height="60" />
             <h1 class="login-title">Portal Cobranzas</h1>
             <form id="loginForm" onsubmit="return handleLogin(event)">
                 <div class="form-group">
@@ -77,7 +84,8 @@
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <img src="https://i.imgur.com/RUhA0kt.png" alt="Transperuana Logo" class="sidebar-logo" />
+                <img src="https://i.imgur.com/RUhA0kt.png" alt="Transperuana Logo" class="sidebar-logo" width="200"
+                    height="120" />
             </div>
             <nav class="sidebar-nav">
                 <div class="nav-item active" onclick="switchView('dashboard')" id="nav-dashboard">
@@ -173,8 +181,8 @@
                         </div>
                         <div class="pbi-content" id="pbiContent">
                             <div class="pbi-container" style="min-height: 600px; height: 70vh;">
-                                <iframe id="pbiFrame" class="pbi-iframe" src="" frameborder="0" allowfullscreen
-                                    style="width: 100%; height: 100%;"></iframe>
+                                <iframe id="pbiFrame" class="pbi-iframe" data-src="" frameborder="0" allowfullscreen
+                                    loading="lazy" style="width: 100%; height: 100%;"></iframe>
                             </div>
                         </div>
                     </section>
@@ -345,7 +353,7 @@
                                     <span class="autocomplete-icon">🔍</span>
                                     <input type="text" id="aseguradoSelect" class="autocomplete-input"
                                         placeholder="Escribe o selecciona un cliente..." autocomplete="off"
-                                        oninput="filtrarAutocompleteEECC()"
+                                        oninput="debouncedFiltrarAutocompleteEECC()"
                                         onkeydown="handleAutocompleteKeydownEECC(event)"
                                         onfocus="mostrarDropdownAutocompleteEECC()" />
                                     <button type="button" class="autocomplete-dropdown-btn"
@@ -558,7 +566,7 @@
                             <div style="flex: 1; min-width: 250px; position: relative;">
                                 <input type="text" id="busquedaGlobalBitacora"
                                     placeholder="🔍 Buscar en toda la bitácora... (Atajo: /)"
-                                    oninput="busquedaGlobalBitacora()"
+                                    oninput="debouncedBusquedaGlobal()"
                                     style="width: 100%; padding: 0.6rem 1rem; border-radius: 8px; border: 1px solid var(--tp-border-light); font-size: 0.875rem;">
                             </div>
                             <div id="quickActionsContainer" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -1014,7 +1022,7 @@
                                                         class="autocomplete-input"
                                                         placeholder="Escribe o selecciona un cliente..."
                                                         autocomplete="off" required
-                                                        oninput="filtrarAutocompleteEmb(); validateFormV4();"
+                                                        oninput="debouncedFiltrarAutocompleteEmb()"
                                                         onkeydown="handleAutocompleteKeydownEmb(event)"
                                                         onfocus="mostrarDropdownAutocompleteEmb()"
                                                         style="width: 100%; padding: 0.75rem 2.5rem 0.75rem 2.5rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; transition: border-color 0.15s ease, box-shadow 0.15s ease;">
@@ -1464,7 +1472,7 @@
                             🔍 Buscar empresa
                         </label>
                         <input type="search" id="mailSearch" placeholder="Escribe para filtrar empresas..."
-                            oninput="filterMailClientes()">
+                            oninput="debouncedFilterMailClientes()">
                     </div>
 
                     <div class="form-group">
@@ -1718,7 +1726,7 @@
                                             <span class="autocomplete-icon">🔍</span>
                                             <input type="text" id="gestionAsegurado" class="autocomplete-input"
                                                 placeholder="Escribe o selecciona un cliente..." autocomplete="off"
-                                                required oninput="filtrarAutocomplete()"
+                                                required oninput="debouncedFiltrarAutocomplete()"
                                                 onfocus="mostrarDropdownAutocomplete()" />
                                             <button type="button" class="autocomplete-dropdown-btn"
                                                 onclick="toggleDropdownAutocomplete()" title="Ver todas las opciones">
@@ -1960,6 +1968,23 @@
         let BITACORA_MODE = 'asegurado'; // asegurado | grupo
         let MAIL_STATE = { previews: [], currentTab: 'seleccionar', allClientes: [] };
 
+        // ============================================================
+        // PSI: DEBOUNCE UTILITY (reduce INP / long tasks)
+        // ============================================================
+        function _debounce(fn, delay) {
+            let timer;
+            return function (...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+        const debouncedBusquedaGlobal = _debounce(() => busquedaGlobalBitacora(), 250);
+        const debouncedFiltrarAutocompleteEECC = _debounce(() => filtrarAutocompleteEECC(), 150);
+        const debouncedFilterMailClientes = _debounce(() => filterMailClientes(), 150);
+        const debouncedFiltrarAutocomplete = _debounce(() => filtrarAutocomplete(), 150);
+        const debouncedFiltrarAutocompleteEmb = _debounce(() => { filtrarAutocompleteEmb(); validateFormV4(); }, 150);
+        const debouncedFilterCommands = _debounce(() => filterCommands(), 150);
+
         // HOTFIX: Sistema unificado de estados de carga para evitar race conditions
         const LOAD_STATE = {
             asegurados: {
@@ -2035,6 +2060,8 @@
          * Debe llamarse después de que cada módulo inline esté listo
          */
         function hideGlobalLoader(reason) {
+            // PSI: Optimized — removed brute-force querySelectorAll('div, section, p') scan
+            // that traversed the entire DOM on every call (long task contributor)
             const candidates = [
                 '#loadingOverlay',
                 '#globalLoader',
@@ -2055,22 +2082,9 @@
                 });
             });
 
-            // Fallback: detectar por texto "Cargando..."
-            document.querySelectorAll('div, section, p').forEach(el => {
-                if (el && el.innerText && el.innerText.trim() === 'Cargando...') {
-                    const parent = el.closest('.module-loading, .loading-overlay, .loader');
-                    if (parent) {
-                        parent.style.display = 'none';
-                        hidden++;
-                    }
-                }
-            });
-
-            // También ocultar spinners internos de módulos inline
-            const enviarHost = document.getElementById('enviarInlineHost');
-            const bitacoraHost = document.getElementById('bitacoraInlineHost');
-
-            [enviarHost, bitacoraHost].forEach(host => {
+            // Spinners internos de módulos inline (targeted lookup, no brute force)
+            ['enviarInlineHost', 'bitacoraInlineHost'].forEach(id => {
+                const host = document.getElementById(id);
                 if (host) {
                     const loader = host.querySelector('.module-loading');
                     if (loader) {
@@ -2442,17 +2456,17 @@
             console.log('[initPortal] 🚀 Iniciando portal...');
             log('Portal inicializado', 'success');
 
-            // Cargar PBI
+            // PSI: PBI iframe lazy-load — only store URL, load when user expands
             const pbiFrame = document.getElementById('pbiFrame');
             if (pbiFrame) {
-                pbiFrame.src = PBI_URL;
-                console.log('[initPortal] ✅ PBI URL cargada');
-                log('Dashboard PBI cargado', 'info');
+                pbiFrame.dataset.src = PBI_URL;
+                console.log('[initPortal] ✅ PBI URL preparada (lazy)');
+                log('Dashboard PBI listo (carga bajo demanda)', 'info');
             } else {
                 console.error('[initPortal] ❌ pbiFrame no encontrado');
             }
 
-            // Cargar asegurados y grupos
+            // Cargar asegurados y grupos (critical for first interaction)
             loadAsegurados();
             loadGrupos();
 
@@ -2464,13 +2478,15 @@
             loadQueueHealth();
             startDashboardAutoRefresh();
 
-            // Phase 5: UX Enhancements
-            initQuickActions();
-            initGlobalSearch();
-
-            // Phase 6: Excelencia Operacional
-            initDarkMode();
-            initKeyboardShortcuts();
+            // PSI: Defer non-critical init to reduce TBT
+            const _ric = window.requestIdleCallback || (cb => setTimeout(cb, 100));
+            _ric(() => {
+                initQuickActions();
+                initGlobalSearch();
+                initDarkMode();
+                initKeyboardShortcuts();
+                console.log('[initPortal] ✅ Deferred init complete');
+            });
         }
 
         // ============================================================
@@ -3155,7 +3171,7 @@
                     <div class="tp-command-palette">
                         <div class="tp-command-input-wrapper">
                             <span style="font-size: 18px;">🔍</span>
-                            <input type="text" id="commandInput" class="tp-command-input" placeholder="Buscar asegurados, acciones..." autocomplete="off" oninput="filterCommands()">
+                            <input type="text" id="commandInput" class="tp-command-input" placeholder="Buscar asegurados, acciones..." autocomplete="off" oninput="debouncedFilterCommands()">
                             <span class="tp-command-shortcut">Esc para cerrar</span>
                         </div>
                         <div class="tp-command-results" id="commandResults"></div>
@@ -4246,6 +4262,14 @@
                 toggle.classList.remove('collapsed');
                 content.classList.add('expanded');
                 icon.textContent = '▲';
+
+                // PSI: Lazy-load PBI iframe only on first expand
+                const pbiFrame = document.getElementById('pbiFrame');
+                if (pbiFrame && !pbiFrame.src && pbiFrame.dataset.src) {
+                    pbiFrame.src = pbiFrame.dataset.src;
+                    console.log('[togglePowerBI] ✅ Iframe loaded on demand');
+                }
+
                 log('Dashboard PBI expandido', 'info');
             } else {
                 // Colapsar
@@ -5620,9 +5644,11 @@
                 return;
             }
 
-            let html = '';
-            BITACORA_FILTERED.forEach(function (g) {
-                // Colores distintivos de alto contraste para Días Ciclo (Von Restorff)
+            // PSI: Chunked rendering to reduce TBT / long tasks
+            const CHUNK_SIZE = 50;
+            const total = BITACORA_FILTERED.length;
+
+            function buildRowHtml(g) {
                 const dias = g.diasDesdeRegistro || 0;
                 let diasBg, diasText, diasLabel;
                 if (dias > 60) {
@@ -5640,47 +5666,63 @@
                 const proximaAccion = (g.proximaAccion || '-').substring(0, 25) + (g.proximaAccion && g.proximaAccion.length > 25 ? '...' : '');
                 const asegurado = (g.asegurado || '-').substring(0, 28) + (g.asegurado && g.asegurado.length > 28 ? '...' : '');
 
-                // QUICK WIN: Badge contador de gestiones
                 const numGestiones = g.numGestiones || 1;
                 const gestionesBadge = numGestiones > 1
                     ? '<span style="display:inline-flex;align-items:center;justify-content:center;background:#E5E7EB;color:#374151;padding:1px 5px;border-radius:10px;font-size:0.6rem;font-weight:600;margin-left:4px;" title="' + numGestiones + ' gestiones registradas">' + numGestiones + '</span>'
                     : '';
 
-                html += '<tr style="border-bottom:1px solid #E5E7EB;transition:background 0.15s;" onmouseover="this.style.background=\'#F9FAFB\'" onmouseout="this.style.background=\'transparent\'">';
-                html += '<td style="padding:8px 10px;font-weight:500;font-size:0.8rem;max-width:200px;" title="' + (g.asegurado || '') + ' (' + numGestiones + ' gestiones)">' + asegurado + gestionesBadge + '</td>';
-                html += '<td style="padding:8px 6px;">' + estadoBadge + '</td>';
-                html += '<td style="padding:8px 6px;font-size:0.75rem;color:#6B7280;">' + responsable + '</td>';
-                html += '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">' + formatDate(g.fechaEnvioEECC) + '</td>';
-                html += '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">' + formatDate(g.fechaRegistro) + '</td>';
-                html += '<td style="padding:8px 6px;text-align:center;">' +
+                let row = '<tr style="border-bottom:1px solid #E5E7EB;transition:background 0.15s;" onmouseover="this.style.background=\'#F9FAFB\'" onmouseout="this.style.background=\'transparent\'">';
+                row += '<td style="padding:8px 10px;font-weight:500;font-size:0.8rem;max-width:200px;" title="' + (g.asegurado || '') + ' (' + numGestiones + ' gestiones)">' + asegurado + gestionesBadge + '</td>';
+                row += '<td style="padding:8px 6px;">' + estadoBadge + '</td>';
+                row += '<td style="padding:8px 6px;font-size:0.75rem;color:#6B7280;">' + responsable + '</td>';
+                row += '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">' + formatDate(g.fechaEnvioEECC) + '</td>';
+                row += '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">' + formatDate(g.fechaRegistro) + '</td>';
+                row += '<td style="padding:8px 6px;text-align:center;">' +
                     '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">' +
                     '<span style="background:' + diasBg + ';color:' + diasText + ';padding:3px 8px;border-radius:10px;font-size:0.7rem;font-weight:700;">' + dias + '</span>' +
                     '<span style="font-size:0.6rem;color:#9CA3AF;">' + diasLabel + '</span></div></td>';
-                // QUICK WIN: Indicador de compromiso vencido
-                html += formatCompromisoCell(g.fechaCompromiso, g.estadoGestion);
+                row += formatCompromisoCell(g.fechaCompromiso, g.estadoGestion);
 
-                // Columnas de Vencido PEN y USD con formato y color
                 const vencidoPEN = g.snapshotVencidoPEN || 0;
                 const vencidoUSD = g.snapshotVencidoUSD || 0;
-                html += '<td style="padding:8px 6px;font-size:0.75rem;text-align:right;font-weight:500;color:' + (vencidoPEN > 0 ? '#D32F2F' : '#9CA3AF') + ';">' + (vencidoPEN > 0 ? 'S/ ' + formatNumber(vencidoPEN) : '—') + '</td>';
+                row += '<td style="padding:8px 6px;font-size:0.75rem;text-align:right;font-weight:500;color:' + (vencidoPEN > 0 ? '#D32F2F' : '#9CA3AF') + ';">' + (vencidoPEN > 0 ? 'S/ ' + formatNumber(vencidoPEN) : '—') + '</td>';
+                row += formatDeltaCell(g.deltaVencidoPEN, g.tendenciaPEN, 'PEN');
+                row += '<td style="padding:8px 6px;font-size:0.75rem;text-align:right;font-weight:500;color:' + (vencidoUSD > 0 ? '#1565C0' : '#9CA3AF') + ';">' + (vencidoUSD > 0 ? '$ ' + formatNumber(vencidoUSD) : '—') + '</td>';
+                row += formatDeltaCell(g.deltaVencidoUSD, g.tendenciaUSD, 'USD');
+                row += '<td style="padding:8px 6px;font-size:0.75rem;color:#4B5563;max-width:140px;" title="' + (g.proximaAccion || '') + '">' + proximaAccion + '</td>';
+                row += '<td style="padding:6px;text-align:center;white-space:nowrap;">';
+                row += '<button onclick="verTimelineCiclo(null, \'' + (g.asegurado || '').replace(/'/g, "\\'") + '\')" style="padding:4px 6px;font-size:0.65rem;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;cursor:pointer;margin-right:3px;" title="Ver timeline">📋</button>';
+                row += '<button onclick="abrirRegistroGestionPara(\'' + (g.asegurado || '').replace(/'/g, "\\'") + '\')" style="padding:4px 6px;font-size:0.65rem;background:var(--tp-primary);color:white;border:none;border-radius:4px;cursor:pointer;" title="Agregar gestión">+</button>';
+                row += '</td></tr>';
+                return row;
+            }
 
-                // NUEVO: Indicador de variación PEN (Δ PEN)
-                html += formatDeltaCell(g.deltaVencidoPEN, g.tendenciaPEN, 'PEN');
+            // Render first chunk immediately
+            let firstChunkHtml = '';
+            const firstEnd = Math.min(CHUNK_SIZE, total);
+            for (let i = 0; i < firstEnd; i++) {
+                firstChunkHtml += buildRowHtml(BITACORA_FILTERED[i]);
+            }
+            tbody.innerHTML = firstChunkHtml;
+            if (countEl) countEl.textContent = total;
 
-                html += '<td style="padding:8px 6px;font-size:0.75rem;text-align:right;font-weight:500;color:' + (vencidoUSD > 0 ? '#1565C0' : '#9CA3AF') + ';">' + (vencidoUSD > 0 ? '$ ' + formatNumber(vencidoUSD) : '—') + '</td>';
-
-                // NUEVO: Indicador de variación USD (Δ USD)
-                html += formatDeltaCell(g.deltaVencidoUSD, g.tendenciaUSD, 'USD');
-
-                html += '<td style="padding:8px 6px;font-size:0.75rem;color:#4B5563;max-width:140px;" title="' + (g.proximaAccion || '') + '">' + proximaAccion + '</td>';
-                html += '<td style="padding:6px;text-align:center;white-space:nowrap;">';
-                html += '<button onclick="verTimelineCiclo(null, \'' + (g.asegurado || '').replace(/'/g, "\\'") + '\')" style="padding:4px 6px;font-size:0.65rem;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;cursor:pointer;margin-right:3px;" title="Ver timeline">📋</button>';
-                html += '<button onclick="abrirRegistroGestionPara(\'' + (g.asegurado || '').replace(/'/g, "\\'") + '\')" style="padding:4px 6px;font-size:0.65rem;background:var(--tp-primary);color:white;border:none;border-radius:4px;cursor:pointer;" title="Agregar gestión">+</button>';
-                html += '</td></tr>';
-            });
-
-            tbody.innerHTML = html;
-            if (countEl) countEl.textContent = BITACORA_FILTERED.length;
+            // Render remaining chunks via requestAnimationFrame to avoid long tasks
+            if (total > CHUNK_SIZE) {
+                let offset = CHUNK_SIZE;
+                function renderNextChunk() {
+                    const end = Math.min(offset + CHUNK_SIZE, total);
+                    let chunkHtml = '';
+                    for (let i = offset; i < end; i++) {
+                        chunkHtml += buildRowHtml(BITACORA_FILTERED[i]);
+                    }
+                    tbody.insertAdjacentHTML('beforeend', chunkHtml);
+                    offset = end;
+                    if (offset < total) {
+                        requestAnimationFrame(renderNextChunk);
+                    }
+                }
+                requestAnimationFrame(renderNextChunk);
+            }
         }
 
         function getEstadoBadge(estado) {

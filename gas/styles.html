@@ -346,6 +346,8 @@
     width: auto;
     max-width: 90%;
     object-fit: contain;
+    aspect-ratio: 200 / 120;
+    /* PSI: Reserve space for sidebar logo */
   }
 
   .sidebar-nav {
@@ -446,11 +448,15 @@
     display: none;
     opacity: 0;
     transition: opacity var(--tp-duration-normal);
+    contain: content;
+    /* PSI: Limit layout/paint recalcs to this subtree */
   }
 
   .view-section.active {
     display: block;
     opacity: 1;
+    min-height: 400px;
+    /* PSI: Reserve space to prevent CLS when content loads */
   }
 
   /* Responsive Sidebar */
@@ -2404,6 +2410,8 @@
     width: 200px;
     max-width: 80%;
     height: auto;
+    aspect-ratio: 200 / 60;
+    /* PSI: Reserve space for logo to prevent CLS */
     margin: 0 auto var(--tp-space-6);
     object-fit: contain;
   }
