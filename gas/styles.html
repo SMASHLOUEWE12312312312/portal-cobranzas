@@ -448,8 +448,8 @@
     display: none;
     opacity: 0;
     transition: opacity var(--tp-duration-normal);
-    contain: content;
-    /* PSI: Limit layout/paint recalcs to this subtree */
+    contain: layout style;
+    /* PSI: Limit layout/style recalcs but allow paint overflow (dropdowns) */
   }
 
   .view-section.active {
@@ -775,62 +775,72 @@
     top: 100%;
     left: 0;
     right: 0;
-    max-height: min(280px, 40vh);
-    /* FIX: Responsive, se adapta a viewport */
+    max-height: min(360px, 50vh);
     overflow-y: auto;
     background: var(--tp-surface);
-    border: 1px solid var(--tp-border-light);
-    border-radius: var(--tp-radius-md);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    /* FIX: Sombra más pronunciada */
-    margin-top: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.07),
+      0 12px 24px -4px rgba(0, 0, 0, 0.12),
+      0 0 0 1px rgba(0, 0, 0, 0.04);
+    margin-top: 6px;
     z-index: 10000;
-    /* FIX: Máxima prioridad visual sobre footer */
-    animation: dropdownFadeIn 0.15s var(--tp-ease-out);
+    animation: dropdownFadeIn 0.18s var(--tp-ease-out);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   @keyframes dropdownFadeIn {
     from {
       opacity: 0;
-      transform: translateY(-8px);
+      transform: translateY(-6px) scale(0.98);
     }
 
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
     }
   }
 
   .autocomplete-options {
-    padding: 4px;
+    padding: 6px;
   }
 
   .autocomplete-option {
-    padding: 10px 12px;
+    padding: 11px 14px;
     cursor: pointer;
-    border-radius: var(--tp-radius-sm);
+    border-radius: 8px;
     font-size: var(--tp-text-sm);
     color: var(--tp-text-primary);
-    transition: all var(--tp-duration-fast) var(--tp-ease-out);
+    transition: all 0.15s ease;
     word-wrap: break-word;
+    line-height: 1.4;
+    position: relative;
+  }
+
+  .autocomplete-option + .autocomplete-option {
+    margin-top: 2px;
   }
 
   .autocomplete-option strong {
-    font-weight: var(--tp-font-semibold);
+    font-weight: 700;
     color: var(--tp-primary);
     background: var(--tp-primary-pale);
-    padding: 1px 2px;
-    border-radius: 2px;
+    padding: 1px 4px;
+    border-radius: 4px;
   }
 
   .autocomplete-option:hover,
   .autocomplete-option-highlighted {
-    background: var(--tp-surface-overlay);
+    background: var(--tp-primary-pale, #FFEBEE);
     color: var(--tp-primary);
+    transform: translateX(2px);
   }
 
   .autocomplete-option:active {
     background: var(--tp-primary-pale);
+    transform: scale(0.99);
   }
 
   .autocomplete-option-empty {
@@ -838,42 +848,45 @@
     text-align: center;
     font-style: italic;
     cursor: default;
+    padding: 20px 14px;
   }
 
   .autocomplete-option-empty:hover {
     background: transparent;
     color: var(--tp-text-tertiary);
+    transform: none;
   }
 
   /* Contador de resultados */
   .autocomplete-counter {
-    display: block;
-    font-size: 0.8125rem;
-    font-weight: var(--tp-font-medium);
-    margin-top: 6px;
-    padding: 4px 8px;
-    border-radius: var(--tp-radius-sm);
-    background: #F5F5F5;
-    animation: fadeIn 0.2s var(--tp-ease-out);
+    display: flex;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--tp-text-tertiary);
+    padding: 8px 14px 4px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    margin-bottom: 4px;
   }
 
   /* Scrollbar personalizado para el dropdown */
   .autocomplete-dropdown::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
 
   .autocomplete-dropdown::-webkit-scrollbar-track {
-    background: var(--tp-background);
-    border-radius: var(--tp-radius-sm);
+    background: transparent;
+    margin: 8px 0;
   }
 
   .autocomplete-dropdown::-webkit-scrollbar-thumb {
-    background: var(--tp-border-medium);
-    border-radius: var(--tp-radius-sm);
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
   }
 
   .autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
-    background: var(--tp-text-tertiary);
+    background: rgba(0, 0, 0, 0.25);
   }
 
   @keyframes fadeIn {
@@ -2979,9 +2992,8 @@
       font-size: var(--tp-text-xs);
     }
 
-    /* FIX: Ajustes de dropdown en móvil */
     .autocomplete-dropdown {
-      max-height: 200px;
+      max-height: min(280px, 45vh);
     }
 
     .portal-footer {
