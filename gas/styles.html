@@ -660,6 +660,7 @@
     display: flex;
     align-items: center;
     width: 100%;
+    z-index: 1000;
   }
 
   .autocomplete-icon {
@@ -2947,14 +2948,10 @@
     background: var(--tp-surface-overlay);
     border-top: 1px solid var(--tp-border-light);
     padding: var(--tp-space-6) var(--tp-space-6);
-    /* FIX: Más padding vertical */
-    margin-top: calc(var(--tp-space-12) + 100px);
-    /* FIX: Espacio extra para dropdowns */
-    position: relative;
-    bottom: 0;
+    margin-top: auto;
     width: 100%;
-    z-index: 10;
-    /* FIX: Menor prioridad que dropdowns */
+    position: relative;
+    z-index: 1;
   }
 
   .footer-content {
