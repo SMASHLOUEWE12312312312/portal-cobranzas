@@ -2,6 +2,17 @@
  * @fileoverview Generación de previews para correos
  */
 
+// Security: HTML escape utility for preview templates
+function _escapeHtml(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 const PreviewService = {
 
   /**
@@ -100,16 +111,16 @@ const PreviewService = {
   _buildPreviewHTML(data, aseguradoId, opts) {
     const rows = data.rows.map(r => `
       <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;">${r.cia || ''}</td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${r.poliza || ''}</td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${r.ram || ''}</td>
-        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${r.numCuota || ''}</td>
-        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${r.cupon || ''}</td>
-        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${r.mon || ''}</td>
-        <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${r.importe || ''}</td>
-        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${r.fecVenc || ''}</td>
-        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${r.dias || ''}</td>
-        ${opts.includeObs ? `<td style="padding: 8px; border: 1px solid #ddd;">${r.obs || ''}</td>` : ''}
+        <td style="padding: 8px; border: 1px solid #ddd;">${_escapeHtml(r.cia || '')}</td>
+        <td style="padding: 8px; border: 1px solid #ddd;">${_escapeHtml(r.poliza || '')}</td>
+        <td style="padding: 8px; border: 1px solid #ddd;">${_escapeHtml(r.ram || '')}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${_escapeHtml(r.numCuota || '')}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${_escapeHtml(r.cupon || '')}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${_escapeHtml(r.mon || '')}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${_escapeHtml(r.importe || '')}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${_escapeHtml(r.fecVenc || '')}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${_escapeHtml(String(r.dias || ''))}</td>
+        ${opts.includeObs ? `<td style="padding: 8px; border: 1px solid #ddd;">${_escapeHtml(r.obs || '')}</td>` : ''}
       </tr>
     `).join('');
 
@@ -120,7 +131,7 @@ const PreviewService = {
 
     return `
       <div style="font-family: Arial, sans-serif; max-width: 100%; overflow-x: auto;">
-        <h3 style="color: #333; margin-bottom: 16px;">Estado de Cuenta: ${aseguradoId}</h3>
+        <h3 style="color: #333; margin-bottom: 16px;">Estado de Cuenta: ${_escapeHtml(aseguradoId)}</h3>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
           <thead>
             <tr>${headerRow}</tr>

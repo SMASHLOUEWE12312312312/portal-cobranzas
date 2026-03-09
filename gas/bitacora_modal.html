@@ -390,6 +390,16 @@
     </div>
 
     <script>
+        // Security: HTML escape utility
+        function _esc(str) {
+            if (!str || typeof str !== 'string') return '';
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+        }
+
+        // ========== DEBUG LOG GATE ==========
+        const _DEBUG = false;
+        function _log(...args) { if (_DEBUG) console.log(...args); }
+
         // ========== DATOS PRE-CARGADOS ==========
         // Los datos vienen del backend, inyectados en el template
         let BITACORA_DATA = [];
@@ -398,14 +408,14 @@
         // ========== INICIALIZACIÓN ==========
 
         window.onload = function () {
-            console.log('========================================');
-            console.log('🚀 Bitácora Modal cargada (versión pre-cargada)');
-            console.log('========================================');
+            _log('========================================');
+            _log('Bitácora Modal cargada (versión pre-cargada)');
+            _log('========================================');
 
             try {
                 // Leer datos inyectados desde el backend
                 const datosInyectados = '<?!= gestionesData ?>';
-                console.log('📥 Datos inyectados (primeros 100 chars):', datosInyectados.substring(0, 100));
+                _log('Datos inyectados (primeros 100 chars):', datosInyectados.substring(0, 100));
 
                 if (!datosInyectados || datosInyectados === '' || datosInyectados === 'undefined') {
                     console.error('❌ No hay datos inyectados');
@@ -417,8 +427,8 @@
                 BITACORA_DATA = JSON.parse(datosInyectados);
                 FILTERED_DATA = BITACORA_DATA;
 
-                console.log(`✅ ${BITACORA_DATA.length} gestiones cargadas desde el backend`);
-                console.log('========================================');
+                _log(`${BITACORA_DATA.length} gestiones cargadas desde el backend`);
+                _log('========================================');
 
                 // Renderizar interfaz
                 renderizarEstadisticas();
@@ -481,8 +491,8 @@
 
             const html = FILTERED_DATA.map(g => `
                 <tr>
-                    <td><strong>${g.asegurado}</strong></td>
-                    <td>${g.responsable}</td>
+                    <td><strong>${_esc(g.asegurado)}</strong></td>
+                    <td>${_esc(g.responsable)}</td>
                     <td><span class="badge ${obtenerClaseBadge(g.estadoGestion)}">${formatearEstado(g.estadoGestion)}</span></td>
                     <td>${formatearFecha(g.fechaRegistro)}</td>
                     <td>${calcularDias(g.fechaRegistro)} días</td>
@@ -492,7 +502,7 @@
                     <td style="text-align:right; font-weight:500; color:${(g.snapshotVencidoUSD || 0) > 0 ? '#1565C0' : '#666'}">
                         ${formatearMonto(g.snapshotVencidoUSD || 0, '$')}
                     </td>
-                    <td>${g.proximaAccion || '-'}</td>
+                    <td>${_esc(g.proximaAccion || '-')}</td>
                 </tr>
             `).join('');
 
@@ -509,14 +519,14 @@
 
             const html = BITACORA_DATA.map(g => `
                 <tr>
-                    <td>${g.idCiclo}</td>
+                    <td>${_esc(g.idCiclo)}</td>
                     <td>${formatearFecha(g.fechaRegistro)}</td>
-                    <td>${g.asegurado}</td>
-                    <td>${g.responsable}</td>
-                    <td>${g.tipoGestion}</td>
+                    <td>${_esc(g.asegurado)}</td>
+                    <td>${_esc(g.responsable)}</td>
+                    <td>${_esc(g.tipoGestion)}</td>
                     <td><span class="badge ${obtenerClaseBadge(g.estadoGestion)}">${formatearEstado(g.estadoGestion)}</span></td>
-                    <td>${g.canalContacto}</td>
-                    <td>${g.observaciones || '-'}</td>
+                    <td>${_esc(g.canalContacto)}</td>
+                    <td>${_esc(g.observaciones || '-')}</td>
                 </tr>
             `).join('');
 
@@ -635,7 +645,7 @@
             containers.forEach(id => {
                 const elem = document.getElementById(id);
                 if (elem) {
-                    elem.innerHTML = `<tr><td colspan="10" class="error"><strong>❌ Error:</strong> ${mensaje}</td></tr>`;
+                    elem.innerHTML = `<tr><td colspan="10" class="error"><strong>❌ Error:</strong> ${_esc(mensaje)}</td></tr>`;
                 }
             });
         }

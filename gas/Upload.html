@@ -144,7 +144,25 @@
       }
       
       const file = input.files[0];
-      
+
+      // Validate file size (max 10MB)
+      const MAX_SIZE = 10 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        msg.className = 'status status-error';
+        msg.textContent = 'El archivo excede el límite de 10 MB';
+        return;
+      }
+
+      // Validate file type
+      const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+      const fileName = file.name.toLowerCase();
+      const hasValidExt = allowedExtensions.some(ext => fileName.endsWith(ext));
+      if (!hasValidExt) {
+        msg.className = 'status status-error';
+        msg.textContent = 'Tipo de archivo no permitido. Solo .xlsx, .xls o .csv';
+        return;
+      }
+
       try {
         const base64 = await fileToBase64(file);
         

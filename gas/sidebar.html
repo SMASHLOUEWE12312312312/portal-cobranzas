@@ -151,7 +151,13 @@
           sel.innerHTML = '<option value="">No hay asegurados</option>';
           return;
         }
-        sel.innerHTML = list.map(a => `<option value="${a}">${a}</option>`).join('');
+        sel.innerHTML = '';
+        list.forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a;
+          opt.textContent = a;
+          sel.appendChild(opt);
+        });
       })
       .withFailureHandler(err => {
         msg.className = 'status status-error';

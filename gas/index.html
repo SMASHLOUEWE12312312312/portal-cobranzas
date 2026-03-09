@@ -72,7 +72,7 @@
     </section>
 
     <!-- LOADING -->
-    <div id="loadingOverlay" class="loading-overlay hidden">
+    <div id="loadingOverlay" class="loading-overlay hidden" role="status" aria-live="polite">
         <div class="loading-content">
             <div class="spinner" style="width: 40px; height: 40px; margin: 0 auto 1rem"></div>
             <div id="loadingText">Cargando...</div>
@@ -87,28 +87,28 @@
                 <img src="https://i.imgur.com/RUhA0kt.png" alt="Transperuana Logo" class="sidebar-logo" width="200"
                     height="120" />
             </div>
-            <nav class="sidebar-nav">
-                <div class="nav-item active" onclick="switchView('dashboard')" id="nav-dashboard">
+            <nav class="sidebar-nav" role="navigation" aria-label="Menú principal">
+                <div class="nav-item active" onclick="switchView('dashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('dashboard')}" id="nav-dashboard" tabindex="0" role="button">
                     <span class="nav-icon">📊</span>
                     <span>Dashboard</span>
                 </div>
-                <div class="nav-item" onclick="switchView('actualizar')" id="nav-actualizar">
+                <div class="nav-item" onclick="switchView('actualizar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('actualizar')}" id="nav-actualizar" tabindex="0" role="button">
                     <span class="nav-icon">📤</span>
                     <span>Actualizar Base</span>
                 </div>
-                <div class="nav-item" onclick="switchView('generar')" id="nav-generar">
+                <div class="nav-item" onclick="switchView('generar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('generar')}" id="nav-generar" tabindex="0" role="button">
                     <span class="nav-icon">📄</span>
                     <span>Generar EECC</span>
                 </div>
-                <div class="nav-item" onclick="switchView('enviar')" id="nav-enviar">
+                <div class="nav-item" onclick="switchView('enviar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('enviar')}" id="nav-enviar" tabindex="0" role="button">
                     <span class="nav-icon">📧</span>
                     <span>Enviar Correos</span>
                 </div>
-                <div class="nav-item" onclick="switchView('bitacora')" id="nav-bitacora">
+                <div class="nav-item" onclick="switchView('bitacora')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('bitacora')}" id="nav-bitacora" tabindex="0" role="button">
                     <span class="nav-icon">📝</span>
                     <span>Bitácora</span>
                 </div>
-                <div class="nav-item" onclick="switchView('conciliacion')" id="nav-conciliacion">
+                <div class="nav-item" onclick="switchView('conciliacion')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('conciliacion')}" id="nav-conciliacion" tabindex="0" role="button">
                     <span class="nav-icon">🔄</span>
                     <span>Conciliación</span>
                 </div>
@@ -266,23 +266,23 @@
                     <!-- SHORTCUTS (Original Cards, but smaller or grid) -->
                     <h2 class="section-title" style="margin-top: 2rem;">Accesos Directos</h2>
                     <div class="grid">
-                        <div class="card" onclick="switchView('actualizar')" style="cursor: pointer;">
+                        <div class="card" onclick="switchView('actualizar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('actualizar')}" style="cursor: pointer;" tabindex="0" role="button">
                             <h3 class="card-title">📤 Actualizar Base</h3>
                             <p class="text-muted">Sube archivos Excel/CSV</p>
                         </div>
-                        <div class="card" onclick="switchView('generar')" style="cursor: pointer;">
+                        <div class="card" onclick="switchView('generar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('generar')}" style="cursor: pointer;" tabindex="0" role="button">
                             <h3 class="card-title">📄 Generar EECC</h3>
                             <p class="text-muted">Crea estados de cuenta</p>
                         </div>
-                        <div class="card" onclick="switchView('enviar')" style="cursor: pointer;">
+                        <div class="card" onclick="switchView('enviar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('enviar')}" style="cursor: pointer;" tabindex="0" role="button">
                             <h3 class="card-title">📧 Enviar Correos</h3>
                             <p class="text-muted">Envío masivo de EECC</p>
                         </div>
-                        <div class="card" onclick="switchView('bitacora')" style="cursor: pointer;">
+                        <div class="card" onclick="switchView('bitacora')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('bitacora')}" style="cursor: pointer;" tabindex="0" role="button">
                             <h3 class="card-title">📝 Bitácora</h3>
                             <p class="text-muted">Gestiona seguimientos</p>
                         </div>
-                        <div class="card" onclick="switchView('conciliacion')" style="cursor: pointer;">
+                        <div class="card" onclick="switchView('conciliacion')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('conciliacion')}" style="cursor: pointer;" tabindex="0" role="button">
                             <h3 class="card-title">🔄 Conciliación</h3>
                             <p class="text-muted">Cruce EECC vs BD Sisnet</p>
                         </div>
@@ -353,6 +353,8 @@
                                     <span class="autocomplete-icon">🔍</span>
                                     <input type="text" id="aseguradoSelect" class="autocomplete-input"
                                         placeholder="Escribe o selecciona un cliente..." autocomplete="off"
+                                        role="combobox" aria-expanded="false" aria-autocomplete="list"
+                                        aria-controls="autocompleteOptionsEECC" aria-haspopup="listbox"
                                         oninput="debouncedFiltrarAutocompleteEECC()"
                                         onkeydown="handleAutocompleteKeydownEECC(event)"
                                         onfocus="mostrarDropdownAutocompleteEECC()" />
@@ -369,7 +371,7 @@
                                 <div id="autocompleteDropdownEECC" class="autocomplete-dropdown" style="display: none;">
                                     <div id="autocompleteCounterEECC" class="autocomplete-counter"
                                         style="display: none;"></div>
-                                    <div id="autocompleteOptionsEECC" class="autocomplete-options"></div>
+                                    <div id="autocompleteOptionsEECC" class="autocomplete-options" role="listbox"></div>
                                 </div>
 
                                 <div class="btn-group" style="margin-top: 1rem;">
@@ -516,7 +518,7 @@
                         <!-- KPIs Panel -->
                         <div id="bitacoraKPIsPanel"
                             style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
-                            <div class="kpi-card" onclick="filtrarPorKPI('hoy')"
+                            <div class="kpi-card" onclick="filtrarPorKPI('hoy')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('hoy')}" tabindex="0" role="button"
                                 style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #1976D2;">
                                 <div
                                     style="font-size: 0.7rem; color: #1565C0; font-weight: 600; text-transform: uppercase;">
@@ -524,7 +526,7 @@
                                 <div id="kpiHoy" style="font-size: 1.5rem; font-weight: 700; color: #1976D2;">0</div>
                                 <div style="font-size: 0.65rem; color: #1976D2;">Compromisos</div>
                             </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('1-3dias')"
+                            <div class="kpi-card" onclick="filtrarPorKPI('1-3dias')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('1-3dias')}" tabindex="0" role="button"
                                 style="background: linear-gradient(135deg, #E8F5E9, #C8E6C9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #388E3C;">
                                 <div
                                     style="font-size: 0.7rem; color: #2E7D32; font-weight: 600; text-transform: uppercase;">
@@ -532,7 +534,7 @@
                                 <div id="kpi1a3" style="font-size: 1.5rem; font-weight: 700; color: #388E3C;">0</div>
                                 <div style="font-size: 0.65rem; color: #388E3C;">Próximos</div>
                             </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('4-7dias')"
+                            <div class="kpi-card" onclick="filtrarPorKPI('4-7dias')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('4-7dias')}" tabindex="0" role="button"
                                 style="background: linear-gradient(135deg, #FFF3E0, #FFE0B2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #F57C00;">
                                 <div
                                     style="font-size: 0.7rem; color: #E65100; font-weight: 600; text-transform: uppercase;">
@@ -540,7 +542,7 @@
                                 <div id="kpi4a7" style="font-size: 1.5rem; font-weight: 700; color: #F57C00;">0</div>
                                 <div style="font-size: 0.65rem; color: #F57C00;">Semana</div>
                             </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('vencidos')"
+                            <div class="kpi-card" onclick="filtrarPorKPI('vencidos')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('vencidos')}" tabindex="0" role="button"
                                 style="background: linear-gradient(135deg, #FFEBEE, #FFCDD2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #D32F2F;">
                                 <div
                                     style="font-size: 0.7rem; color: #C62828; font-weight: 600; text-transform: uppercase;">
@@ -549,7 +551,7 @@
                                 </div>
                                 <div style="font-size: 0.65rem; color: #D32F2F;">Crítico</div>
                             </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('aging60')"
+                            <div class="kpi-card" onclick="filtrarPorKPI('aging60')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('aging60')}" tabindex="0" role="button"
                                 style="background: linear-gradient(135deg, #FCE4EC, #F8BBD9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #C2185B;">
                                 <div
                                     style="font-size: 0.7rem; color: #AD1457; font-weight: 600; text-transform: uppercase;">
@@ -1022,6 +1024,8 @@
                                                         class="autocomplete-input"
                                                         placeholder="Escribe o selecciona un cliente..."
                                                         autocomplete="off" required
+                                                        role="combobox" aria-expanded="false" aria-autocomplete="list"
+                                                        aria-controls="autocompleteOptionsEmb" aria-haspopup="listbox"
                                                         oninput="debouncedFiltrarAutocompleteEmb()"
                                                         onkeydown="handleAutocompleteKeydownEmb(event)"
                                                         onfocus="mostrarDropdownAutocompleteEmb()"
@@ -1033,7 +1037,7 @@
                                                 </div>
                                                 <div class="autocomplete-dropdown" id="autocompleteDropdownEmb"
                                                     style="display: none;">
-                                                    <div class="autocomplete-options" id="autocompleteOptionsEmb"></div>
+                                                    <div class="autocomplete-options" id="autocompleteOptionsEmb" role="listbox"></div>
                                                 </div>
                                                 <small id="autocompleteCounterEmb" class="autocomplete-counter"
                                                     style="display: none;"></small>
@@ -1440,16 +1444,16 @@
     <!-- ═══════════════════════════════════════════════════════════════
          MODAL: ENVÍO MASIVO DE CORREOS
          ═══════════════════════════════════════════════════════════════ -->
-    <div id="mailModal" class="modal-overlay">
+    <div id="mailModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mailModalTitle">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h2 class="modal-title">📧 Envío Masivo de Correos</h2>
+                    <h2 class="modal-title" id="mailModalTitle">📧 Envío Masivo de Correos</h2>
                     <p class="text-muted" style="margin: 0.5rem 0 0 0; font-size: 0.875rem;">
                         Envía estados de cuenta a múltiples clientes de forma simultánea
                     </p>
                 </div>
-                <button class="btn-close" onclick="closeMailModal()">×</button>
+                <button class="btn-close" onclick="closeMailModal()" aria-label="Cerrar">×</button>
             </div>
 
             <div class="tabs">
@@ -1563,16 +1567,16 @@
     <!-- ═══════════════════════════════════════════════════════════════
          MODAL: BITÁCORA DE GESTIONES
          ═══════════════════════════════════════════════════════════════ -->
-    <div id="bitacoraModal" class="modal-overlay">
+    <div id="bitacoraModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="bitacoraModalTitle">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h2 class="modal-title">📝 Bitácora de Gestiones de Cobranzas</h2>
+                    <h2 class="modal-title" id="bitacoraModalTitle">📝 Bitácora de Gestiones de Cobranzas</h2>
                     <p class="text-muted" style="margin: 0.5rem 0 0 0; font-size: 0.875rem;">
                         Registra y consulta el seguimiento de todas las gestiones realizadas
                     </p>
                 </div>
-                <button class="btn-close" onclick="closeBitacoraModal()">×</button>
+                <button class="btn-close" onclick="closeBitacoraModal()" aria-label="Cerrar">×</button>
             </div>
 
             <div class="tabs">
@@ -1726,6 +1730,8 @@
                                             <span class="autocomplete-icon">🔍</span>
                                             <input type="text" id="gestionAsegurado" class="autocomplete-input"
                                                 placeholder="Escribe o selecciona un cliente..." autocomplete="off"
+                                                role="combobox" aria-expanded="false" aria-autocomplete="list"
+                                                aria-controls="autocompleteOptions" aria-haspopup="listbox"
                                                 required oninput="debouncedFiltrarAutocomplete()"
                                                 onfocus="mostrarDropdownAutocomplete()" />
                                             <button type="button" class="autocomplete-dropdown-btn"
@@ -1742,7 +1748,7 @@
                                         <!-- Dropdown de opciones -->
                                         <div class="autocomplete-dropdown" id="autocompleteDropdown"
                                             style="display: none;">
-                                            <div class="autocomplete-options" id="autocompleteOptions">
+                                            <div class="autocomplete-options" id="autocompleteOptions" role="listbox">
                                                 <!-- Las opciones se cargan dinámicamente -->
                                             </div>
                                         </div>
@@ -1924,11 +1930,11 @@
     <!-- ═══════════════════════════════════════════════════════════════
          MODAL: TIMELINE DEL CICLO
          ═══════════════════════════════════════════════════════════════ -->
-    <div id="timelineModal" class="modal-overlay">
+    <div id="timelineModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="timelineModalLabel">
         <div class="modal-content" style="max-width: 900px;">
             <div class="modal-header">
                 <div>
-                    <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--tp-text-primary);">
+                    <h2 id="timelineModalLabel" style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--tp-text-primary);">
                         📊 Timeline del Ciclo de Cobranza
                     </h2>
                     <p id="timelineSubtitle"
@@ -1967,6 +1973,27 @@
         let EECC_MODE = 'asegurado'; // asegurado | grupo
         let BITACORA_MODE = 'asegurado'; // asegurado | grupo
         let MAIL_STATE = { previews: [], currentTab: 'seleccionar', allClientes: [] };
+        let NOTIF_INTERVAL_ID = null; // Track notification interval for cleanup
+        let _modalPreviousFocus = null; // Track focus for modal restore
+
+        // ============================================================
+        // DEBUG: Log level gate — set to false for production
+        // ============================================================
+        const _DEBUG = false;
+        function _log(...args) { if (_DEBUG) console.log(...args); }
+
+        // ============================================================
+        // SECURITY: HTML escape utility to prevent XSS
+        // ============================================================
+        function escapeHtml(str) {
+            if (!str || typeof str !== 'string') return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#x27;');
+        }
 
         // ============================================================
         // PSI: DEBOUNCE UTILITY (reduce INP / long tasks)
@@ -1984,6 +2011,58 @@
         const debouncedFiltrarAutocomplete = _debounce(() => filtrarAutocomplete(), 150);
         const debouncedFiltrarAutocompleteEmb = _debounce(() => { filtrarAutocompleteEmb(); validateFormV4(); }, 150);
         const debouncedFilterCommands = _debounce(() => filterCommands(), 150);
+
+        // ============================================================
+        // A11Y: Modal focus management utilities
+        // ============================================================
+        function _openModal(modalEl) {
+            if (!modalEl) return;
+            _modalPreviousFocus = document.activeElement;
+            modalEl.classList.add('active');
+            // Focus first focusable element inside modal
+            requestAnimationFrame(() => {
+                const focusable = modalEl.querySelector('button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (focusable) focusable.focus();
+            });
+        }
+
+        function _closeModal(modalEl) {
+            if (!modalEl) return;
+            modalEl.classList.remove('active');
+            // Restore focus to trigger element
+            if (_modalPreviousFocus && typeof _modalPreviousFocus.focus === 'function') {
+                _modalPreviousFocus.focus();
+                _modalPreviousFocus = null;
+            }
+        }
+
+        // A11Y: Close topmost modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                // Check modals in priority order (topmost first)
+                const shortcuts = document.getElementById('shortcutsHelpModal');
+                if (shortcuts && shortcuts.style.display === 'flex') {
+                    shortcuts.style.display = 'none';
+                    if (_modalPreviousFocus) { _modalPreviousFocus.focus(); _modalPreviousFocus = null; }
+                    return;
+                }
+                const timelineModal = document.getElementById('timelineModal');
+                if (timelineModal && (timelineModal.classList.contains('active') || timelineModal.style.display === 'flex')) {
+                    if (typeof closeTimelineModal === 'function') closeTimelineModal();
+                    return;
+                }
+                const mailModal = document.getElementById('mailModal');
+                if (mailModal && mailModal.classList.contains('active')) {
+                    if (typeof closeMailModal === 'function') closeMailModal();
+                    return;
+                }
+                const bitacoraModal = document.getElementById('bitacoraModal');
+                if (bitacoraModal && bitacoraModal.classList.contains('active')) {
+                    if (typeof closeBitacoraModal === 'function') closeBitacoraModal();
+                    return;
+                }
+            }
+        });
 
         // HOTFIX: Sistema unificado de estados de carga para evitar race conditions
         const LOAD_STATE = {
@@ -2031,7 +2110,7 @@
             let icon = '•';
             if (type === 'success') icon = '✅';
             else if (type === 'error') icon = '⚠';
-            entry.innerHTML = `<span>${time}</span> ${icon} ${message}`;
+            entry.innerHTML = `<span>${time}</span> ${icon} ${escapeHtml(message)}`;
             logEl.appendChild(entry);
             logEl.scrollTop = logEl.scrollHeight;
         }
@@ -2039,7 +2118,9 @@
         function showToast(message, type = 'success') {
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
-            toast.innerHTML = `<span class="toast-icon">${type === 'success' ? '✅' : '❌'}</span><div>${message}</div>`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.innerHTML = `<span class="toast-icon">${type === 'success' ? '✅' : '❌'}</span><div>${escapeHtml(message)}</div>`;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
@@ -2094,7 +2175,7 @@
                 }
             });
 
-            console.log(`[LOADER] hideGlobalLoader(${reason}) -> hidden=${hidden}`);
+            _log(`[LOADER] hideGlobalLoader(${reason}) -> hidden=${hidden}`);
         }
 
         function showStatus(elementId, message, type = 'info') {
@@ -2207,7 +2288,7 @@
                 host.appendChild(s);
             });
 
-            console.log('[injectHtmlWithScripts] ✅ HTML + scripts inyectados');
+            _log('[injectHtmlWithScripts] ✅ HTML + scripts inyectados');
         }
 
         /**
@@ -2216,7 +2297,7 @@
          */
         function renderEnviarInline() {
             if (ENVIAR_INLINE_LOADED) {
-                console.log('[renderEnviarInline] Ya cargado, omitiendo');
+                _log('[renderEnviarInline] Ya cargado, omitiendo');
                 return;
             }
 
@@ -2226,12 +2307,12 @@
                 return;
             }
 
-            console.log('[renderEnviarInline] 🚀 Cargando módulo de envío...');
+            _log('[renderEnviarInline] 🚀 Cargando módulo de envío...');
             log('Cargando módulo de envío...', 'info');
 
             google.script.run
                 .withSuccessHandler(html => {
-                    console.log('[renderEnviarInline] ✅ HTML recibido, inyectando con scripts...');
+                    _log('[renderEnviarInline] ✅ HTML recibido, inyectando con scripts...');
 
                     // FIX 2: Usar injectHtmlWithScripts para ejecutar scripts
                     injectHtmlWithScripts(host, html);
@@ -2240,7 +2321,7 @@
                     setTimeout(() => {
                         if (typeof window.initDrawer === 'function') {
                             window.initDrawer();
-                            console.log('[SEND] ✅ initDrawer OK');
+                            _log('[SEND] ✅ initDrawer OK');
                             // PARTE A: Ocultar overlay después de init OK
                             hideGlobalLoader('send-ready');
                         } else {
@@ -2259,14 +2340,14 @@
 
                     ENVIAR_INLINE_LOADED = true;
                     log('Módulo de envío cargado', 'success');
-                    console.log('[UI] ✅ enviar ready');
+                    _log('[UI] ✅ enviar ready');
                 })
                 .withFailureHandler(err => {
                     console.error('[renderEnviarInline] ❌ Error:', err);
                     host.innerHTML = `
                         <div style="padding: 2rem; text-align: center; color: var(--tp-error);">
                             <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
-                            <div>Error al cargar módulo: ${err.message}</div>
+                            <div>Error al cargar módulo: ${escapeHtml(err.message)}</div>
                             <button class="btn btn-secondary" onclick="ENVIAR_INLINE_LOADED=false; renderEnviarInline();" style="margin-top: 1rem;">
                                 Reintentar
                             </button>
@@ -2283,7 +2364,7 @@
          */
         function renderBitacoraInline() {
             if (BITACORA_INLINE_LOADED) {
-                console.log('[renderBitacoraInline] Ya cargado, omitiendo');
+                _log('[renderBitacoraInline] Ya cargado, omitiendo');
                 return;
             }
 
@@ -2293,12 +2374,12 @@
                 return;
             }
 
-            console.log('[renderBitacoraInline] 🚀 Cargando bitácora...');
+            _log('[renderBitacoraInline] 🚀 Cargando bitácora...');
             log('Cargando bitácora...', 'info');
 
             google.script.run
                 .withSuccessHandler(html => {
-                    console.log('[renderBitacoraInline] ✅ HTML recibido, inyectando con scripts...');
+                    _log('[renderBitacoraInline] ✅ HTML recibido, inyectando con scripts...');
 
                     // FIX 2: Usar injectHtmlWithScripts para ejecutar scripts (switchTab, etc)
                     injectHtmlWithScripts(host, html);
@@ -2310,14 +2391,14 @@
 
                     BITACORA_INLINE_LOADED = true;
                     log('Bitácora cargada', 'success');
-                    console.log('[UI] ✅ bitacora ready');
+                    _log('[UI] ✅ bitacora ready');
                 })
                 .withFailureHandler(err => {
                     console.error('[renderBitacoraInline] ❌ Error:', err);
                     host.innerHTML = `
                         <div style="padding: 2rem; text-align: center; color: var(--tp-error);">
                             <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
-                            <div>Error al cargar bitácora: ${err.message}</div>
+                            <div>Error al cargar bitácora: ${escapeHtml(err.message)}</div>
                             <button class="btn btn-secondary" onclick="BITACORA_INLINE_LOADED=false; renderBitacoraInline();" style="margin-top: 1rem;">
                                 Reintentar
                             </button>
@@ -2334,27 +2415,27 @@
          */
         function initBitacoraInline() {
             try {
-                console.log('[BITACORA] Inicializando...');
+                _log('[BITACORA] Inicializando...');
 
                 // Comportamiento v15: cargar datos
                 if (typeof window.loadBitacoraData === 'function') {
                     window.loadBitacoraData(true);
-                    console.log('[BITACORA] ✅ loadBitacoraData OK');
+                    _log('[BITACORA] ✅ loadBitacoraData OK');
                 }
 
                 // Cargar clientes con ciclos activos
                 if (typeof window.loadClientesConCiclos === 'function') {
                     window.loadClientesConCiclos();
-                    console.log('[BITACORA] ✅ loadClientesConCiclos OK');
+                    _log('[BITACORA] ✅ loadClientesConCiclos OK');
                 }
 
                 // Cargar responsables únicos
                 if (typeof window.loadResponsablesUnicos === 'function') {
                     window.loadResponsablesUnicos();
-                    console.log('[BITACORA] ✅ loadResponsablesUnicos OK');
+                    _log('[BITACORA] ✅ loadResponsablesUnicos OK');
                 }
 
-                console.log('[BITACORA] ✅ init OK');
+                _log('[BITACORA] ✅ init OK');
 
                 // PARTE B: Ocultar overlay después de init OK
                 hideGlobalLoader('bitacora-ready');
@@ -2365,7 +2446,7 @@
                     host.innerHTML = `
                         <div style="padding: 2rem; text-align: center; color: var(--tp-error);">
                             <div style="font-size: 2rem; margin-bottom: 1rem;">⚠️</div>
-                            <div>No se pudo inicializar Bitácora: ${e.message}</div>
+                            <div>No se pudo inicializar Bitácora: ${escapeHtml(e.message)}</div>
                             <button class="btn btn-secondary" onclick="BITACORA_INLINE_LOADED=false; renderBitacoraInline();" style="margin-top: 1rem;">
                                 Reintentar
                             </button>
@@ -2405,7 +2486,7 @@
 
                     // v4.1+: loginPassword retorna {ok, data: {token, user}}
                     // DEBUG: Log full response to diagnose token issues
-                    console.log('[LOGIN] 📦 Full response:', JSON.stringify(response, null, 2));
+                    _log('[LOGIN] 📦 Response ok:', response.ok, 'hasToken:', !!(response.data?.token || response.token));
 
                     // Extract token from multiple possible locations
                     TOKEN = response.data?.token || response.token || null;
@@ -2419,8 +2500,8 @@
                         return;
                     }
 
-                    console.log('[LOGIN] 🔑 TOKEN extracted:', TOKEN ? (TOKEN.substring(0, 20) + '...') : 'NULL');
-                    console.log('[LOGIN] 👤 USER extracted:', CURRENT_USER);
+                    _log('[LOGIN] 🔑 TOKEN extracted:', TOKEN ? 'OK' : 'NULL');
+                    _log('[LOGIN] 👤 USER extracted:', CURRENT_USER);
 
                     document.getElementById('loginSection').classList.add('hidden');
                     document.getElementById('portalSection').classList.remove('hidden');
@@ -2429,7 +2510,7 @@
                     const userEl = document.getElementById('currentUser');
                     if (userEl) userEl.textContent = CURRENT_USER?.displayName || CURRENT_USER?.username || CURRENT_USER;
 
-                    console.log('[LOGIN] ✅ success, user:', CURRENT_USER);
+                    _log('[LOGIN] ✅ success, user:', CURRENT_USER);
                     initPortal();
                 })
                 .withFailureHandler(error => {
@@ -2445,6 +2526,11 @@
         }
 
         function handleLogout() {
+            // Cleanup: stop notification polling
+            if (NOTIF_INTERVAL_ID) {
+                clearInterval(NOTIF_INTERVAL_ID);
+                NOTIF_INTERVAL_ID = null;
+            }
             if (TOKEN) google.script.run.logout(TOKEN);
             location.reload();
         }
@@ -2453,14 +2539,14 @@
         // INICIALIZACIÓN DEL PORTAL
         // ============================================================
         function initPortal() {
-            console.log('[initPortal] 🚀 Iniciando portal...');
+            _log('[initPortal] 🚀 Iniciando portal...');
             log('Portal inicializado', 'success');
 
             // PSI: PBI iframe lazy-load — only store URL, load when user expands
             const pbiFrame = document.getElementById('pbiFrame');
             if (pbiFrame) {
                 pbiFrame.dataset.src = PBI_URL;
-                console.log('[initPortal] ✅ PBI URL preparada (lazy)');
+                _log('[initPortal] ✅ PBI URL preparada (lazy)');
                 log('Dashboard PBI listo (carga bajo demanda)', 'info');
             } else {
                 console.error('[initPortal] ❌ pbiFrame no encontrado');
@@ -2485,7 +2571,7 @@
                 initGlobalSearch();
                 initDarkMode();
                 initKeyboardShortcuts();
-                console.log('[initPortal] ✅ Deferred init complete');
+                _log('[initPortal] ✅ Deferred init complete');
             });
         }
 
@@ -2512,7 +2598,7 @@
 
                         const now = new Date();
                         document.getElementById('statsLastUpdated').textContent = 'Actualizado: ' + now.toLocaleTimeString('es-PE');
-                        console.log('[Phase3] Dashboard stats loaded', result);
+                        _log('[Phase3] Dashboard stats loaded', result);
                     } else {
                         document.getElementById('statsLastUpdated').textContent = 'Error al cargar';
                     }
@@ -2570,12 +2656,12 @@
                     // Reasons
                     const reasonsEl = document.getElementById('qhReasons');
                     if (result.reasons && result.reasons.length > 0) {
-                        reasonsEl.innerHTML = result.reasons.map(r => '⚠️ ' + r).join('<br>');
+                        reasonsEl.innerHTML = result.reasons.map(r => '⚠️ ' + escapeHtml(r)).join('<br>');
                     } else {
                         reasonsEl.innerHTML = '';
                     }
 
-                    console.log('[Phase3] Queue health loaded', result);
+                    _log('[Phase3] Queue health loaded', result);
                 })
                 .withFailureHandler(err => {
                     console.warn('[Phase3] Queue health failed', err);
@@ -2696,12 +2782,12 @@
                 .withSuccessHandler(function (enabled) {
                     if (enabled) {
                         bar.style.display = 'block';
-                        console.log('[QuickActions] ✅ Quick Actions bar enabled');
+                        _log('[QuickActions] ✅ Quick Actions bar enabled');
                     }
                 })
                 .withFailureHandler(function () {
                     // Keep hidden on error
-                    console.log('[QuickActions] Flag check failed, keeping hidden');
+                    _log('[QuickActions] Flag check failed, keeping hidden');
                 })
                 .getFeatureFlag('QUICK_ACTIONS_ENABLED');
         }
@@ -2711,7 +2797,7 @@
          * @param {string} actionId - One of the QUICK_ACTION_PRESETS keys
          */
         function executeQuickAction(actionId) {
-            console.log('[QuickActions] Executing:', actionId);
+            _log('[QuickActions] Executing:', actionId);
 
             const preset = QUICK_ACTION_PRESETS[actionId];
             if (!preset) {
@@ -2747,7 +2833,7 @@
                     aseguradoInput.focus();
                 }
 
-                console.log('[QuickActions] Form pre-filled with:', preset);
+                _log('[QuickActions] Form pre-filled with:', preset);
             }, 100);
         }
 
@@ -2779,13 +2865,13 @@
          * @param {string} asegurado - Asegurado name (for display)
          */
         function openTimelineModal(idCiclo, asegurado) {
-            console.log('[Timeline] Opening for:', idCiclo, asegurado);
+            _log('[Timeline] Opening for:', idCiclo, asegurado);
 
             // Check feature flag first
             google.script.run
                 .withSuccessHandler(function (enabled) {
                     if (!enabled) {
-                        console.log('[Timeline] Feature disabled');
+                        _log('[Timeline] Feature disabled');
                         alert('Función Timeline no habilitada');
                         return;
                     }
@@ -2805,11 +2891,14 @@
                 modal = document.createElement('div');
                 modal.id = 'timelineModal';
                 modal.className = 'modal-overlay';
+                modal.setAttribute('role', 'dialog');
+                modal.setAttribute('aria-modal', 'true');
+                modal.setAttribute('aria-labelledby', 'timelineModalTitle');
                 modal.innerHTML = `
                     <div class="modal-content" style="max-width: 600px; max-height: 80vh;">
                         <div class="modal-header">
                             <h3 id="timelineModalTitle">📋 Timeline de Gestiones</h3>
-                            <button class="btn-close" onclick="closeTimelineModal()">×</button>
+                            <button class="btn-close" onclick="closeTimelineModal()" aria-label="Cerrar">×</button>
                         </div>
                         <div class="modal-body tp-timeline-modal" id="timelineModalBody">
                             <div class="notification-loading">
@@ -2892,9 +2981,9 @@
                             </span>
                             ${(g.tipoGestion || '').replace(/_/g, ' ')}
                         </div>
-                        ${obs ? `<div class="tp-timeline-body">${obs}</div>` : ''}
+                        ${obs ? `<div class="tp-timeline-body">${escapeHtml(obs)}</div>` : ''}
                         <div style="font-size: 0.75rem; color: #999; margin-top: 0.5rem;">
-                            Por: ${g.usuario || 'Sistema'}
+                            Por: ${escapeHtml(g.usuario || 'Sistema')}
                         </div>
                     </div>
                 `;
@@ -2904,10 +2993,7 @@
             body.innerHTML = html;
         }
 
-        function closeTimelineModal() {
-            const modal = document.getElementById('timelineModal');
-            if (modal) modal.style.display = 'none';
-        }
+        // closeTimelineModal() defined in bitácora section (single definition)
 
         // ============================================================
         // PHASE 5: GLOBAL SEARCH (Ctrl+K command palette)
@@ -2944,11 +3030,15 @@
                         btn.style.display = 'inline-flex';
 
                         // Check localStorage preference
-                        const savedPref = localStorage.getItem('tp.darkMode');
-                        if (savedPref === '1') {
-                            applyDarkMode(true);
+                        try {
+                            const savedPref = localStorage.getItem('tp.darkMode');
+                            if (savedPref === '1') {
+                                applyDarkMode(true);
+                            }
+                            _log('[DarkMode] ✅ Initialized, preference:', savedPref);
+                        } catch (e) {
+                            console.warn('[DarkMode] localStorage unavailable:', e.message);
                         }
-                        console.log('[DarkMode] ✅ Initialized, preference:', savedPref);
                     }
                 })
                 .withFailureHandler(function () {
@@ -2963,8 +3053,8 @@
         function toggleDarkMode() {
             const isDark = document.body.classList.contains('dark-mode');
             applyDarkMode(!isDark);
-            localStorage.setItem('tp.darkMode', isDark ? '0' : '1');
-            console.log('[DarkMode] Toggled to:', isDark ? 'light' : 'dark');
+            try { localStorage.setItem('tp.darkMode', isDark ? '0' : '1'); } catch (e) { /* Safari private mode */ }
+            _log('[DarkMode] Toggled to:', isDark ? 'light' : 'dark');
         }
 
         /**
@@ -3013,7 +3103,7 @@
                     if (enabled) {
                         KB_SHORTCUTS_ENABLED = true;
                         document.addEventListener('keydown', handleKeyboardShortcut);
-                        console.log('[KeyboardShortcuts] ✅ Initialized');
+                        _log('[KeyboardShortcuts] ✅ Initialized');
                     }
                 })
                 .withFailureHandler(function () { })
@@ -3078,12 +3168,15 @@
                 modal = document.createElement('div');
                 modal.id = 'shortcutsHelpModal';
                 modal.className = 'modal-overlay';
+                modal.setAttribute('role', 'dialog');
+                modal.setAttribute('aria-modal', 'true');
+                modal.setAttribute('aria-labelledby', 'shortcutsHelpTitle');
                 modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
                 modal.innerHTML = `
                     <div class="modal-content" style="max-width: 400px;">
                         <div class="modal-header">
-                            <h3>⌨️ Atajos de Teclado</h3>
-                            <button class="btn-close" onclick="document.getElementById('shortcutsHelpModal').style.display='none'">×</button>
+                            <h3 id="shortcutsHelpTitle">⌨️ Atajos de Teclado</h3>
+                            <button class="btn-close" onclick="document.getElementById('shortcutsHelpModal').style.display='none'" aria-label="Cerrar">×</button>
                         </div>
                         <div class="modal-body" style="padding: 1.5rem;">
                             <table style="width: 100%; border-collapse: collapse;">
@@ -3107,7 +3200,10 @@
         /**
          * Initialize global search keyboard shortcut
          */
+        let _globalSearchInitialized = false;
         function initGlobalSearch() {
+            if (_globalSearchInitialized) return;
+            _globalSearchInitialized = true;
             document.addEventListener('keydown', function (e) {
                 // Ctrl+K or Cmd+K
                 if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -3149,7 +3245,7 @@
             google.script.run
                 .withSuccessHandler(function (enabled) {
                     if (!enabled) {
-                        console.log('[GlobalSearch] Feature disabled');
+                        _log('[GlobalSearch] Feature disabled');
                         return;
                     }
                     showCommandPalette();
@@ -3314,7 +3410,7 @@
                 ASEGURADOS_DS.totalExpected = 0;
             }
 
-            console.log(`[fetchPage] search="${search}" cursor=${cursor} reset=${reset}`);
+            _log(`[fetchPage] search="${search}" cursor=${cursor} reset=${reset}`);
 
             // DEBUG: Validate TOKEN before API call
             if (!TOKEN) {
@@ -3323,7 +3419,7 @@
                 alert('Error: Sesión no válida. Por favor, vuelve a iniciar sesión.');
                 return;
             }
-            console.log('[fetchPage] 🔑 Using TOKEN:', TOKEN.substring(0, 20) + '...');
+            _log('[fetchPage] 🔑 Using TOKEN:', TOKEN ? 'OK' : 'MISSING');
 
             google.script.run
                 .withSuccessHandler(res => {
@@ -3353,9 +3449,10 @@
                     // AUTO-CARGA: Si hay más páginas, cargar automáticamente la siguiente
                     if (res.hasMore && res.nextCursor) {
                         log(`⏳ Cargando asegurados... ${ASEGURADOS_DS.items.length}/${ASEGURADOS_DS.totalExpected} (${progress}%)`, 'info');
-                        // Cargar siguiente página automáticamente (sin reset)
-                        ASEGURADOS_DS.loading = false; // Reset flag para permitir siguiente llamada
-                        fetchAseguradosPaged(search, res.nextCursor, false);
+                        // Reset loading flag ONLY for the recursive self-call
+                        ASEGURADOS_DS.loading = false;
+                        // Use setTimeout to avoid deep call stacks on large datasets
+                        setTimeout(() => fetchAseguradosPaged(search, res.nextCursor, false), 0);
                     } else {
                         // CARGA COMPLETA - Finalizar
                         ASEGURADOS_DS.loading = false;
@@ -3367,7 +3464,7 @@
                         }
 
                         log(`✅ ${ASEGURADOS_DS.items.length} asegurados cargados (100% completo)`, 'success');
-                        console.log(`[fetchPage] ✅ Carga completa: ${ASEGURADOS_DS.items.length} asegurados`);
+                        _log(`[fetchPage] ✅ Carga completa: ${ASEGURADOS_DS.items.length} asegurados`);
                     }
                 })
                 .withFailureHandler(err => {
@@ -3379,7 +3476,7 @@
         }
 
         function fallbackLoadSafe() {
-            console.log('[Fallback] Reverting to getAseguradosSafe...');
+            _log('[Fallback] Reverting to getAseguradosSafe...');
             google.script.run
                 .withSuccessHandler(res => {
                     if (res.ok) {
@@ -3404,7 +3501,7 @@
         function loadGrupos() {
             // Si ya está cargando, no hacer nada
             if (LOAD_STATE.grupos.loading) {
-                console.log('[loadGrupos] ⏳ Ya está cargando, ignorando llamada duplicada');
+                _log('[loadGrupos] ⏳ Ya está cargando, ignorando llamada duplicada');
                 return;
             }
 
@@ -3413,12 +3510,12 @@
                 const cacheAge = Date.now() - (LOAD_STATE.grupos.lastLoad || 0);
                 const MAX_CACHE_AGE = 5 * 60 * 1000; // 5 minutos
                 if (cacheAge < MAX_CACHE_AGE) {
-                    console.log('[loadGrupos] ✅ Usando cache local, edad:', Math.round(cacheAge / 1000), 's');
+                    _log('[loadGrupos] ✅ Usando cache local, edad:', Math.round(cacheAge / 1000), 's');
                     return;
                 }
             }
 
-            console.log('[loadGrupos] 🔄 Iniciando carga de grupos...');
+            _log('[loadGrupos] 🔄 Iniciando carga de grupos...');
 
             // Validar TOKEN
             if (!TOKEN) {
@@ -3449,7 +3546,7 @@
                         LOAD_STATE.grupos.lastLoad = Date.now();
                         LOAD_STATE.grupos.error = null;
 
-                        console.log(`[loadGrupos] ✅ ${ALL_GRUPOS.length} grupos cargados exitosamente`);
+                        _log(`[loadGrupos] ✅ ${ALL_GRUPOS.length} grupos cargados exitosamente`);
 
                         // Actualizar UI si estamos en modo grupo
                         if (EECC_MODE === 'grupo') {
@@ -3479,7 +3576,7 @@
                     break;
                 }
             }
-            console.log('[toggleEECCMode] 🔄 Modo cambiado a:', EECC_MODE);
+            _log('[toggleEECCMode] 🔄 Modo cambiado a:', EECC_MODE);
 
             // Limpiar selección actual
             limpiarAutocompleteEECC();
@@ -3499,14 +3596,14 @@
                 if (LOAD_STATE.grupos.loading) {
                     // Ya está cargando, mostrar loading
                     mostrarLoadingEnDropdownEECC('Cargando grupos económicos...');
-                    console.log('[toggleEECCMode] ⏳ Grupos ya cargando...');
+                    _log('[toggleEECCMode] ⏳ Grupos ya cargando...');
                     return;
                 }
 
                 if (!LOAD_STATE.grupos.loaded || ALL_GRUPOS.length === 0) {
                     // No cargado o vacío, iniciar carga
                     mostrarLoadingEnDropdownEECC('Cargando grupos económicos...');
-                    console.log('[toggleEECCMode] 🔄 Iniciando carga de grupos...');
+                    _log('[toggleEECCMode] 🔄 Iniciando carga de grupos...');
                     loadGrupos();
                     return;
                 }
@@ -3522,19 +3619,19 @@
 
                 // Datos disponibles, actualizar opciones
                 AUTOCOMPLETE_EECC_OPTIONS = [...ALL_GRUPOS];
-                console.log('[toggleEECCMode] ✅ Grupos disponibles:', ALL_GRUPOS.length);
+                _log('[toggleEECCMode] ✅ Grupos disponibles:', ALL_GRUPOS.length);
 
             } else {
                 // MODO ASEGURADO
                 if (LOAD_STATE.asegurados.loading || ASEGURADOS_DS.loading) {
                     mostrarLoadingEnDropdownEECC('Cargando asegurados...');
-                    console.log('[toggleEECCMode] ⏳ Asegurados ya cargando...');
+                    _log('[toggleEECCMode] ⏳ Asegurados ya cargando...');
                     return;
                 }
 
                 if (!LOAD_STATE.asegurados.loaded && ALL_CLIENTES.length === 0 && ASEGURADOS_DS.items.length === 0) {
                     mostrarLoadingEnDropdownEECC('Cargando asegurados...');
-                    console.log('[toggleEECCMode] 🔄 Iniciando carga de asegurados...');
+                    _log('[toggleEECCMode] 🔄 Iniciando carga de asegurados...');
                     loadAsegurados();
                     return;
                 }
@@ -3543,7 +3640,7 @@
                 AUTOCOMPLETE_EECC_OPTIONS = ASEGURADOS_DS.items.length > 0
                     ? [...ASEGURADOS_DS.items]
                     : [...ALL_CLIENTES];
-                console.log('[toggleEECCMode] ✅ Asegurados disponibles:', AUTOCOMPLETE_EECC_OPTIONS.length);
+                _log('[toggleEECCMode] ✅ Asegurados disponibles:', AUTOCOMPLETE_EECC_OPTIONS.length);
             }
 
             // Renderizar opciones (solo si llegamos aquí con datos)
@@ -3560,7 +3657,7 @@
                     break;
                 }
             }
-            console.log('[toggleBitacoraMode] 🔄 Modo cambiado a:', BITACORA_MODE);
+            _log('[toggleBitacoraMode] 🔄 Modo cambiado a:', BITACORA_MODE);
 
             // Limpiar selección actual
             limpiarAutocomplete();
@@ -3940,14 +4037,7 @@
                 escapeHtml(after);
         }
 
-        /**
-         * Helper: Escape HTML para prevenir XSS
-         */
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        // escapeHtml() ya definida globalmente (línea ~1974) - versión regex con null-safety
 
         function seleccionarOpcionAutocompleteEECC(value) {
             const input = document.getElementById('aseguradoSelect');
@@ -3971,7 +4061,7 @@
                 counter.style.display = 'none';
             }
 
-            console.log('[seleccionarOpcionAutocompleteEECC] Seleccionado:', value);
+            _log('[seleccionarOpcionAutocompleteEECC] Seleccionado:', value);
             toggleGenerarBtnState(); // Enable button on selection
         }
 
@@ -4067,7 +4157,7 @@
             ASEGURADOS_FILTERED = [];
             AUTOCOMPLETE_EECC_HIGHLIGHT_INDEX = -1;
 
-            console.log('[limpiarAutocompleteEECC] Autocomplete limpiado');
+            _log('[limpiarAutocompleteEECC] Autocomplete limpiado');
         }
 
         function highlightAutocompleteOptionEECC(index) {
@@ -4115,7 +4205,7 @@
             if (type === 'success') icon = '✅';
             else if (type === 'error') icon = '❌';
             else if (type === 'warning') icon = '⚠️';
-            entry.innerHTML = `<span style="color: var(--tp-text-tertiary);">${time}</span> ${icon} ${message}`;
+            entry.innerHTML = `<span style="color: var(--tp-text-tertiary);">${time}</span> ${icon} ${escapeHtml(message)}`;
             logEntries.appendChild(entry);
             logContainer.scrollTop = logContainer.scrollHeight;
         }
@@ -4219,7 +4309,7 @@
                 // Cargar RAMs instantáneamente del asegurado seleccionado
                 const asegurado = document.getElementById('aseguradoSelect').value;
                 if (asegurado) {
-                    console.log('[toggleObs] Cargando RAMs para:', asegurado);
+                    _log('[toggleObs] Cargando RAMs para:', asegurado);
 
                     // Mostrar loading en el select
                     const ramSelect = document.getElementById('ramSelect');
@@ -4231,10 +4321,10 @@
                             if (result && result.rams && result.rams.length > 0) {
                                 ramSelect.innerHTML = '<option value="__ALL__" selected>Todos los RAM</option>' +
                                     result.rams.map(r => `<option value="${r}">${r}</option>`).join('');
-                                console.log('[toggleObs] ✅ RAMs cargados:', result.rams.length);
+                                _log('[toggleObs] ✅ RAMs cargados:', result.rams.length);
                             } else {
                                 ramSelect.innerHTML = '<option value="__ALL__">Todos los RAM</option>';
-                                console.log('[toggleObs] ⚠️ No hay RAMs disponibles');
+                                _log('[toggleObs] ⚠️ No hay RAMs disponibles');
                             }
                         })
                         .withFailureHandler(error => {
@@ -4267,7 +4357,7 @@
                 const pbiFrame = document.getElementById('pbiFrame');
                 if (pbiFrame && !pbiFrame.src && pbiFrame.dataset.src) {
                     pbiFrame.src = pbiFrame.dataset.src;
-                    console.log('[togglePowerBI] ✅ Iframe loaded on demand');
+                    _log('[togglePowerBI] ✅ Iframe loaded on demand');
                 }
 
                 log('Dashboard PBI expandido', 'info');
@@ -4329,15 +4419,15 @@
                     const tbody = document.getElementById('previewTableBody');
 
                     thead.innerHTML = '<tr><th>Excluir</th>' +
-                        result.headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+                        result.headers.map(h => '<th>' + escapeHtml(h) + '</th>').join('') + '</tr>';
 
                     tbody.innerHTML = result.rows.map((row, idx) => {
                         const cells = row.map((cell, cellIdx) => {
                             const className = result.headers[cellIdx] === 'IMPORTE' ? 'cell-number' :
                                 result.headers[cellIdx] === 'DÍAS' ? 'cell-center' : '';
-                            return `<td class="${className}">${cell || ''}</td>`;
+                            return '<td class="' + className + '">' + escapeHtml(String(cell || '')) + '</td>';
                         }).join('');
-                        return `<tr><td class="cell-center"><input type="checkbox" data-idx="${idx + 1}"></td>${cells}</tr>`;
+                        return '<tr><td class="cell-center"><input type="checkbox" data-idx="' + (idx + 1) + '"></td>' + cells + '</tr>';
                     }).join('');
 
                     log(`Preview cargado: ${result.total} registros`, 'success');
@@ -4748,12 +4838,12 @@
          * [LEGACY] Abre el modal de correo embebido (mantenido como fallback)
          */
         function openMailModal() {
-            document.getElementById('mailModal').classList.add('active');
+            _openModal(document.getElementById('mailModal'));
             switchMailTab('seleccionar');
         }
 
         function closeMailModal() {
-            document.getElementById('mailModal').classList.remove('active');
+            _closeModal(document.getElementById('mailModal'));
         }
 
         function switchMailTab(tab) {
@@ -5056,7 +5146,7 @@
          * OPTIMIZADO: Usa caché de 2 minutos para carga instantánea
          */
         function cargarNotificaciones(forceRefresh = false) {
-            console.log('[Notificaciones] Cargando compromisos (forceRefresh=' + forceRefresh + ')...');
+            _log('[Notificaciones] Cargando compromisos (forceRefresh=' + forceRefresh + ')...');
 
             const body = document.getElementById('notificationBody');
             const ahora = Date.now();
@@ -5066,7 +5156,7 @@
                 const tiempoTranscurrido = ahora - NOTIFICACIONES_CACHE_TIME;
 
                 if (tiempoTranscurrido < NOTIFICACIONES_CACHE_DURATION) {
-                    console.log('[Notificaciones] ⚡ Usando caché (', Math.round(tiempoTranscurrido / 1000), 's de antigüedad)');
+                    _log('[Notificaciones] ⚡ Usando caché (', Math.round(tiempoTranscurrido / 1000), 's de antigüedad)');
                     procesarNotificaciones(NOTIFICACIONES_CACHE, true); // fromCache = true
                     return;
                 }
@@ -5077,20 +5167,20 @@
                 body.innerHTML = '<div class="notification-loading"><div class="loader-spinner"></div><p>Cargando notificaciones...</p></div>';
             } else {
                 // Si hay caché viejo, mostrar primero y actualizar en background
-                console.log('[Notificaciones] 📊 Mostrando caché antiguo mientras actualiza...');
+                _log('[Notificaciones] 📊 Mostrando caché antiguo mientras actualiza...');
                 procesarNotificaciones(NOTIFICACIONES_CACHE, true); // fromCache = true
             }
 
             // Cargar datos frescos del servidor
             google.script.run
                 .withSuccessHandler(function (result) {
-                    console.log('[Notificaciones] ✅ Respuesta recibida del servidor');
+                    _log('[Notificaciones] ✅ Respuesta recibida del servidor');
 
                     if (result && result.ok && result.data) {
                         // Guardar en caché
                         NOTIFICACIONES_CACHE = result.data;
                         NOTIFICACIONES_CACHE_TIME = Date.now();
-                        console.log('[Notificaciones] 💾 Datos guardados en caché');
+                        _log('[Notificaciones] 💾 Datos guardados en caché');
 
                         procesarNotificaciones(result.data);
                     } else {
@@ -5102,10 +5192,10 @@
 
                     // Si hay caché, mantenerlo en caso de error
                     if (NOTIFICACIONES_CACHE) {
-                        console.log('[Notificaciones] ⚠️ Error del servidor, usando caché antiguo');
+                        _log('[Notificaciones] ⚠️ Error del servidor, usando caché antiguo');
                         procesarNotificaciones(NOTIFICACIONES_CACHE);
                     } else {
-                        body.innerHTML = '<div class="notification-empty"><div class="notification-empty-icon">❌</div><p>Error: ' + error.message + '</p></div>';
+                        body.innerHTML = '<div class="notification-empty"><div class="notification-empty-icon">❌</div><p>Error: ' + escapeHtml(error.message) + '</p></div>';
                     }
                 })
                 .bitacoraGetCompromisosActivos(TOKEN);
@@ -5117,7 +5207,7 @@
          * @param {Boolean} fromCache - Indica si los datos vienen del caché
          */
         function procesarNotificaciones(compromisos, fromCache = false) {
-            console.log('[Notificaciones] Procesando', compromisos.length, 'compromisos');
+            _log('[Notificaciones] Procesando', compromisos.length, 'compromisos');
 
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
@@ -5171,7 +5261,7 @@
                 return a.diasRestantes - b.diasRestantes;
             });
 
-            console.log('[Notificaciones] Clasificadas:', {
+            _log('[Notificaciones] Clasificadas:', {
                 vencidos: NOTIFICACIONES.filter(n => n.urgencia === 'vencido').length,
                 urgentes: NOTIFICACIONES.filter(n => n.urgencia === 'urgente').length,
                 proximos: NOTIFICACIONES.filter(n => n.urgencia === 'proximo').length,
@@ -5287,7 +5377,7 @@
          * Navega a la bitácora y filtra por cliente
          */
         function irABitacoraCliente(asegurado) {
-            console.log('[Notificaciones] Ir a bitácora del cliente:', asegurado);
+            _log('[Notificaciones] Ir a bitácora del cliente:', asegurado);
 
             // Cerrar panel de notificaciones
             if (NOTIFICATION_PANEL_OPEN) {
@@ -5314,7 +5404,7 @@
          * Se usa cuando se navega desde Notificaciones
          */
         function preseleccionarAseguradoEmb(asegurado) {
-            console.log('[preseleccionarAseguradoEmb] Preseleccionando:', asegurado);
+            _log('[preseleccionarAseguradoEmb] Preseleccionando:', asegurado);
 
             const inputAsegurado = document.getElementById('gestionAseguradoEmb');
             const inputHidden = document.getElementById('gestionAseguradoValueEmb');
@@ -5339,7 +5429,7 @@
                 // Establecer fecha de gestión como HOY
                 setFechaGestionHoyEmb();
 
-                console.log('[preseleccionarAseguradoEmb] ✅ Asegurado preseleccionado:', asegurado);
+                _log('[preseleccionarAseguradoEmb] ✅ Asegurado preseleccionado:', asegurado);
             }
         }
 
@@ -5348,13 +5438,13 @@
          * OPTIMIZADO: Carga en segundo plano y actualiza badge inmediatamente
          */
         function inicializarNotificaciones() {
-            console.log('[Notificaciones] 🚀 Inicializando sistema...');
+            _log('[Notificaciones] 🚀 Inicializando sistema...');
 
             // Cargar notificaciones en segundo plano de forma optimizada
             google.script.run
                 .withSuccessHandler(function (result) {
                     if (result && result.ok && result.data) {
-                        console.log('[Notificaciones] ✅ Datos iniciales recibidos:', result.data.length, 'compromisos');
+                        _log('[Notificaciones] ✅ Datos iniciales recibidos:', result.data.length, 'compromisos');
 
                         // Guardar en caché inmediatamente
                         NOTIFICACIONES_CACHE = result.data;
@@ -5370,8 +5460,9 @@
                 .bitacoraGetCompromisosActivos(TOKEN);
 
             // Actualizar cada 3 minutos (más frecuente que el caché de 2min)
-            setInterval(() => {
-                console.log('[Notificaciones] 🔄 Actualización automática en background...');
+            if (NOTIF_INTERVAL_ID) clearInterval(NOTIF_INTERVAL_ID);
+            NOTIF_INTERVAL_ID = setInterval(() => {
+                _log('[Notificaciones] 🔄 Actualización automática en background...');
 
                 // Actualizar en background sin mostrar loader
                 google.script.run
@@ -5383,7 +5474,7 @@
 
                             // Solo procesar si cambió el número de notificaciones
                             if (result.data.length !== NOTIFICACIONES.length) {
-                                console.log('[Notificaciones] 📢 Cambio detectado, actualizando badge...');
+                                _log('[Notificaciones] 📢 Cambio detectado, actualizando badge...');
                                 procesarNotificaciones(result.data);
                             }
                         }
@@ -5413,10 +5504,15 @@
 
         // ========== PROMISE WRAPPER PARA google.script.run (v4.1+) ==========
         function runGas(fnName, ...args) {
+            const TIMEOUT_MS = 30000; // 30s timeout
             return new Promise((resolve, reject) => {
+                let settled = false;
+                const timer = setTimeout(() => {
+                    if (!settled) { settled = true; reject(new Error('Timeout: ' + fnName + ' tardó más de 30s')); }
+                }, TIMEOUT_MS);
                 google.script.run
-                    .withSuccessHandler(resolve)
-                    .withFailureHandler(reject)[fnName](...args);
+                    .withSuccessHandler(result => { if (!settled) { settled = true; clearTimeout(timer); resolve(result); } })
+                    .withFailureHandler(error => { if (!settled) { settled = true; clearTimeout(timer); reject(error); } })[fnName](...args);
             });
         }
 
@@ -5430,7 +5526,7 @@
         async function loadBitacoraEmbeddedData(reset = false) {
             // Protección contra doble click
             if (BITACORA_LOADING) {
-                console.log('[loadBitacoraEmbeddedData] Ya cargando, ignorando.');
+                _log('[loadBitacoraEmbeddedData] Ya cargando, ignorando.');
                 return;
             }
 
@@ -5441,7 +5537,7 @@
                 BITACORA_EMB_LOADED = false;
             }
 
-            console.log('[loadBitacoraEmbeddedData] 🚀 Cargando página', BITACORA_PAGE);
+            _log('[loadBitacoraEmbeddedData] 🚀 Cargando página', BITACORA_PAGE);
 
             const tbody = document.getElementById('bitacoraTableBodyEmb');
 
@@ -5458,7 +5554,7 @@
                     const cacheAge = Date.now() - (cached.timestamp || 0);
 
                     if (cached.data && cached.data.length > 0 && cacheAge < CACHE_TTL) {
-                        console.log('[loadBitacoraEmbeddedData] ⚡ Mostrando cache local:', cached.data.length, 'registros, edad:', Math.round(cacheAge / 1000) + 's');
+                        _log('[loadBitacoraEmbeddedData] ⚡ Mostrando cache local:', cached.data.length, 'registros, edad:', Math.round(cacheAge / 1000) + 's');
 
                         // Mostrar datos cacheados INMEDIATAMENTE
                         BITACORA_DATA = cached.data;
@@ -5480,7 +5576,7 @@
 
                         // BACKGROUND: Refrescar datos en segundo plano
                         setTimeout(() => {
-                            console.log('[loadBitacoraEmbeddedData] 🔄 Refrescando datos en background...');
+                            _log('[loadBitacoraEmbeddedData] 🔄 Refrescando datos en background...');
                             _loadBitacoraFromBackend(reset, CACHE_KEY, tbody, true);
                         }, 100);
 
@@ -5514,7 +5610,7 @@
                     pageSize: 100
                 });
 
-                console.log('[_loadBitacoraFromBackend] ✅ Respuesta:', result);
+                _log('[_loadBitacoraFromBackend] ✅ Respuesta:', result);
 
                 if (result && result.ok && result.data) {
                     // Append o replace según sea reset
@@ -5532,7 +5628,7 @@
                     actualizarKPIsCompromisosPanel();
                     toggleLoadMoreButton(BITACORA_HAS_MORE, false);
 
-                    console.log(`[_loadBitacoraFromBackend] Total: ${BITACORA_DATA.length}, hasNext: ${BITACORA_HAS_MORE}`);
+                    _log(`[_loadBitacoraFromBackend] Total: ${BITACORA_DATA.length}, hasNext: ${BITACORA_HAS_MORE}`);
 
                     // Guardar en cache local
                     try {
@@ -5541,7 +5637,7 @@
                             hasMore: BITACORA_HAS_MORE,
                             timestamp: Date.now()
                         }));
-                        console.log('[_loadBitacoraFromBackend] 💾 Cache local actualizado');
+                        _log('[_loadBitacoraFromBackend] 💾 Cache local actualizado');
                     } catch (cacheErr) {
                         console.warn('[_loadBitacoraFromBackend] No se pudo guardar cache:', cacheErr);
                     }
@@ -5577,7 +5673,7 @@
                 icon.style.animation = 'spin 1s linear infinite';
             }
 
-            console.log('[refreshBitacoraManual] 🔄 Recargando datos frescos...');
+            _log('[refreshBitacoraManual] 🔄 Recargando datos frescos...');
 
             // Limpiar cachés
             localStorage.removeItem('bitacora_data_cache');
@@ -5629,7 +5725,7 @@
         function showBitacoraEmbError(msg) {
             const tbody = document.getElementById('bitacoraTableBodyEmb');
             if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:#D32F2F;">❌ ' + msg + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:#D32F2F;">❌ ' + escapeHtml(msg) + '</td></tr>';
             }
         }
 
@@ -5667,14 +5763,18 @@
                 const asegurado = (g.asegurado || '-').substring(0, 28) + (g.asegurado && g.asegurado.length > 28 ? '...' : '');
 
                 const numGestiones = g.numGestiones || 1;
+                const safeAsegurado = escapeHtml(g.asegurado || '');
+                const safeProximaAccion = escapeHtml(g.proximaAccion || '');
                 const gestionesBadge = numGestiones > 1
                     ? '<span style="display:inline-flex;align-items:center;justify-content:center;background:#E5E7EB;color:#374151;padding:1px 5px;border-radius:10px;font-size:0.6rem;font-weight:600;margin-left:4px;" title="' + numGestiones + ' gestiones registradas">' + numGestiones + '</span>'
                     : '';
 
+                // Use data attributes instead of inline onclick to prevent XSS
+                const dataAsegurado = safeAsegurado;
                 let row = '<tr style="border-bottom:1px solid #E5E7EB;transition:background 0.15s;" onmouseover="this.style.background=\'#F9FAFB\'" onmouseout="this.style.background=\'transparent\'">';
-                row += '<td style="padding:8px 10px;font-weight:500;font-size:0.8rem;max-width:200px;" title="' + (g.asegurado || '') + ' (' + numGestiones + ' gestiones)">' + asegurado + gestionesBadge + '</td>';
+                row += '<td style="padding:8px 10px;font-weight:500;font-size:0.8rem;max-width:200px;" title="' + safeAsegurado + ' (' + numGestiones + ' gestiones)">' + escapeHtml(asegurado) + gestionesBadge + '</td>';
                 row += '<td style="padding:8px 6px;">' + estadoBadge + '</td>';
-                row += '<td style="padding:8px 6px;font-size:0.75rem;color:#6B7280;">' + responsable + '</td>';
+                row += '<td style="padding:8px 6px;font-size:0.75rem;color:#6B7280;">' + escapeHtml(responsable) + '</td>';
                 row += '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">' + formatDate(g.fechaEnvioEECC) + '</td>';
                 row += '<td style="padding:8px 6px;font-size:0.75rem;white-space:nowrap;">' + formatDate(g.fechaRegistro) + '</td>';
                 row += '<td style="padding:8px 6px;text-align:center;">' +
@@ -5689,10 +5789,10 @@
                 row += formatDeltaCell(g.deltaVencidoPEN, g.tendenciaPEN, 'PEN');
                 row += '<td style="padding:8px 6px;font-size:0.75rem;text-align:right;font-weight:500;color:' + (vencidoUSD > 0 ? '#1565C0' : '#9CA3AF') + ';">' + (vencidoUSD > 0 ? '$ ' + formatNumber(vencidoUSD) : '—') + '</td>';
                 row += formatDeltaCell(g.deltaVencidoUSD, g.tendenciaUSD, 'USD');
-                row += '<td style="padding:8px 6px;font-size:0.75rem;color:#4B5563;max-width:140px;" title="' + (g.proximaAccion || '') + '">' + proximaAccion + '</td>';
+                row += '<td style="padding:8px 6px;font-size:0.75rem;color:#4B5563;max-width:140px;" title="' + safeProximaAccion + '">' + escapeHtml(proximaAccion) + '</td>';
                 row += '<td style="padding:6px;text-align:center;white-space:nowrap;">';
-                row += '<button onclick="verTimelineCiclo(null, \'' + (g.asegurado || '').replace(/'/g, "\\'") + '\')" style="padding:4px 6px;font-size:0.65rem;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;cursor:pointer;margin-right:3px;" title="Ver timeline">📋</button>';
-                row += '<button onclick="abrirRegistroGestionPara(\'' + (g.asegurado || '').replace(/'/g, "\\'") + '\')" style="padding:4px 6px;font-size:0.65rem;background:var(--tp-primary);color:white;border:none;border-radius:4px;cursor:pointer;" title="Agregar gestión">+</button>';
+                row += '<button data-asegurado="' + dataAsegurado + '" onclick="verTimelineCiclo(null, this.dataset.asegurado)" style="padding:4px 6px;font-size:0.65rem;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;cursor:pointer;margin-right:3px;" title="Ver timeline">📋</button>';
+                row += '<button data-asegurado="' + dataAsegurado + '" onclick="abrirRegistroGestionPara(this.dataset.asegurado)" style="padding:4px 6px;font-size:0.65rem;background:var(--tp-primary);color:white;border:none;border-radius:4px;cursor:pointer;" title="Agregar gestión">+</button>';
                 row += '</td></tr>';
                 return row;
             }
@@ -5942,7 +6042,7 @@
          * CORREGIDO: Ya no intenta llenar el autocomplete como select
          */
         function populateFiltrosEmb() {
-            console.log('[populateFiltrosEmb] 📋 Poblando filtros con', BITACORA_DATA.length, 'registros');
+            _log('[populateFiltrosEmb] 📋 Poblando filtros con', BITACORA_DATA.length, 'registros');
 
             // ═══ FILTRO: Asegurados ═══
             const asegSelect = document.getElementById('filtroAseguradoEmb');
@@ -5955,7 +6055,7 @@
                 if (valorActual && asegurados.includes(valorActual)) {
                     asegSelect.value = valorActual;
                 }
-                console.log('[populateFiltrosEmb] ✅ Asegurados:', asegurados.length);
+                _log('[populateFiltrosEmb] ✅ Asegurados:', asegurados.length);
             }
 
             // ═══ FILTRO: Responsables ═══
@@ -5968,7 +6068,7 @@
                 if (valorActual && responsables.includes(valorActual)) {
                     respSelect.value = valorActual;
                 }
-                console.log('[populateFiltrosEmb] ✅ Responsables:', responsables.length);
+                _log('[populateFiltrosEmb] ✅ Responsables:', responsables.length);
             }
 
             // ═══ ACTUALIZAR AUTOCOMPLETE del formulario de registro ═══
@@ -5977,7 +6077,7 @@
                 const aseguradosUnicos = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
                 // Actualizar las opciones del autocomplete embebido
                 AUTOCOMPLETE_EMB_OPTIONS = aseguradosUnicos;
-                console.log('[populateFiltrosEmb] ✅ Autocomplete actualizado con', aseguradosUnicos.length, 'asegurados');
+                _log('[populateFiltrosEmb] ✅ Autocomplete actualizado con', aseguradosUnicos.length, 'asegurados');
             }
         }
 
@@ -6089,7 +6189,7 @@
                 observaciones: observaciones || ''
             };
 
-            console.log('[registrarGestionEmbedded] Registrando:', payload);
+            _log('[registrarGestionEmbedded] Registrando:', payload);
 
             // ════════════════════════════════════════════════════════════════════════════════
             // OPTIMIZACIÓN v4.3: ACTUALIZACIÓN OPTIMISTA VERDADERA
@@ -6148,14 +6248,14 @@
             }
             _isSubmittingGestion = false;
 
-            console.log('[registrarGestionEmbedded] ⚡ UI actualizada instantáneamente (optimista)');
+            _log('[registrarGestionEmbedded] ⚡ UI actualizada instantáneamente (optimista)');
 
             // ════════════════════════════════════════════════════════════════════════════════
             // 8. LLAMADA AL SERVIDOR EN BACKGROUND (no bloquea UI)
             // ════════════════════════════════════════════════════════════════════════════════
             google.script.run
                 .withSuccessHandler(function (result) {
-                    console.log('[registrarGestionEmbedded] ✅ Servidor confirmó:', result);
+                    _log('[registrarGestionEmbedded] ✅ Servidor confirmó:', result);
 
                     if (result && result.ok) {
                         // Actualizar el registro temporal con datos reales del servidor
@@ -6173,7 +6273,7 @@
                         Object.keys(TIMELINE_CACHE).forEach(key => delete TIMELINE_CACHE[key]);
                         NOTIFICACIONES_CACHE = null;
 
-                        console.log('[registrarGestionEmbedded] ✅ Sincronización completada');
+                        _log('[registrarGestionEmbedded] ✅ Sincronización completada');
                     } else {
                         // Error del servidor - notificar pero mantener UI
                         console.error('[registrarGestionEmbedded] ❌ Error servidor:', result?.message);
@@ -6209,7 +6309,7 @@
             if (!status) return;
             const className = type === 'success' ? 'status-success' :
                 type === 'error' ? 'status-error' : 'status-info';
-            status.innerHTML = '<div class="status ' + className + '">' + message + '</div>';
+            status.innerHTML = '<div class="status ' + className + '">' + escapeHtml(message) + '</div>';
         }
 
         /**
@@ -6362,7 +6462,7 @@
         function toggleBitacoraModeEmb() {
             const selectedMode = document.querySelector('input[name="bitacoraModeEmb"]:checked')?.value || 'asegurado';
             BITACORA_MODE = selectedMode;
-            console.log('[toggleBitacoraModeEmb] 🔄 Modo:', BITACORA_MODE);
+            _log('[toggleBitacoraModeEmb] 🔄 Modo:', BITACORA_MODE);
 
             // Limpiar selección actual
             limpiarAutocompleteEmb();
@@ -6498,13 +6598,13 @@
          * Cargar opciones de clientes para el autocomplete embebido
          */
         function loadClientesAutocompleteEmb() {
-            console.log('[loadClientesAutocompleteEmb] Cargando opciones para modo:', BITACORA_MODE);
+            _log('[loadClientesAutocompleteEmb] Cargando opciones para modo:', BITACORA_MODE);
 
             // MODO GRUPO ECONÓMICO: Usar ALL_GRUPOS
             if (BITACORA_MODE === 'grupo') {
                 if (ALL_GRUPOS && ALL_GRUPOS.length > 0) {
                     AUTOCOMPLETE_EMB_OPTIONS = [...ALL_GRUPOS].sort();
-                    console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' grupos cargados desde ALL_GRUPOS');
+                    _log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' grupos cargados desde ALL_GRUPOS');
                 } else {
                     console.warn('[loadClientesAutocompleteEmb] ALL_GRUPOS vacío, intentando cargar desde backend...');
                     // Cargar grupos desde backend si no están disponibles
@@ -6513,7 +6613,7 @@
                             if (response && response.ok && response.data) {
                                 ALL_GRUPOS = response.data;
                                 AUTOCOMPLETE_EMB_OPTIONS = [...ALL_GRUPOS].sort();
-                                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' grupos cargados desde backend');
+                                _log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' grupos cargados desde backend');
                             } else {
                                 console.error('[loadClientesAutocompleteEmb] Error al cargar grupos:', response?.error);
                                 AUTOCOMPLETE_EMB_OPTIONS = [];
@@ -6532,33 +6632,33 @@
             // Prioridad 1: ALL_CLIENTES tiene la lista completa de la BD
             if (ALL_CLIENTES && ALL_CLIENTES.length > 0) {
                 AUTOCOMPLETE_EMB_OPTIONS = [...ALL_CLIENTES].sort();
-                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde ALL_CLIENTES (BD completa)');
+                _log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde ALL_CLIENTES (BD completa)');
                 return;
             }
 
             // Prioridad 2: ASEGURADOS_DS si tiene datos
             if (ASEGURADOS_DS && ASEGURADOS_DS.items && ASEGURADOS_DS.items.length > 0) {
                 AUTOCOMPLETE_EMB_OPTIONS = [...ASEGURADOS_DS.items].sort();
-                console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde ASEGURADOS_DS');
+                _log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde ASEGURADOS_DS');
                 return;
             }
 
             // Prioridad 3: Fallback a BITACORA_DATA (solo asegurados con gestiones)
             if (BITACORA_DATA && BITACORA_DATA.length > 0) {
                 AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
-                console.log('[loadClientesAutocompleteEmb] ⚠️ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde BITACORA_DATA (fallback parcial)');
+                _log('[loadClientesAutocompleteEmb] ⚠️ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde BITACORA_DATA (fallback parcial)');
                 // No hacer return - continuar cargando lista completa en background
             }
 
             // Si no hay datos o solo hay datos parciales, cargar lista COMPLETA desde backend
-            console.log('[loadClientesAutocompleteEmb] 🔄 Cargando lista COMPLETA de asegurados desde backend...');
+            _log('[loadClientesAutocompleteEmb] 🔄 Cargando lista COMPLETA de asegurados desde backend...');
             google.script.run
                 .withSuccessHandler(function (result) {
                     if (result && result.ok && result.data && result.data.length > 0) {
                         // Actualizar ALL_CLIENTES para futuras referencias
                         ALL_CLIENTES = result.data;
                         AUTOCOMPLETE_EMB_OPTIONS = [...result.data].sort();
-                        console.log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde backend (BD completa)');
+                        _log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde backend (BD completa)');
                     } else {
                         console.warn('[loadClientesAutocompleteEmb] Backend no devolvió datos:', result);
                     }
@@ -6577,7 +6677,7 @@
          * Carga opciones para autocomplete embebido con manejo de estados
          */
         function loadClientesAutocompleteEmbSafe() {
-            console.log('[loadClientesAutocompleteEmbSafe] Cargando opciones para modo:', BITACORA_MODE);
+            _log('[loadClientesAutocompleteEmbSafe] Cargando opciones para modo:', BITACORA_MODE);
 
             // MODO GRUPO ECONÓMICO
             if (BITACORA_MODE === 'grupo') {
@@ -6590,7 +6690,7 @@
                 // Verificar si hay datos disponibles
                 if (ALL_GRUPOS && ALL_GRUPOS.length > 0) {
                     AUTOCOMPLETE_EMB_OPTIONS = [...ALL_GRUPOS].sort();
-                    console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'grupos disponibles');
+                    _log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'grupos disponibles');
                     renderizarOpcionesEmb();
                     return;
                 }
@@ -6604,7 +6704,7 @@
                             ALL_GRUPOS = response.data;
                             LOAD_STATE.grupos.loaded = true;
                             AUTOCOMPLETE_EMB_OPTIONS = [...ALL_GRUPOS].sort();
-                            console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'grupos cargados');
+                            _log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'grupos cargados');
                             renderizarOpcionesEmb();
                         } else {
                             console.error('[loadClientesAutocompleteEmbSafe] Error:', response?.error);
@@ -6624,7 +6724,7 @@
             const clientesDisponibles = ASEGURADOS_DS.items.length > 0 ? ASEGURADOS_DS.items : ALL_CLIENTES;
             if (clientesDisponibles && clientesDisponibles.length > 0) {
                 AUTOCOMPLETE_EMB_OPTIONS = [...clientesDisponibles].sort();
-                console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes disponibles (BD completa)');
+                _log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes disponibles (BD completa)');
                 renderizarOpcionesEmb();
                 return;
             }
@@ -6632,7 +6732,7 @@
             // Prioridad 2: Fallback temporal a BITACORA_DATA mientras carga la lista completa
             if (BITACORA_DATA && BITACORA_DATA.length > 0) {
                 AUTOCOMPLETE_EMB_OPTIONS = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
-                console.log('[loadClientesAutocompleteEmbSafe] ⚠️', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes de BITACORA_DATA (parcial, cargando completo...)');
+                _log('[loadClientesAutocompleteEmbSafe] ⚠️', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes de BITACORA_DATA (parcial, cargando completo...)');
                 renderizarOpcionesEmb();
                 // NO hacer return - continuar cargando lista completa
             }
@@ -6651,7 +6751,7 @@
                         AUTOCOMPLETE_EMB_OPTIONS = [...ASEGURADOS_DS.items].sort();
                         ALL_CLIENTES = ASEGURADOS_DS.items; // Actualizar también ALL_CLIENTES
                         renderizarOpcionesEmb();
-                        console.log('[loadClientesAutocompleteEmbSafe] ✅ Carga completada:', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes');
+                        _log('[loadClientesAutocompleteEmbSafe] ✅ Carga completada:', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes');
                     }
                 }, 500);
                 setTimeout(() => clearInterval(checkInterval), 30000);
@@ -6659,7 +6759,7 @@
             }
 
             // Si no hay carga en progreso, cargar directamente desde API
-            console.log('[loadClientesAutocompleteEmbSafe] 🔄 Cargando lista completa desde backend...');
+            _log('[loadClientesAutocompleteEmbSafe] 🔄 Cargando lista completa desde backend...');
             if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
                 mostrarLoadingEnDropdownEmb('Cargando clientes...');
             }
@@ -6669,7 +6769,7 @@
                     if (result && result.ok && result.data && result.data.length > 0) {
                         ALL_CLIENTES = result.data;
                         AUTOCOMPLETE_EMB_OPTIONS = [...result.data].sort();
-                        console.log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes cargados (BD completa)');
+                        _log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes cargados (BD completa)');
                         renderizarOpcionesEmb();
                     } else {
                         console.warn('[loadClientesAutocompleteEmbSafe] Backend sin datos:', result);
@@ -6786,7 +6886,7 @@
             console.warn(`[handleLoadError_] ${tipo} falló (intento ${state.retries}/${MAX_LOAD_RETRIES}):`, errorMsg);
 
             if (state.retries < MAX_LOAD_RETRIES) {
-                console.log(`[handleLoadError_] Reintentando en ${RETRY_DELAY_MS}ms...`);
+                _log(`[handleLoadError_] Reintentando en ${RETRY_DELAY_MS}ms...`);
                 setTimeout(() => {
                     if (tipo === 'grupos') loadGrupos();
                     else if (tipo === 'asegurados') loadAsegurados();
@@ -6808,7 +6908,7 @@
          * Reintentar carga manualmente
          */
         function reintentarCarga_(tipo) {
-            console.log('[reintentarCarga_] Reintentando:', tipo);
+            _log('[reintentarCarga_] Reintentando:', tipo);
             LOAD_STATE[tipo].retries = 0;
             LOAD_STATE[tipo].error = null;
 
@@ -6824,14 +6924,14 @@
          * Ejecutar desde la consola del navegador: testLoadStateFix()
          */
         function testLoadStateFix() {
-            console.log('=== TEST LOAD STATE FIX ===');
-            console.log('LOAD_STATE:', JSON.stringify(LOAD_STATE, null, 2));
-            console.log('ALL_GRUPOS:', ALL_GRUPOS.length, 'items');
-            console.log('ALL_CLIENTES:', ALL_CLIENTES.length, 'items');
-            console.log('ASEGURADOS_DS.items:', ASEGURADOS_DS.items.length, 'items');
-            console.log('EECC_MODE:', EECC_MODE);
-            console.log('BITACORA_MODE:', BITACORA_MODE);
-            console.log('TOKEN válido:', !!TOKEN);
+            _log('=== TEST LOAD STATE FIX ===');
+            _log('LOAD_STATE:', JSON.stringify(LOAD_STATE, null, 2));
+            _log('ALL_GRUPOS:', ALL_GRUPOS.length, 'items');
+            _log('ALL_CLIENTES:', ALL_CLIENTES.length, 'items');
+            _log('ASEGURADOS_DS.items:', ASEGURADOS_DS.items.length, 'items');
+            _log('EECC_MODE:', EECC_MODE);
+            _log('BITACORA_MODE:', BITACORA_MODE);
+            _log('TOKEN válido:', !!TOKEN);
             return 'Estado mostrado en consola';
         }
 
@@ -6979,25 +7079,8 @@
         /**
          * PRO: Highlight del texto buscado en Bitácora
          */
-        function highlightSearchTextEmb(text, search) {
-            if (!search || !search.trim()) return escapeHtml(text);
-
-            const normalizedText = text.toLowerCase();
-            const normalizedSearch = search.toLowerCase().trim();
-            const index = normalizedText.indexOf(normalizedSearch);
-
-            if (index === -1) return escapeHtml(text);
-
-            const before = text.substring(0, index);
-            const match = text.substring(index, index + search.length);
-            const after = text.substring(index + search.length);
-
-            return escapeHtml(before) +
-                '<mark style="background:#FEF3C7;color:#92400E;padding:0 2px;border-radius:2px;font-weight:600;">' +
-                escapeHtml(match) +
-                '</mark>' +
-                escapeHtml(after);
-        }
+        // Reuse shared highlightSearchText (identical logic)
+        const highlightSearchTextEmb = highlightSearchText;
 
         /**
          * PRO: Highlight de opción seleccionada con teclado en Bitácora
@@ -7111,7 +7194,7 @@
                 inputResponsable.value = CURRENT_USER.nombre || CURRENT_USER.email || 'Usuario actual';
             }
 
-            console.log('[seleccionarOpcionEmb] Seleccionado:', opcion);
+            _log('[seleccionarOpcionEmb] Seleccionado:', opcion);
         }
 
         /**
@@ -7184,14 +7267,14 @@
          * FIX DEFINITIVO v3: Cargar DIRECTAMENTE desde backend sin ninguna condición
          */
         function inicializarFormularioEmbedded() {
-            console.log('[inicializarFormularioEmbedded] 🚀 Inicializando formulario...');
+            _log('[inicializarFormularioEmbedded] 🚀 Inicializando formulario...');
 
             // ════════════════════════════════════════════════════════════════════════════════
             // FIX DEFINITIVO: Cargar lista completa de asegurados DIRECTAMENTE desde backend
             // No depender de ALL_CLIENTES, ASEGURADOS_DS ni BITACORA_DATA - ir directo a BD
             // ════════════════════════════════════════════════════════════════════════════════
 
-            console.log('[inicializarFormularioEmbedded] 🔄 Cargando lista COMPLETA de asegurados desde backend...');
+            _log('[inicializarFormularioEmbedded] 🔄 Cargando lista COMPLETA de asegurados desde backend...');
 
             // Mostrar estado de carga mientras se obtienen los datos
             const optionsContainer = document.getElementById('autocompleteOptionsEmb');
@@ -7201,14 +7284,14 @@
 
             google.script.run
                 .withSuccessHandler(function (result) {
-                    console.log('[inicializarFormularioEmbedded] ✅ Respuesta del backend:', result);
+                    _log('[inicializarFormularioEmbedded] ✅ Respuesta del backend:', result);
 
                     if (result && result.ok && result.data && result.data.length > 0) {
                         // Actualizar TODAS las variables globales
                         ALL_CLIENTES = result.data;
                         AUTOCOMPLETE_EMB_OPTIONS = [...result.data].sort();
 
-                        console.log('[inicializarFormularioEmbedded] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' asegurados cargados desde BD');
+                        _log('[inicializarFormularioEmbedded] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' asegurados cargados desde BD');
 
                         // Renderizar opciones
                         renderizarOpcionesEmb();
@@ -7254,7 +7337,7 @@
                 window._autocompleteEmbClickHandlerAdded = true;
             }
 
-            console.log('[inicializarFormularioEmbedded] ✅ Inicialización disparada');
+            _log('[inicializarFormularioEmbedded] ✅ Inicialización disparada');
         }
 
         // Función para limpiar formulario de gestión (legacy - mantener compatibilidad)
@@ -7446,7 +7529,7 @@
                 // ════ OPTIMIZADO: Solo recargar si NO hay datos en absoluto ════
                 // Si ya hay datos (aunque sea de actualización optimista), NO recargar
                 if (BITACORA_DATA.length === 0 && !BITACORA_LOADING) {
-                    console.log('[switchBitacoraTabEmbedded] 🔄 Sin datos, cargando...');
+                    _log('[switchBitacoraTabEmbedded] 🔄 Sin datos, cargando...');
                     loadBitacoraEmbeddedData(true);
                 }
             } else {
@@ -7467,7 +7550,7 @@
          * UNIFICADO: Usa el nuevo formulario con autocomplete
          */
         function abrirRegistroGestionPara(asegurado) {
-            console.log('[abrirRegistroGestionPara] Abriendo formulario para:', asegurado);
+            _log('[abrirRegistroGestionPara] Abriendo formulario para:', asegurado);
 
             // Cambiar al tab Registrar
             switchBitacoraTabEmbedded('registrar');
@@ -7503,14 +7586,14 @@
         // ========== MODAL Y TABS ==========
 
         function openBitacoraModal() {
-            console.log('[openBitacoraModal] Abriendo modal...');
+            _log('[openBitacoraModal] Abriendo modal...');
 
             try {
-                document.getElementById('bitacoraModal').classList.add('active');
-                console.log('[openBitacoraModal] Modal activado, cargando datos...');
+                _openModal(document.getElementById('bitacoraModal'));
+                _log('[openBitacoraModal] Modal activado, cargando datos...');
 
                 // Limpiar cachés para asegurar datos frescos
-                console.log('[openBitacoraModal] 🔄 Limpiando cachés para asegurar datos actualizados...');
+                _log('[openBitacoraModal] 🔄 Limpiando cachés para asegurar datos actualizados...');
                 localStorage.removeItem('bitacora_data_cache');
 
                 // Limpiar caché de timelines (opcional: solo si quieres forzar refresh al abrir)
@@ -7522,7 +7605,7 @@
                 loadClientesConCiclos();
                 loadResponsablesUnicos();
 
-                console.log('[openBitacoraModal] Funciones de carga iniciadas');
+                _log('[openBitacoraModal] Funciones de carga iniciadas');
             } catch (error) {
                 console.error('[openBitacoraModal] Error al abrir modal:', error);
                 alert('Error al abrir bitácora: ' + error.message);
@@ -7530,15 +7613,15 @@
         }
 
         function closeBitacoraModal() {
-            console.log('[closeBitacoraModal] Cerrando modal...');
-            document.getElementById('bitacoraModal').classList.remove('active');
+            _log('[closeBitacoraModal] Cerrando modal...');
+            _closeModal(document.getElementById('bitacoraModal'));
 
             // Resetear campos de fecha a estado inicial
             // resetearCamposFecha(); // COMENTADO: Causa error al intentar acceder a elementos antes de que el modal esté renderizado
         }
 
         function switchBitacoraTab(tab) {
-            console.log('[switchBitacoraTab] Cambiando a tab:', tab);
+            _log('[switchBitacoraTab] Cambiando a tab:', tab);
 
             // Actualizar botones de tabs
             const tabs = document.querySelectorAll('#bitacoraModal .tab');
@@ -7562,10 +7645,10 @@
                 // NO recargar datos - ya están cargados y actualizados
                 // Solo re-renderizar la tabla con los datos existentes
                 if (BITACORA_DATA && BITACORA_DATA.length > 0) {
-                    console.log('[switchBitacoraTab] Re-renderizando tabla con datos existentes:', BITACORA_DATA.length, 'registros');
+                    _log('[switchBitacoraTab] Re-renderizando tabla con datos existentes:', BITACORA_DATA.length, 'registros');
                     renderBitacoraTable();
                 } else {
-                    console.log('[switchBitacoraTab] No hay datos, tabla se mantendrá como está');
+                    _log('[switchBitacoraTab] No hay datos, tabla se mantendrá como está');
                 }
             } else if (tab === 'registrar') {
                 document.getElementById('bitacora-tab-registrar').classList.add('active');
@@ -7590,12 +7673,12 @@
 
                 // Verificar si el caché expiró
                 if (now - data.timestamp > CACHE_DURATION) {
-                    console.log('[Cache] ⏰ Caché expirado, eliminando...');
+                    _log('[Cache] ⏰ Caché expirado, eliminando...');
                     localStorage.removeItem(CACHE_KEY);
                     return null;
                 }
 
-                console.log('[Cache] ✅ Caché válido encontrado (' + data.data.length + ' gestiones)');
+                _log('[Cache] ✅ Caché válido encontrado (' + data.data.length + ' gestiones)');
                 return data.data;
             } catch (e) {
                 console.error('[Cache] Error al leer caché:', e);
@@ -7613,7 +7696,7 @@
                     data: data
                 };
                 localStorage.setItem(CACHE_KEY, JSON.stringify(cacheObj));
-                console.log('[Cache] 💾 Datos guardados en caché (' + data.length + ' gestiones)');
+                _log('[Cache] 💾 Datos guardados en caché (' + data.length + ' gestiones)');
             } catch (e) {
                 console.error('[Cache] Error al guardar caché:', e);
             }
@@ -7624,7 +7707,7 @@
          * @param {boolean} forceRefresh - Forzar recarga desde servidor
          */
         function loadBitacoraData(forceRefresh = false) {
-            console.log('[loadBitacoraData] 🚀 Iniciando carga (forceRefresh=' + forceRefresh + ')...');
+            _log('[loadBitacoraData] 🚀 Iniciando carga (forceRefresh=' + forceRefresh + ')...');
 
             const tbody = document.getElementById('bitacoraTableBody');
 
@@ -7635,7 +7718,7 @@
                     const datosPreCargados = <?= JSON.stringify(bitacoraDataPreload || '[]') ?>;
 
                     if (datosPreCargados && datosPreCargados !== '' && datosPreCargados !== 'undefined' && datosPreCargados !== '[]') {
-                        console.log('[loadBitacoraData] ⚡⚡⚡ Usando datos PRE-CARGADOS (ULTRA-RÁPIDO)');
+                        _log('[loadBitacoraData] ⚡⚡⚡ Usando datos PRE-CARGADOS (ULTRA-RÁPIDO)');
 
                         const datos = JSON.parse(datosPreCargados);
 
@@ -7655,7 +7738,7 @@
                             document.body.appendChild(badge);
                             setTimeout(() => badge.remove(), 3000);
 
-                            console.log('[loadBitacoraData] ✅ ' + datos.length + ' gestiones pre-cargadas exitosamente');
+                            _log('[loadBitacoraData] ✅ ' + datos.length + ' gestiones pre-cargadas exitosamente');
                             return;
                         }
                     }
@@ -7668,7 +7751,7 @@
             if (!forceRefresh) {
                 const cachedData = getCachedBitacoraData();
                 if (cachedData) {
-                    console.log('[loadBitacoraData] ⚡ Cargando desde caché (INSTANTÁNEO)');
+                    _log('[loadBitacoraData] ⚡ Cargando desde caché (INSTANTÁNEO)');
                     tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 1rem; color: #667eea;">⚡ Cargando desde caché...</td></tr>';
 
                     // Pequeño delay para mostrar el mensaje
@@ -7704,13 +7787,13 @@
          */
         function loadBitacoraDataFromServer(silent = false) {
             if (!silent) {
-                console.log('[loadBitacoraData] 📡 Cargando estado actual (1 registro por asegurado)...');
+                _log('[loadBitacoraData] 📡 Cargando estado actual (1 registro por asegurado)...');
             }
 
             google.script.run
                 .withSuccessHandler(function (result) {
                     if (!silent) {
-                        console.log('[loadBitacoraData] ✅ Respuesta recibida');
+                        _log('[loadBitacoraData] ✅ Respuesta recibida');
                     }
 
                     if (!result || !result.ok) {
@@ -7726,13 +7809,13 @@
 
                     // Actualizar UI solo si no es silencioso
                     if (!silent) {
-                        console.log('[loadBitacoraData] ✅ ' + result.data.length + ' asegurados únicos (ciclo más reciente de cada uno)');
-                        console.log('[loadBitacoraData] 📊 Datos recibidos:', result.data);
+                        _log('[loadBitacoraData] ✅ ' + result.data.length + ' asegurados únicos (ciclo más reciente de cada uno)');
+                        _log('[loadBitacoraData] 📊 Datos recibidos:', result.data);
 
                         // Verificar asegurados únicos
                         const aseguradosUnicos = [...new Set(result.data.map(c => c.asegurado))];
-                        console.log('[loadBitacoraData] 🔍 Asegurados únicos:', aseguradosUnicos.length);
-                        console.log('[loadBitacoraData] 🔍 Total de registros:', result.data.length);
+                        _log('[loadBitacoraData] 🔍 Asegurados únicos:', aseguradosUnicos.length);
+                        _log('[loadBitacoraData] 🔍 Total de registros:', result.data.length);
 
                         if (aseguradosUnicos.length !== result.data.length) {
                             console.warn('[loadBitacoraData] ⚠️ ADVERTENCIA: Hay asegurados duplicados!');
@@ -7744,7 +7827,7 @@
                         renderBitacoraTable();
                         populateFiltros();
                     } else {
-                        console.log('[loadBitacoraData] 🔄 Caché actualizado en background (' + result.data.length + ' asegurados)');
+                        _log('[loadBitacoraData] 🔄 Caché actualizado en background (' + result.data.length + ' asegurados)');
                     }
                 })
                 .withFailureHandler(function (error) {
@@ -7757,8 +7840,8 @@
         }
 
         function loadClientesConCiclos() {
-            console.log('[loadClientesConCiclos] Iniciando carga...');
-            console.log('[loadClientesConCiclos] TOKEN:', TOKEN ? 'Disponible' : 'NO DISPONIBLE');
+            _log('[loadClientesConCiclos] Iniciando carga...');
+            _log('[loadClientesConCiclos] TOKEN:', TOKEN ? 'Disponible' : 'NO DISPONIBLE');
 
             if (!TOKEN) {
                 console.error('[loadClientesConCiclos] ERROR: TOKEN no disponible');
@@ -7768,11 +7851,11 @@
 
             google.script.run
                 .withSuccessHandler(function (result) {
-                    console.log('[loadClientesConCiclos] Respuesta recibida:', result);
+                    _log('[loadClientesConCiclos] Respuesta recibida:', result);
 
                     if (result.ok) {
                         BITACORA_CLIENTES = result.data;
-                        console.log('[loadClientesConCiclos] Clientes cargados:', BITACORA_CLIENTES.length);
+                        _log('[loadClientesConCiclos] Clientes cargados:', BITACORA_CLIENTES.length);
                         populateAseguradoSelect();
                     } else {
                         console.error('[loadClientesConCiclos] Error en respuesta:', result.error);
@@ -7803,7 +7886,7 @@
         // ========== RENDERIZAR TABLA ==========
 
         function renderBitacoraTable() {
-            console.log('[renderBitacoraTable] Iniciando renderizado...');
+            _log('[renderBitacoraTable] Iniciando renderizado...');
 
             try {
                 const tbody = document.getElementById('bitacoraTableBody');
@@ -7814,7 +7897,7 @@
                     return;
                 }
 
-                console.log('[renderBitacoraTable] BITACORA_FILTERED:', BITACORA_FILTERED ? BITACORA_FILTERED.length : 'undefined');
+                _log('[renderBitacoraTable] BITACORA_FILTERED:', BITACORA_FILTERED ? BITACORA_FILTERED.length : 'undefined');
 
                 if (!BITACORA_FILTERED || BITACORA_FILTERED.length === 0) {
                     // Phase 4: Use empty state helper with CTA
@@ -7827,7 +7910,7 @@
                         colspan: 9
                     });
                     count.textContent = '0';
-                    console.log('[renderBitacoraTable] Sin datos para mostrar');
+                    _log('[renderBitacoraTable] Sin datos para mostrar');
                     return;
                 }
 
@@ -7838,27 +7921,29 @@
                         const fechaGestion = formatDateTime(ciclo.fechaRegistro);
                         const fechaCompromiso = ciclo.fechaCompromiso ? formatDate(ciclo.fechaCompromiso) : '-';
                         const diasBadge = getDiasBadge(ciclo.diasDesdeRegistro || 0);
-                        const aseguradoEscaped = (ciclo.asegurado || '').replace(/'/g, "\\'");
-                        const idCicloEscaped = (ciclo.idCiclo || '').replace(/'/g, "\\'");
+                        const safeAsegurado = escapeHtml(ciclo.asegurado || '');
+                        const safeIdCiclo = escapeHtml(ciclo.idCiclo || '');
 
                         return `
                             <tr>
-                                <td>${ciclo.asegurado || '-'}</td>
+                                <td>${safeAsegurado || '-'}</td>
                                 <td>${badge}</td>
-                                <td>${ciclo.responsable || '-'}</td>
+                                <td>${escapeHtml(ciclo.responsable || '-')}</td>
                                 <td>${fechaEnvio}</td>
                                 <td>${fechaGestion}</td>
                                 <td>${diasBadge}</td>
                                 <td>${fechaCompromiso}</td>
-                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${ciclo.proximaAccion || '-'}</td>
+                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(ciclo.proximaAccion || '-')}</td>
                                 <td style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;" 
-                                            onclick="verTimelineCiclo('${idCicloEscaped}', '${aseguradoEscaped}')" 
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;"
+                                            data-idciclo="${safeIdCiclo}" data-asegurado="${safeAsegurado}"
+                                            onclick="verTimelineCiclo(this.dataset.idciclo, this.dataset.asegurado)"
                                             title="Ver historial completo del ciclo">
                                         📊 Timeline
                                     </button>
-                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;" 
-                                            onclick="seleccionarCicloParaGestion('${aseguradoEscaped}', '${idCicloEscaped}')">
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;"
+                                            data-asegurado="${safeAsegurado}" data-idciclo="${safeIdCiclo}"
+                                            onclick="seleccionarCicloParaGestion(this.dataset.asegurado, this.dataset.idciclo)">
                                         ➕ Gestión
                                     </button>
                                 </td>
@@ -7866,19 +7951,19 @@
                         `;
                     } catch (rowError) {
                         console.error('[renderBitacoraTable] Error al renderizar fila', index, rowError, ciclo);
-                        return `<tr><td colspan="9" style="color: #D32F2F;">Error al renderizar fila ${index + 1}</td></tr>`;
+                        return '<tr><td colspan="9" style="color: #D32F2F;">Error al renderizar fila ' + (index + 1) + '</td></tr>';
                     }
                 }).join('');
 
                 tbody.innerHTML = rows;
                 count.textContent = BITACORA_FILTERED.length;
-                console.log('[renderBitacoraTable] Tabla renderizada exitosamente con', BITACORA_FILTERED.length, 'filas');
+                _log('[renderBitacoraTable] Tabla renderizada exitosamente con', BITACORA_FILTERED.length, 'filas');
 
             } catch (error) {
                 console.error('[renderBitacoraTable] Error fatal al renderizar tabla:', error);
                 const tbody = document.getElementById('bitacoraTableBody');
                 if (tbody) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #D32F2F;">❌ Error al renderizar tabla: ' + error.message + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #D32F2F;">❌ Error al renderizar tabla: ' + escapeHtml(error.message) + '</td></tr>';
                 }
             }
         }
@@ -7889,19 +7974,37 @@
             // Filtro de asegurado
             const filtroAseg = document.getElementById('filtroAsegurado');
             const aseguradosUnicos = [...new Set(BITACORA_DATA.map(c => c.asegurado))].sort();
-            filtroAseg.innerHTML = '<option value="">Todos</option>' +
-                aseguradosUnicos.map(a => `<option value="${a}">${a}</option>`).join('');
+            filtroAseg.innerHTML = '';
+            const defOpt = document.createElement('option');
+            defOpt.value = '';
+            defOpt.textContent = 'Todos';
+            filtroAseg.appendChild(defOpt);
+            aseguradosUnicos.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a;
+                opt.textContent = a;
+                filtroAseg.appendChild(opt);
+            });
         }
 
         function populateResponsableFilter() {
             const filtroResp = document.getElementById('filtroResponsable');
-            filtroResp.innerHTML = '<option value="">Todos</option>' +
-                BITACORA_RESPONSABLES.map(r => `<option value="${r}">${r}</option>`).join('');
+            filtroResp.innerHTML = '';
+            const defOpt = document.createElement('option');
+            defOpt.value = '';
+            defOpt.textContent = 'Todos';
+            filtroResp.appendChild(defOpt);
+            BITACORA_RESPONSABLES.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                filtroResp.appendChild(opt);
+            });
         }
 
         function populateAseguradoSelect() {
-            console.log('[populateAseguradoSelect] Poblando autocomplete...');
-            console.log('[populateAseguradoSelect] BITACORA_CLIENTES:', BITACORA_CLIENTES);
+            _log('[populateAseguradoSelect] Poblando autocomplete...');
+            _log('[populateAseguradoSelect] BITACORA_CLIENTES:', BITACORA_CLIENTES);
 
             if (!BITACORA_CLIENTES || BITACORA_CLIENTES.length === 0) {
                 console.warn('[populateAseguradoSelect] ADVERTENCIA: Sin clientes para mostrar');
@@ -7914,7 +8017,7 @@
             AUTOCOMPLETE_OPTIONS = [...BITACORA_CLIENTES];
             AUTOCOMPLETE_FILTERED = [...BITACORA_CLIENTES];
 
-            console.log('[populateAseguradoSelect] Autocomplete poblado con', BITACORA_CLIENTES.length, 'opciones');
+            _log('[populateAseguradoSelect] Autocomplete poblado con', BITACORA_CLIENTES.length, 'opciones');
         }
 
         // ============================================================
@@ -7974,7 +8077,7 @@
                 dropdown.style.display = 'block';
             }
 
-            console.log('[filtrarAutocomplete] "' + searchText + '" → ' + AUTOCOMPLETE_FILTERED.length + ' resultados');
+            _log('[filtrarAutocomplete] "' + searchText + '" → ' + AUTOCOMPLETE_FILTERED.length + ' resultados');
         }
 
         /**
@@ -7990,31 +8093,33 @@
             }
 
             const input = document.getElementById('gestionAsegurado');
-            const searchText = input ? input.value.toLowerCase().trim() : '';
+            const searchText = input ? input.value.trim() : '';
 
-            let html = '';
+            const fragment = document.createDocumentFragment();
 
             AUTOCOMPLETE_FILTERED.forEach((option, index) => {
-                // Resaltar texto coincidente
-                let displayText = option;
+                const div = document.createElement('div');
+                div.className = 'autocomplete-option';
+                div.setAttribute('data-index', index);
+
+                // Highlight matching text safely (reuse existing helper)
                 if (searchText) {
-                    const regex = new RegExp(`(${searchText})`, 'gi');
-                    displayText = option.replace(regex, '<strong>$1</strong>');
+                    div.innerHTML = highlightSearchText(option, searchText);
+                } else {
+                    div.textContent = option;
                 }
 
-                html += `
-                    <div 
-                        class="autocomplete-option" 
-                        data-index="${index}"
-                        onclick="seleccionarOpcionAutocomplete('${option.replace(/'/g, "\\'")}')"
-                        onmouseenter="AUTOCOMPLETE_SELECTED_INDEX = ${index}; highlightAutocompleteOption(${index})"
-                    >
-                        ${displayText}
-                    </div>
-                `;
+                div.onclick = () => seleccionarOpcionAutocomplete(option);
+                div.onmouseenter = () => {
+                    AUTOCOMPLETE_SELECTED_INDEX = index;
+                    highlightAutocompleteOption(index);
+                };
+
+                fragment.appendChild(div);
             });
 
-            optionsContainer.innerHTML = html;
+            optionsContainer.innerHTML = '';
+            optionsContainer.appendChild(fragment);
         }
 
         /**
@@ -8050,7 +8155,7 @@
             // Trigger onAseguradoChange
             onAseguradoChange();
 
-            console.log('[seleccionarOpcionAutocomplete] Seleccionado:', value);
+            _log('[seleccionarOpcionAutocomplete] Seleccionado:', value);
         }
 
         /**
@@ -8069,6 +8174,7 @@
             }
 
             dropdown.style.display = 'block';
+            input.setAttribute('aria-expanded', 'true');
         }
 
         /**
@@ -8085,12 +8191,13 @@
                 AUTOCOMPLETE_FILTERED = [...AUTOCOMPLETE_OPTIONS];
                 renderAutocompleteOptions();
                 dropdown.style.display = 'block';
-
                 if (input) {
+                    input.setAttribute('aria-expanded', 'true');
                     input.focus();
                 }
             } else {
                 dropdown.style.display = 'none';
+                if (input) input.setAttribute('aria-expanded', 'false');
             }
         }
 
@@ -8106,6 +8213,7 @@
 
             if (input) {
                 input.value = '';
+                input.setAttribute('aria-expanded', 'false');
                 input.focus();
             }
 
@@ -8128,7 +8236,7 @@
             // Resetear campos de fecha si corresponde
             onAseguradoChange();
 
-            console.log('[limpiarAutocomplete] Autocomplete limpiado');
+            _log('[limpiarAutocomplete] Autocomplete limpiado');
         }
 
         /**
@@ -8727,10 +8835,10 @@
                         limpiarFormGestion();
 
                         // 🔄 ACTUALIZACIÓN AUTOMÁTICA
-                        console.log('[registrarGestionManual] ✅ Registro exitoso - Actualizando datos...');
+                        _log('[registrarGestionManual] ✅ Registro exitoso - Actualizando datos...');
 
                         // 1. Limpiar TODOS los cachés (localStorage, memoria y timelines)
-                        console.log('[registrarGestionManual] 🗑️ Limpiando todos los cachés...');
+                        _log('[registrarGestionManual] 🗑️ Limpiando todos los cachés...');
                         localStorage.removeItem('bitacora_data_cache');
                         window.bitacoraDataPreload = null;
                         BITACORA_DATA = [];
@@ -8740,13 +8848,13 @@
                         Object.keys(TIMELINE_CACHE).forEach(key => delete TIMELINE_CACHE[key]);
                         NOTIFICACIONES_CACHE = null;
                         NOTIFICACIONES_CACHE_TIME = null;
-                        console.log('[registrarGestionManual] 🗑️ Cachés limpiados (timelines + notificaciones)');
+                        _log('[registrarGestionManual] 🗑️ Cachés limpiados (timelines + notificaciones)');
 
                         // 2. Esperar para que el servidor escriba y commit los datos en Sheets
                         // Aumentado a 1500ms para asegurar que Sheets tenga los datos frescos
                         setTimeout(() => {
-                            console.log('[registrarGestionManual] 🔄 Recargando Estado Actual con datos frescos...');
-                            console.log('[registrarGestionManual] 📡 Llamando a bitacoraGetResumenCiclos para obtener solo última gestión por asegurado...');
+                            _log('[registrarGestionManual] 🔄 Recargando Estado Actual con datos frescos...');
+                            _log('[registrarGestionManual] 📡 Llamando a bitacoraGetResumenCiclos para obtener solo última gestión por asegurado...');
 
                             // 3. Mostrar spinner mientras carga
                             const tbody = document.getElementById('bitacoraTableBody');
@@ -8755,10 +8863,10 @@
                             // 4. Forzar recarga completa desde servidor (sin caché, solo resumen)
                             google.script.run
                                 .withSuccessHandler(function (result) {
-                                    console.log('[registrarGestionManual] ✅ Datos frescos recibidos:', result);
+                                    _log('[registrarGestionManual] ✅ Datos frescos recibidos:', result);
 
                                     if (result && result.ok && result.data) {
-                                        console.log('[registrarGestionManual] 📊 ' + result.data.length + ' asegurados únicos recibidos');
+                                        _log('[registrarGestionManual] 📊 ' + result.data.length + ' asegurados únicos recibidos');
 
                                         // Actualizar datos globales
                                         BITACORA_DATA = result.data;
@@ -8771,15 +8879,15 @@
                                         renderBitacoraTable();
                                         populateFiltros();
 
-                                        console.log('[registrarGestionManual] ✅ Tabla actualizada correctamente');
+                                        _log('[registrarGestionManual] ✅ Tabla actualizada correctamente');
 
                                         // Cambiar al tab "Estado Actual" DESPUÉS de actualizar los datos
                                         setTimeout(() => {
                                             switchBitacoraTab('estado');
-                                            console.log('[registrarGestionManual] 📊 Vista cambiada a Estado Actual con datos actualizados');
+                                            _log('[registrarGestionManual] 📊 Vista cambiada a Estado Actual con datos actualizados');
 
                                             // Actualizar notificaciones en background
-                                            console.log('[registrarGestionManual] 🔔 Actualizando notificaciones...');
+                                            _log('[registrarGestionManual] 🔔 Actualizando notificaciones...');
                                             inicializarNotificaciones();
                                         }, 200);
                                     } else {
@@ -8826,7 +8934,7 @@
 
             // Si el radio está deshabilitado, no hacer nada (campo bloqueado por escenario)
             if (radioChecked && radioChecked.disabled) {
-                console.log('[toggleFechaEnvioMode] Radio deshabilitado, no se puede cambiar');
+                _log('[toggleFechaEnvioMode] Radio deshabilitado, no se puede cambiar');
                 return;
             }
 
@@ -8868,7 +8976,7 @@
 
             // Si el radio está deshabilitado, no hacer nada (campo bloqueado por escenario)
             if (radioChecked && radioChecked.disabled) {
-                console.log('[toggleFechaGestionMode] Radio deshabilitado, no se puede cambiar');
+                _log('[toggleFechaGestionMode] Radio deshabilitado, no se puede cambiar');
                 return;
             }
 
@@ -8908,7 +9016,7 @@
 
                     // Solo sincronizar si "Fecha de esta Gestión" está bloqueada (nuevo ciclo)
                     if (inputGestion.hasAttribute('readonly') && inputGestion.style.opacity === '0.6') {
-                        console.log('[Sincronización] Actualizando Fecha de esta Gestión:', this.value);
+                        _log('[Sincronización] Actualizando Fecha de esta Gestión:', this.value);
                         inputGestion.value = this.value;
                     }
                 });
@@ -8923,7 +9031,7 @@
                 const day = String(hoy.getDate()).padStart(2, '0');
                 const fechaMinima = `${year}-${month}-${day}`;
                 inputCompromiso.setAttribute('min', fechaMinima);
-                console.log('[DOMContentLoaded] Fecha mínima para compromiso establecida:', fechaMinima);
+                _log('[DOMContentLoaded] Fecha mínima para compromiso establecida:', fechaMinima);
             }
         });
 
@@ -8931,22 +9039,22 @@
          * Carga la fecha de envío EECC automáticamente desde el último ciclo
          */
         function cargarFechaEnvioAutomatica(asegurado) {
-            console.log('[cargarFechaEnvioAutomatica] Cargando para asegurado:', asegurado);
+            _log('[cargarFechaEnvioAutomatica] Cargando para asegurado:', asegurado);
 
             google.script.run
                 .withSuccessHandler(function (result) {
-                    console.log('[cargarFechaEnvioAutomatica] Respuesta recibida:', result);
+                    _log('[cargarFechaEnvioAutomatica] Respuesta recibida:', result);
 
                     const inputFecha = document.getElementById('gestionFechaEnvioEECC');
 
                     if (result.ok && result.data) {
-                        console.log('[cargarFechaEnvioAutomatica] Datos del ciclo:', result.data);
-                        console.log('[cargarFechaEnvioAutomatica] fechaEnvioEECC:', result.data.fechaEnvioEECC);
+                        _log('[cargarFechaEnvioAutomatica] Datos del ciclo:', result.data);
+                        _log('[cargarFechaEnvioAutomatica] fechaEnvioEECC:', result.data.fechaEnvioEECC);
 
                         if (result.data.fechaEnvioEECC) {
                             // Hay ciclo previo - convertir a formato datetime-local
                             const fecha = new Date(result.data.fechaEnvioEECC);
-                            console.log('[cargarFechaEnvioAutomatica] Fecha parseada:', fecha);
+                            _log('[cargarFechaEnvioAutomatica] Fecha parseada:', fecha);
 
                             if (isNaN(fecha.getTime())) {
                                 console.error('[cargarFechaEnvioAutomatica] Fecha inválida:', result.data.fechaEnvioEECC);
@@ -8963,19 +9071,19 @@
                             const minutes = String(fecha.getMinutes()).padStart(2, '0');
 
                             const fechaFormateada = `${year}-${month}-${day}T${hours}:${minutes}`;
-                            console.log('[cargarFechaEnvioAutomatica] Fecha formateada:', fechaFormateada);
+                            _log('[cargarFechaEnvioAutomatica] Fecha formateada:', fechaFormateada);
 
                             inputFecha.value = fechaFormateada;
-                            console.log('[cargarFechaEnvioAutomatica] ✅ Fecha cargada exitosamente');
+                            _log('[cargarFechaEnvioAutomatica] ✅ Fecha cargada exitosamente');
                         } else {
                             // Primera gestión de este cliente
-                            console.log('[cargarFechaEnvioAutomatica] No hay fecha de envío EECC (primera gestión)');
+                            _log('[cargarFechaEnvioAutomatica] No hay fecha de envío EECC (primera gestión)');
                             inputFecha.value = '';
                             inputFecha.placeholder = 'Primera gestión - ingresa fecha manualmente';
                         }
                     } else {
                         // No se encontró ni ciclo ni datos en BD
-                        console.log('[cargarFechaEnvioAutomatica] No se encontró ciclo ni datos en BD');
+                        _log('[cargarFechaEnvioAutomatica] No se encontró ciclo ni datos en BD');
                         inputFecha.value = '';
                         inputFecha.placeholder = 'Cliente no encontrado';
                     }
@@ -8992,7 +9100,7 @@
             const asegurado = document.getElementById('gestionAsegurado').value;
 
             if (!asegurado) {
-                console.log('[onAseguradoChange] No hay asegurado seleccionado, reseteando...');
+                _log('[onAseguradoChange] No hay asegurado seleccionado, reseteando...');
                 document.getElementById('gestionResponsable').value = '';
 
                 // Resetear campos de fecha a estado inicial
@@ -9000,20 +9108,20 @@
                 return;
             }
 
-            console.log('[onAseguradoChange] Verificando ciclo para:', asegurado);
+            _log('[onAseguradoChange] Verificando ciclo para:', asegurado);
 
             // Verificar si existe un ciclo previo para determinar el escenario
             google.script.run
                 .withSuccessHandler(function (result) {
-                    console.log('[onAseguradoChange] Resultado verificación:', result);
+                    _log('[onAseguradoChange] Resultado verificación:', result);
 
                     if (result.ok && result.data && result.data.fechaEnvioEECC) {
                         // ESCENARIO 2: +GESTIÓN (ciclo existente)
-                        console.log('[onAseguradoChange] 📋 Escenario: +GESTIÓN en ciclo existente');
+                        _log('[onAseguradoChange] 📋 Escenario: +GESTIÓN en ciclo existente');
                         configurarModoGestionAdicional(result.data);
                     } else {
                         // ESCENARIO 1: NUEVO CICLO
-                        console.log('[onAseguradoChange] 🆕 Escenario: NUEVO CICLO');
+                        _log('[onAseguradoChange] 🆕 Escenario: NUEVO CICLO');
                         configurarModoNuevoCiclo();
                     }
 
@@ -9034,7 +9142,7 @@
          * - Fecha de esta Gestión: BLOQUEADA (misma que envío)
          */
         function configurarModoNuevoCiclo() {
-            console.log('[configurarModoNuevoCiclo] Configurando formulario para nuevo ciclo...');
+            _log('[configurarModoNuevoCiclo] Configurando formulario para nuevo ciclo...');
 
             const inputEnvio = document.getElementById('gestionFechaEnvioEECC');
             const inputGestion = document.getElementById('gestionFechaGestion');
@@ -9065,7 +9173,7 @@
             inputGestion.style.opacity = '0.6';
             helpGestion.textContent = '🔒 En un nuevo ciclo, esta fecha es igual a la fecha de envío del EECC';
 
-            console.log('[configurarModoNuevoCiclo] ✅ Configurado: Envío editable, Gestión bloqueada');
+            _log('[configurarModoNuevoCiclo] ✅ Configurado: Envío editable, Gestión bloqueada');
         }
 
         /**
@@ -9074,7 +9182,7 @@
          * - Fecha de esta Gestión: Editable (nueva acción)
          */
         function configurarModoGestionAdicional(dataCiclo) {
-            console.log('[configurarModoGestionAdicional] Configurando para gestión adicional...', dataCiclo);
+            _log('[configurarModoGestionAdicional] Configurando para gestión adicional...', dataCiclo);
 
             const inputEnvio = document.getElementById('gestionFechaEnvioEECC');
             const inputGestion = document.getElementById('gestionFechaGestion');
@@ -9115,7 +9223,7 @@
             inputGestion.style.opacity = '0.8';
             helpGestion.textContent = '📅 Fecha y hora de esta gestión de seguimiento';
 
-            console.log('[configurarModoGestionAdicional] ✅ Configurado: Envío bloqueado, Gestión editable');
+            _log('[configurarModoGestionAdicional] ✅ Configurado: Envío bloqueado, Gestión editable');
         }
 
         function onEstadoChange() {
@@ -9178,7 +9286,7 @@
          * Resetea los campos de fecha a su estado inicial (sin bloqueos)
          */
         function resetearCamposFecha() {
-            console.log('[resetearCamposFecha] Reseteando campos de fecha a estado inicial...');
+            _log('[resetearCamposFecha] Reseteando campos de fecha a estado inicial...');
 
             const inputEnvio = document.getElementById('gestionFechaEnvioEECC');
             const inputGestion = document.getElementById('gestionFechaGestion');
@@ -9217,7 +9325,7 @@
             helpEnvio.textContent = 'Fecha del envío del EECC que inició este ciclo de cobranza';
             helpGestion.textContent = 'Por defecto se usa la fecha y hora actual';
 
-            console.log('[resetearCamposFecha] ✅ Campos reseteados correctamente');
+            _log('[resetearCamposFecha] ✅ Campos reseteados correctamente');
         }
 
         function limpiarFormGestion() {
@@ -9239,7 +9347,7 @@
             const className = type === 'success' ? 'status-success' :
                 type === 'error' ? 'status-error' :
                     'status-info';
-            status.innerHTML = `<div class="status ${className}">${message}</div>`;
+            status.innerHTML = `<div class="status ${className}">${escapeHtml(message)}</div>`;
         }
 
         /**
@@ -9333,7 +9441,7 @@
         // ========== TIMELINE DEL CICLO ==========
 
         function verTimelineCiclo(idCiclo, asegurado) {
-            console.log('[verTimelineCiclo] Abriendo timeline para asegurado:', asegurado);
+            _log('[verTimelineCiclo] Abriendo timeline para asegurado:', asegurado);
 
             // Actualizar título
             document.getElementById('timelineSubtitle').textContent = `Cliente: ${asegurado}`;
@@ -9346,7 +9454,11 @@
         }
 
         function closeTimelineModal() {
-            document.getElementById('timelineModal').classList.remove('active');
+            const modal = document.getElementById('timelineModal');
+            if (modal) {
+                modal.style.display = 'none'; // For dynamically created modals using display:flex
+                _closeModal(modal);
+            }
         }
 
         function cargarTimelineAsegurado(asegurado) {
@@ -9359,7 +9471,7 @@
                 const tiempoTranscurrido = ahora - cache.timestamp;
 
                 if (tiempoTranscurrido < TIMELINE_CACHE_DURATION) {
-                    console.log('[cargarTimelineAsegurado] ⚡ Usando caché (', Math.round(tiempoTranscurrido / 1000), 's de antigüedad)');
+                    _log('[cargarTimelineAsegurado] ⚡ Usando caché (', Math.round(tiempoTranscurrido / 1000), 's de antigüedad)');
                     renderTimeline(cache.data);
 
                     // Badge de caché
@@ -9376,31 +9488,31 @@
             // Mostrar loader solo si no hay caché
             container.innerHTML = '<div class="loader" style="text-align: center; padding: 3rem;"><div class="loader-spinner"></div><p>Cargando timeline...</p></div>';
 
-            console.log('[cargarTimelineAsegurado] 📡 Cargando desde servidor para:', asegurado);
+            _log('[cargarTimelineAsegurado] 📡 Cargando desde servidor para:', asegurado);
 
             google.script.run
                 .withSuccessHandler(function (result) {
-                    console.log('[cargarTimelineAsegurado] ✅ Respuesta recibida:', result);
+                    _log('[cargarTimelineAsegurado] ✅ Respuesta recibida:', result);
 
                     if (result && result.ok && result.data && result.data.length > 0) {
-                        console.log('[cargarTimelineAsegurado] ✅ ' + result.data.length + ' gestiones encontradas');
+                        _log('[cargarTimelineAsegurado] ✅ ' + result.data.length + ' gestiones encontradas');
 
                         // Guardar en caché
                         TIMELINE_CACHE[asegurado] = {
                             data: result.data,
                             timestamp: Date.now()
                         };
-                        console.log('[cargarTimelineAsegurado] 💾 Timeline guardado en caché');
+                        _log('[cargarTimelineAsegurado] 💾 Timeline guardado en caché');
 
                         renderTimeline(result.data);
                     } else {
-                        console.log('[cargarTimelineAsegurado] ⚠️ Sin gestiones');
+                        _log('[cargarTimelineAsegurado] ⚠️ Sin gestiones');
                         container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--tp-text-secondary);">No se encontraron gestiones para este cliente</div>';
                     }
                 })
                 .withFailureHandler(function (error) {
                     console.error('[cargarTimelineAsegurado] ❌ Error:', error);
-                    container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #D32F2F;">Error al cargar timeline: ' + error.message + '</div>';
+                    container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #D32F2F;">Error al cargar timeline: ' + escapeHtml(error.message) + '</div>';
                 })
                 .bitacoraGetGestionesPorAsegurado(asegurado, TOKEN);
         }
@@ -9599,7 +9711,7 @@
 
         function showError(elementId, message) {
             const element = document.getElementById(elementId);
-            element.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #C62828;">${message}</td></tr>`;
+            element.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #C62828;">${escapeHtml(message)}</td></tr>`;
         }
 
         // ========== EVENT LISTENERS ==========
@@ -9681,7 +9793,7 @@
 
             const entry = document.createElement('div');
             entry.style.cssText = `padding: 0.5rem 0.75rem; border-left: 3px solid ${colors[type] || colors.info}; margin-bottom: 0.5rem; font-size: 0.8125rem; color: ${colors[type] || 'var(--tp-text-secondary)'}; background: var(--tp-surface-overlay); border-radius: 0 4px 4px 0;`;
-            entry.innerHTML = `<span style="font-family: monospace; color: var(--tp-text-tertiary); margin-right: 0.5rem;">${timeStr}</span>${message}`;
+            entry.innerHTML = `<span style="font-family: monospace; color: var(--tp-text-tertiary); margin-right: 0.5rem;">${timeStr}</span>${escapeHtml(message)}`;
 
             logContainer.appendChild(entry);
             logContainer.scrollTop = logContainer.scrollHeight;
@@ -9730,7 +9842,7 @@
 
                             if (isRetryable && attempt < maxRetries) {
                                 const delay = baseDelay * attempt; // 2s, 4s, 6s
-                                console.log('[Retry] Attempt ' + attempt + ' failed, retrying in ' + delay + 'ms...');
+                                _log('[Retry] Attempt ' + attempt + ' failed, retrying in ' + delay + 'ms...');
                                 onRetry(attempt, maxRetries, delay);
                                 setTimeout(tryCall, delay);
                             } else {
@@ -9743,21 +9855,8 @@
             });
         }
 
-        /**
-         * Wrapper para google.script.run que retorna Promise
-         * @param {string} functionName - Nombre de la función del servidor
-         * @param {...any} args - Argumentos para la función
-         * @returns {Promise}
-         */
-        function callServerAsync(functionName, ...args) {
-            return new Promise((resolve, reject) => {
-                const runner = google.script.run
-                    .withSuccessHandler(result => resolve(result))
-                    .withFailureHandler(error => reject(error));
-
-                runner[functionName](...args);
-            });
-        }
+        // Reuse shared runGas wrapper (identical timeout+settled pattern)
+        const callServerAsync = runGas;
 
         /**
          * Muestra estado en un contenedor
@@ -9769,7 +9868,7 @@
             const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
             const colors = { success: 'var(--tp-success)', error: 'var(--tp-error)', warning: 'var(--tp-warning)', info: 'var(--tp-info)' };
 
-            container.innerHTML = `<div style="padding: 0.75rem 1rem; border-radius: 8px; background: ${type === 'success' ? 'var(--tp-success-pale)' : type === 'error' ? 'var(--tp-error-pale)' : 'var(--tp-info-pale)'}; color: ${colors[type]}; font-size: 0.875rem;">${icons[type] || 'ℹ️'} ${message}</div>`;
+            container.innerHTML = `<div style="padding: 0.75rem 1rem; border-radius: 8px; background: ${type === 'success' ? 'var(--tp-success-pale)' : type === 'error' ? 'var(--tp-error-pale)' : 'var(--tp-info-pale)'}; color: ${colors[type]}; font-size: 0.875rem;">${icons[type] || 'ℹ️'} ${escapeHtml(message)}</div>`;
         }
 
         /**
@@ -10142,7 +10241,7 @@
                 link.click();
                 document.body.removeChild(link);
                 setTimeout(() => URL.revokeObjectURL(url), 100);
-                console.log('Archivo descargado:', fileName);
+                _log('Archivo descargado:', fileName);
                 return true;
             } catch (error) {
                 console.error('Error descargando archivo:', error);
@@ -10175,10 +10274,18 @@
                     const tr = result.exports.tramaRegistrados;
                     window._conciliacionExports.trama = tr;
 
-                    filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;">' +
-                        '<span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + tr.fileName + ' (' + tr.count + ' registros)</span>' +
-                        '<button onclick="downloadBase64File(window._conciliacionExports.trama.base64, window._conciliacionExports.trama.fileName, window._conciliacionExports.trama.mimeType)" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8125rem;">⬇️ Descargar</button>' +
-                        '</div>';
+                    const fileDiv = document.createElement('div');
+                    fileDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;';
+                    const fileSpan = document.createElement('span');
+                    fileSpan.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;';
+                    fileSpan.textContent = '📄 ' + (tr.fileName || 'archivo') + ' (' + tr.count + ' registros)';
+                    const dlBtn = document.createElement('button');
+                    dlBtn.style.cssText = 'display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8125rem;';
+                    dlBtn.textContent = '⬇️ Descargar';
+                    dlBtn.onclick = function() { downloadBase64File(window._conciliacionExports.trama.base64, window._conciliacionExports.trama.fileName, window._conciliacionExports.trama.mimeType); };
+                    fileDiv.appendChild(fileSpan);
+                    fileDiv.appendChild(dlBtn);
+                    filesContainer.appendChild(fileDiv);
 
                     // DESCARGA AUTOMÁTICA INMEDIATA
                     setTimeout(() => {
@@ -10191,7 +10298,20 @@
                     //     conciliacionLog('ℹ️ Trama: ' + result.exports.tramaRegistrados.message, 'info');
                 } else if (result.exports.tramaRegistrados && result.exports.tramaRegistrados.url) {
                     // Fallback para compatibilidad con v1
-                    filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;"><span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + (result.exports.tramaRegistrados.fileName || 'Trama_Registrados.xlsx') + '</span><a href="' + result.exports.tramaRegistrados.url + '" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;">⬇️ Abrir</a></div>';
+                    const trFallbackDiv = document.createElement('div');
+                    trFallbackDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;';
+                    const trFallbackSpan = document.createElement('span');
+                    trFallbackSpan.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;';
+                    trFallbackSpan.textContent = '📄 ' + (result.exports.tramaRegistrados.fileName || 'Trama_Registrados.xlsx');
+                    const trFallbackLink = document.createElement('a');
+                    trFallbackLink.href = result.exports.tramaRegistrados.url;
+                    trFallbackLink.target = '_blank';
+                    trFallbackLink.rel = 'noopener noreferrer';
+                    trFallbackLink.style.cssText = 'display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;';
+                    trFallbackLink.textContent = '⬇️ Abrir';
+                    trFallbackDiv.appendChild(trFallbackSpan);
+                    trFallbackDiv.appendChild(trFallbackLink);
+                    filesContainer.appendChild(trFallbackDiv);
                 }
 
                 // ========== ESTADO CUENTA PENDIENTES - DESCARGA DIRECTA ==========
@@ -10199,10 +10319,18 @@
                     const ecp = result.exports.estadoCuentaPendientes;
                     window._conciliacionExports.pendientes = ecp;
 
-                    filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;">' +
-                        '<span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + ecp.fileName + ' (' + ecp.count + ' registros)</span>' +
-                        '<button onclick="downloadBase64File(window._conciliacionExports.pendientes.base64, window._conciliacionExports.pendientes.fileName, window._conciliacionExports.pendientes.mimeType)" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8125rem;">⬇️ Descargar</button>' +
-                        '</div>';
+                    const ecpDiv = document.createElement('div');
+                    ecpDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;';
+                    const ecpSpan = document.createElement('span');
+                    ecpSpan.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;';
+                    ecpSpan.textContent = '📄 ' + (ecp.fileName || 'archivo') + ' (' + ecp.count + ' registros)';
+                    const ecpBtn = document.createElement('button');
+                    ecpBtn.style.cssText = 'display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8125rem;';
+                    ecpBtn.textContent = '⬇️ Descargar';
+                    ecpBtn.onclick = function() { downloadBase64File(window._conciliacionExports.pendientes.base64, window._conciliacionExports.pendientes.fileName, window._conciliacionExports.pendientes.mimeType); };
+                    ecpDiv.appendChild(ecpSpan);
+                    ecpDiv.appendChild(ecpBtn);
+                    filesContainer.appendChild(ecpDiv);
 
                     // DESCARGA AUTOMÁTICA (con delay para no solapar)
                     setTimeout(() => {
@@ -10215,7 +10343,20 @@
                     //     conciliacionLog('ℹ️ Pendientes: ' + result.exports.estadoCuentaPendientes.message, 'info');
                 } else if (result.exports.estadoCuentaPendientes && result.exports.estadoCuentaPendientes.url) {
                     // Fallback para compatibilidad con v1
-                    filesContainer.innerHTML += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;"><span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">📄 ' + (result.exports.estadoCuentaPendientes.fileName || 'Estado_Cuenta_Pendientes.xlsx') + '</span><a href="' + result.exports.estadoCuentaPendientes.url + '" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;">⬇️ Abrir</a></div>';
+                    const ecpFallbackDiv = document.createElement('div');
+                    ecpFallbackDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--tp-surface-overlay); border: 1px solid var(--tp-border-light); border-radius: 8px; margin-bottom: 0.5rem;';
+                    const ecpFallbackSpan = document.createElement('span');
+                    ecpFallbackSpan.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;';
+                    ecpFallbackSpan.textContent = '📄 ' + (result.exports.estadoCuentaPendientes.fileName || 'Estado_Cuenta_Pendientes.xlsx');
+                    const ecpFallbackLink = document.createElement('a');
+                    ecpFallbackLink.href = result.exports.estadoCuentaPendientes.url;
+                    ecpFallbackLink.target = '_blank';
+                    ecpFallbackLink.rel = 'noopener noreferrer';
+                    ecpFallbackLink.style.cssText = 'display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background: var(--tp-primary); color: white; border-radius: 4px; text-decoration: none; font-size: 0.8125rem;';
+                    ecpFallbackLink.textContent = '⬇️ Abrir';
+                    ecpFallbackDiv.appendChild(ecpFallbackSpan);
+                    ecpFallbackDiv.appendChild(ecpFallbackLink);
+                    filesContainer.appendChild(ecpFallbackDiv);
                 }
 
                 // Mensaje si no hay archivos
@@ -10704,7 +10845,7 @@
                 observaciones: observaciones || ''
             };
 
-            console.log('[registrarGestionEmbeddedV4] Payload:', payload);
+            _log('[registrarGestionEmbeddedV4] Payload:', payload);
 
             // Llamada al backend (si google.script está disponible)
             if (typeof google !== 'undefined' && google.script) {

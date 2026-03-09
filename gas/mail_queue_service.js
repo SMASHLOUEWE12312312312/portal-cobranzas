@@ -198,7 +198,7 @@ const MailQueueService = {
 
             const data = sheet.getDataRange().getValues();
             const now = new Date();
-            const resetCount = 0;
+            let resetCount = 0;
             const updates = [];
 
             // Check columns
@@ -272,7 +272,7 @@ function jobProcesarCorreos_() {
     const context = 'jobProcesarCorreos_';
 
     if (!getConfig('FEATURES.MAIL_QUEUE_MODE', false)) {
-        console.log('Mail Queue Mode disabled, skipping job');
+        Logger.log('Mail Queue Mode disabled, skipping job');
         return;
     }
 

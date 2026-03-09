@@ -1271,6 +1271,21 @@
             </style>
 
             <script>
+                // ========== DEBUG LOG GATE ==========
+                const _DEBUG = false;
+                function _log(...args) { if (_DEBUG) console.log(...args); }
+
+                // ========== SECURITY: HTML escape utility ==========
+                function _esc(str) {
+                    if (!str || typeof str !== 'string') return '';
+                    return str
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#x27;');
+                }
+
                 // ========== UTILS ==========
                 function normalizeText(text) {
                     return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -1328,7 +1343,7 @@
                     const time = new Date().toLocaleTimeString();
                     const logDiv = document.getElementById('debugLog');
 
-                    console.log(`[${time}] ${message}`, data || '');
+                    _log(`[${time}] ${message}`, data || '');
 
                     if (logDiv) {
                         const entry = document.createElement('div');
@@ -1458,10 +1473,19 @@
                             if (gruposData && gruposData.ok) STATE.grupos = gruposData.data || [];
 
                             const select = document.getElementById('templateSelect');
+                            select.innerHTML = '';
                             if (templatesRes && templatesRes.ok && templatesRes.data && templatesRes.data.length > 0) {
-                                select.innerHTML = templatesRes.data.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+                                templatesRes.data.forEach(t => {
+                                    const opt = document.createElement('option');
+                                    opt.value = t.id;
+                                    opt.textContent = t.name;
+                                    select.appendChild(opt);
+                                });
                             } else {
-                                select.innerHTML = '<option value="REGULAR">Regular (Default)</option>';
+                                const opt = document.createElement('option');
+                                opt.value = 'REGULAR';
+                                opt.textContent = 'Regular (Default)';
+                                select.appendChild(opt);
                             }
 
                             updateWizardUI();
@@ -1515,15 +1539,32 @@
                         return;
                     }
 
-                    const html = visibleItems.map(item => `
-                <div class="list-item ${STATE.selectedMap.has(item.id) ? 'selected' : ''}" onclick="toggleItem('${item.id.replace(/'/g, "\\'")}')">
-                    <input type="checkbox" ${STATE.selectedMap.has(item.id) ? 'checked' : ''} readonly>
-                    <span class="item-label" title="${item.label}">${item.label}</span>
-                    <span class="item-type ${item.type}">${item.type === 'grupo' ? 'GRUPO' : 'EMP'}</span>
-                </div>
-            `).join('');
+                    container.innerHTML = '';
+                    visibleItems.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'list-item' + (STATE.selectedMap.has(item.id) ? ' selected' : '');
+                        div.setAttribute('data-item-id', item.id);
+                        div.onclick = function() { toggleItem(this.dataset.itemId); };
 
-                    container.innerHTML = html;
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.checked = STATE.selectedMap.has(item.id);
+                        cb.readOnly = true;
+                        div.appendChild(cb);
+
+                        const label = document.createElement('span');
+                        label.className = 'item-label';
+                        label.title = item.label;
+                        label.textContent = item.label;
+                        div.appendChild(label);
+
+                        const badge = document.createElement('span');
+                        badge.className = 'item-type ' + item.type;
+                        badge.textContent = item.type === 'grupo' ? 'GRUPO' : 'EMP';
+                        div.appendChild(badge);
+
+                        container.appendChild(div);
+                    });
 
                     // Load More Button
                     if (STATE.sendMode === 'perEmpresa' && STATE.pagination.hasMore) {
@@ -1719,15 +1760,16 @@
                         const statusText = { pending: 'Pendiente', approved: 'Aprobado', excluded: 'Excluido' }[item.status];
                         const typeBadge = item.type === 'grupo' ? '<span class="status-badge" style="background:#E8EAF6;color:#3F51B5">GRUPO</span>' : '';
 
+                        const safeId = _esc(item.aseguradoId);
                         html += `
                 <div class="preview-item">
                     <div class="preview-item-header">
-                        <div class="preview-item-name">${item.aseguradoId} ${typeBadge}</div>
+                        <div class="preview-item-name">${safeId} ${typeBadge}</div>
                         <span class="status-badge ${statusClass}">${statusText}</span>
                     </div>
                     <div class="btn-group" style="margin-top: 8px;">
-                        ${item.status !== 'approved' ? `<button class="btn btn-primary" onclick="approveItem('${item.aseguradoId.replace(/'/g, "\\'")}')">✅ Aprobar</button>` : ''}
-                        ${item.status !== 'excluded' ? `<button class="btn btn-secondary" onclick="excludeItem('${item.aseguradoId.replace(/'/g, "\\'")}')">❌ Excluir</button>` : ''}
+                        ${item.status !== 'approved' ? `<button class="btn btn-primary" data-asegurado-id="${safeId}" onclick="approveItem(this.dataset.aseguradoId)">✅ Aprobar</button>` : ''}
+                        ${item.status !== 'excluded' ? `<button class="btn btn-secondary" data-asegurado-id="${safeId}" onclick="excludeItem(this.dataset.aseguradoId)">❌ Excluir</button>` : ''}
                     </div>
                 </div>
                 `;
@@ -1787,10 +1829,10 @@
                         html += `
                     <div class="preview-item" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between;">
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
-                            <input type="checkbox" ${item.approved ? 'checked' : ''} onchange="toggleApproval('${item.id}', this.checked)" style="width: 16px; height: 16px;">
-                            <span style="font-weight: 500;">${item.label}</span>
+                            <input type="checkbox" ${item.approved ? 'checked' : ''} onchange="toggleApproval('${_esc(item.id)}', this.checked)" style="width: 16px; height: 16px;">
+                            <span style="font-weight: 500;">${_esc(item.label)}</span>
                         </label>
-                        <span class="status-badge status-pending" id="status-${item.id}">Pendiente</span>
+                        <span class="status-badge status-pending" id="status-${_esc(item.id)}">Pendiente</span>
                     </div>`;
                     });
                     html += '</div>';
@@ -2140,7 +2182,7 @@
                         return true;
                     });
 
-                    console.log('[SEND] Total items:', approved.length, '| Únicos:', uniqueApproved.length);
+                    _log('[SEND] Total items:', approved.length, '| Únicos:', uniqueApproved.length);
 
                     if (uniqueApproved.length === 0) {
                         alert('No hay destinatarios únicos para enviar');
