@@ -1271,6 +1271,8 @@
             </style>
 
             <script>
+            (function() {
+                // IIFE: isolate scope to prevent redeclaration errors on re-injection
                 // _DEBUG and _log are inherited from index.html global scope
 
                 // ========== SECURITY: HTML escape utility ==========
@@ -2361,6 +2363,7 @@
 
                 // Exponer globalmente para ser llamado desde index.html
                 window.initDrawer = initDrawer;
+            })();
             </script>
         </div><!-- Fin app-wrapper -->
 </body>
