@@ -4,36 +4,48 @@
  */
 
 /**
+ * Busca columna por nombre en columnMap (normalizado)
+ * @param {Object} columnMap - Mapa de columnas normalizadas
+ * @param {string} name - Nombre de columna a buscar
+ * @return {number|undefined} Índice de la columna
+ */
+function _findCol(columnMap, name) {
+  // normalizeHeader: uppercase, NFD strip, replace _/spaces with single space
+  var normalized = String(name).toUpperCase().replace(/[_\s]+/g, ' ').trim();
+  return columnMap[normalized];
+}
+
+/**
  * Genera reporte de Saldos a Favor y Ajustes
  * Registros con IMPORTE negativo, cero o vacío
  * @return {Object} { ok, data: { base64, fileName, filas } }
  */
 function generarReporteSaldos() {
-  const context = 'generarReporteSaldos';
+  var context = 'generarReporteSaldos';
   try {
-    const sheetName = getConfig('SHEETS.BASE', 'BD');
-    const { headers, rows, columnMap } = SheetsIO.readSheet(sheetName);
+    var sheetName = getConfig('SHEETS.BASE', 'BD');
+    var sheetData = SheetsIO.readSheet(sheetName);
+    var headers = sheetData.headers;
+    var rows = sheetData.rows;
+    var columnMap = sheetData.columnMap;
 
-    const importeCol = columnMap['IMPORTE'];
+    var importeCol = _findCol(columnMap, 'IMPORTE');
     if (importeCol === undefined) {
       return { ok: false, error: 'Columna IMPORTE no encontrada en BD' };
     }
 
     // Filtrar: importe negativo, cero o vacío
-    const filtered = rows.filter(row => {
-      const val = row[importeCol];
+    var filtered = rows.filter(function(row) {
+      var val = row[importeCol];
       if (val === null || val === undefined || val === '') return true;
-      const num = Number(val);
+      var num = Number(val);
       return !isNaN(num) && num <= 0;
     });
 
-    // Construir data con headers + rows filtrados
-    const data = [headers, ...filtered];
+    var timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
+    var fileName = 'Reporte de Saldos a Favor y Ajustes_' + timestamp + '.xlsx';
 
-    const timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
-    const fileName = 'Reporte de Saldos a Favor y Ajustes_' + timestamp + '.xlsx';
-
-    const result = _generarXLSXReporte(data, 'Saldos a Favor', fileName);
+    var result = _generarXLSXReporte([headers].concat(filtered), 'Saldos a Favor', fileName);
     result.filas = filtered.length;
 
     Logger.log('[' + context + '] OK: ' + filtered.length + ' registros');
@@ -47,38 +59,43 @@ function generarReporteSaldos() {
 
 /**
  * Genera reporte de Vencidos +60 Días sin Cobertura
- * Cupones con FEC_VENCIMIENTO_COB > 60 días atrás
+ * Cupones con FEC_VENCIMIENTO COB > 60 días atrás (columna J en BD)
  * @return {Object} { ok, data: { base64, fileName, filas } }
  */
 function generarReporteVencidos60() {
-  const context = 'generarReporteVencidos60';
+  var context = 'generarReporteVencidos60';
   try {
-    const sheetName = getConfig('SHEETS.BASE', 'BD');
-    const { headers, rows, columnMap } = SheetsIO.readSheet(sheetName);
+    var sheetName = getConfig('SHEETS.BASE', 'BD');
+    var sheetData = SheetsIO.readSheet(sheetName);
+    var headers = sheetData.headers;
+    var rows = sheetData.rows;
+    var columnMap = sheetData.columnMap;
 
-    const fecVencCol = columnMap['FEC_VENCIMIENTO_COB'] || columnMap['FEC_VENCIMIENTO COB'];
+    // La columna se llama "FEC_VENCIMIENTO COB" en la hoja (col J)
+    // normalizeHeader la convierte a "FEC VENCIMIENTO COB"
+    var fecVencCol = _findCol(columnMap, 'FEC_VENCIMIENTO COB');
     if (fecVencCol === undefined) {
-      return { ok: false, error: 'Columna FEC_VENCIMIENTO COB no encontrada en BD' };
+      // Fallback: columna J (índice 9)
+      fecVencCol = 9;
+      Logger.log('[' + context + '] Columna no encontrada por nombre, usando col J (idx 9)');
     }
 
-    const today = new Date();
+    var today = new Date();
     today.setHours(0, 0, 0, 0);
-    const cutoffMs = 60 * 24 * 60 * 60 * 1000; // 60 días en ms
+    var cutoffMs = 60 * 24 * 60 * 60 * 1000; // 60 días en ms
 
     // Filtrar: vencidos hace más de 60 días
-    const filtered = rows.filter(row => {
-      const val = row[fecVencCol];
+    var filtered = rows.filter(function(row) {
+      var val = row[fecVencCol];
       if (!val || !(val instanceof Date) || isNaN(val.getTime())) return false;
-      const diffMs = today.getTime() - val.getTime();
+      var diffMs = today.getTime() - val.getTime();
       return diffMs > cutoffMs;
     });
 
-    const data = [headers, ...filtered];
+    var timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
+    var fileName = 'Reporte de Cupones Vencidos +60 Dias sin Cobertura_' + timestamp + '.xlsx';
 
-    const timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
-    const fileName = 'Reporte de Cupones Vencidos +60 Dias sin Cobertura_' + timestamp + '.xlsx';
-
-    const result = _generarXLSXReporte(data, 'Vencidos +60', fileName);
+    var result = _generarXLSXReporte([headers].concat(filtered), 'Vencidos +60', fileName);
     result.filas = filtered.length;
 
     Logger.log('[' + context + '] OK: ' + filtered.length + ' registros');
@@ -91,53 +108,49 @@ function generarReporteVencidos60() {
 }
 
 /**
- * Genera XLSX desde array de datos usando SheetJS o fallback
+ * Genera XLSX usando SpreadsheetApp temporal y retorna base64
  * @param {Array[]} data - Array de arrays [headers, ...rows]
  * @param {string} sheetName - Nombre de la hoja
  * @param {string} fileName - Nombre del archivo
  * @return {Object} { base64, fileName }
  */
 function _generarXLSXReporte(data, sheetName, fileName) {
-  // Intentar con SheetJS primero
-  if (typeof XLSX !== 'undefined') {
-    var wb = XLSX.utils.book_new();
-    var ws = XLSX.utils.aoa_to_sheet(data, { cellDates: true });
-
-    // Auto-width columnas
-    var numCols = data[0] ? data[0].length : 0;
-    var colWidths = [];
-    for (var c = 0; c < numCols; c++) {
-      var maxLen = 10;
-      for (var r = 0; r < Math.min(data.length, 100); r++) {
-        var cellVal = data[r][c];
-        var strVal = cellVal instanceof Date ? '00/00/0000' : String(cellVal || '');
-        maxLen = Math.max(maxLen, strVal.length);
-      }
-      colWidths.push({ wch: Math.min(maxLen + 2, 50) });
-    }
-    ws['!cols'] = colWidths;
-
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    var xlsxArray = XLSX.write(wb, { type: 'array', bookType: 'xlsx', cellDates: true });
-    var base64 = Utilities.base64Encode(xlsxArray);
-
-    return { base64: base64, fileName: fileName };
-  }
-
-  // Fallback: crear SpreadsheetApp temporal
+  // Crear spreadsheet temporal
   var tempSS = SpreadsheetApp.create(fileName);
   var sheet = tempSS.getActiveSheet();
   sheet.setName(sheetName);
 
-  if (data.length > 0) {
-    sheet.getRange(1, 1, 1, data[0].length).setValues([data[0]]).setFontWeight('bold');
+  if (data.length > 0 && data[0].length > 0) {
+    // Headers con formato
+    sheet.getRange(1, 1, 1, data[0].length)
+      .setValues([data[0]])
+      .setFontWeight('bold')
+      .setBackground('#D32F2F')
+      .setFontColor('white');
+
+    // Data rows
     if (data.length > 1) {
-      sheet.getRange(2, 1, data.length - 1, data[0].length).setValues(data.slice(1));
+      sheet.getRange(2, 1, data.length - 1, data[0].length)
+        .setValues(data.slice(1));
     }
+
+    // Auto-resize columnas (max 26 para no exceder timeout)
+    var colCount = Math.min(data[0].length, 26);
+    for (var i = 1; i <= colCount; i++) {
+      sheet.autoResizeColumn(i);
+    }
+
+    // Filtro automático
+    sheet.getRange(1, 1, data.length, data[0].length).createFilter();
   }
 
+  SpreadsheetApp.flush();
+
+  // Obtener como blob y convertir a base64
   var blob = tempSS.getBlob().setName(fileName);
   var base64 = Utilities.base64Encode(blob.getBytes());
+
+  // Limpiar archivo temporal
   DriveApp.getFileById(tempSS.getId()).setTrashed(true);
 
   return { base64: base64, fileName: fileName };
