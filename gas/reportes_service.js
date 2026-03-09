@@ -108,7 +108,7 @@ function generarReporteVencidos60() {
 }
 
 /**
- * Genera XLSX usando SpreadsheetApp temporal y retorna base64
+ * Genera XLSX usando SpreadsheetApp temporal + export via Drive API
  * @param {Array[]} data - Array de arrays [headers, ...rows]
  * @param {string} sheetName - Nombre de la hoja
  * @param {string} fileName - Nombre del archivo
@@ -117,6 +117,7 @@ function generarReporteVencidos60() {
 function _generarXLSXReporte(data, sheetName, fileName) {
   // Crear spreadsheet temporal
   var tempSS = SpreadsheetApp.create(fileName);
+  var ssId = tempSS.getId();
   var sheet = tempSS.getActiveSheet();
   sheet.setName(sheetName);
 
@@ -146,12 +147,22 @@ function _generarXLSXReporte(data, sheetName, fileName) {
 
   SpreadsheetApp.flush();
 
-  // Obtener como blob y convertir a base64
-  var blob = tempSS.getBlob().setName(fileName);
-  var base64 = Utilities.base64Encode(blob.getBytes());
+  // Exportar como XLSX real via Drive API
+  var exportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId + '/export?format=xlsx';
+  var response = UrlFetchApp.fetch(exportUrl, {
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true
+  });
+
+  if (response.getResponseCode() !== 200) {
+    DriveApp.getFileById(ssId).setTrashed(true);
+    throw new Error('Error exportando XLSX: HTTP ' + response.getResponseCode());
+  }
+
+  var base64 = Utilities.base64Encode(response.getContent());
 
   // Limpiar archivo temporal
-  DriveApp.getFileById(tempSS.getId()).setTrashed(true);
+  DriveApp.getFileById(ssId).setTrashed(true);
 
   return { base64: base64, fileName: fileName };
 }
