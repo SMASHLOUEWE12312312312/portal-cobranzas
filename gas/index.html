@@ -10263,15 +10263,29 @@
 
         // ========== REPORTES MODULE ==========
 
+        // Wrapper con timeout extendido para reportes pesados (120s)
+        function runGasLong(fnName, ...args) {
+            const TIMEOUT_MS = 120000;
+            return new Promise((resolve, reject) => {
+                let settled = false;
+                const timer = setTimeout(() => {
+                    if (!settled) { settled = true; reject(new Error('Timeout: ' + fnName + ' tardó más de 120s')); }
+                }, TIMEOUT_MS);
+                google.script.run
+                    .withSuccessHandler(result => { if (!settled) { settled = true; clearTimeout(timer); resolve(result); } })
+                    .withFailureHandler(error => { if (!settled) { settled = true; clearTimeout(timer); reject(error); } })[fnName](...args);
+            });
+        }
+
         async function descargarReporteSaldos() {
             const btn = document.getElementById('btnReporteSaldos');
             const status = document.getElementById('statusReporteSaldos');
             btn.disabled = true;
             btn.textContent = 'Generando...';
-            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte, por favor espere...</span>';
+            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte, esto puede tomar hasta 1 minuto...</span>';
 
             try {
-                const result = await runGas('generarReporteSaldos');
+                const result = await runGasLong('generarReporteSaldos');
                 if (result && result.ok) {
                     downloadBase64File(result.data.base64, result.data.fileName,
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -10295,10 +10309,10 @@
             const status = document.getElementById('statusReporteVencidos');
             btn.disabled = true;
             btn.textContent = 'Generando...';
-            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte, por favor espere...</span>';
+            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte, esto puede tomar hasta 1 minuto...</span>';
 
             try {
-                const result = await runGas('generarReporteVencidos60');
+                const result = await runGasLong('generarReporteVencidos60');
                 if (result && result.ok) {
                     downloadBase64File(result.data.base64, result.data.fileName,
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

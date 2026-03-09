@@ -2,16 +2,19 @@
  * @fileoverview Servicio de generación de reportes Excel
  * Módulo Reportes: Saldos a Favor y Vencidos +60 días
  *
- * Estrategia: Copia la hoja BD con todo su formato original,
- * luego elimina las filas que NO cumplen el filtro.
- * Así se preservan formatos de número, colores, anchos de columna, etc.
+ * Estrategia optimizada:
+ * 1. Copia hoja BD (preserva formato de header + estructura)
+ * 2. Lee todos los datos en memoria
+ * 3. Borra TODAS las filas de datos de un golpe
+ * 4. Pega solo las filas filtradas
+ * 5. Exporta como XLSX via Drive API
  */
 
 /**
- * Busca índice de columna por nombre en headers (1-indexed para Sheets)
- * @param {string[]} headers - Headers de la hoja
- * @param {string} name - Nombre a buscar
- * @return {number} Índice 0-based, o -1 si no se encuentra
+ * Busca índice de columna por nombre en headers
+ * @param {string[]} headers
+ * @param {string} name
+ * @return {number} Índice 0-based, o -1
  */
 function _findColIdx(headers, name) {
   var target = String(name).toUpperCase().replace(/[_\s]+/g, ' ').trim();
@@ -23,38 +26,62 @@ function _findColIdx(headers, name) {
 }
 
 /**
- * Copia la hoja BD a un spreadsheet temporal preservando todo el formato
- * @param {string} sheetName - Nombre de la hoja a copiar
- * @return {Object} { tempSS, sheet, ssId }
+ * Copia hoja BD, reemplaza datos con filas filtradas, exporta XLSX
+ * @param {Array[]} filteredRows - Filas filtradas (valores crudos)
+ * @param {string} tabName - Nombre de la pestaña en el Excel
+ * @param {string} fileName - Nombre del archivo descargable
+ * @return {Object} { base64, fileName, filas }
  */
-function _copiarHojaBD(sheetName) {
+function _generarReporteDesdeHojaBD(filteredRows, tabName, fileName) {
+  var sheetName = getConfig('SHEETS.BASE', 'BD');
   var ss = SheetsIO._getSpreadsheet();
   var srcSheet = ss.getSheetByName(sheetName);
   if (!srcSheet) throw new Error('Hoja "' + sheetName + '" no encontrada');
 
-  // Crear spreadsheet temporal y copiar la hoja BD completa (con formato)
+  // 1. Crear temp SS y copiar hoja BD con formato
   var tempSS = SpreadsheetApp.create('temp_reporte');
+  var ssId = tempSS.getId();
   var copied = srcSheet.copyTo(tempSS);
-  copied.setName(sheetName);
+  copied.setName(tabName);
 
-  // Eliminar la hoja vacía por defecto
-  var defaultSheet = tempSS.getSheetByName('Sheet1') || tempSS.getSheetByName('Hoja 1');
-  if (defaultSheet && tempSS.getSheets().length > 1) {
-    tempSS.deleteSheet(defaultSheet);
+  // Eliminar hoja por defecto
+  var sheets = tempSS.getSheets();
+  for (var s = 0; s < sheets.length; s++) {
+    if (sheets[s].getSheetId() !== copied.getSheetId()) {
+      tempSS.deleteSheet(sheets[s]);
+      break;
+    }
   }
 
-  return { tempSS: tempSS, sheet: copied, ssId: tempSS.getId() };
-}
+  // 2. Borrar TODAS las filas de datos de un golpe
+  var startRow = getConfig('BD.START_ROW', 2);
+  var lastRow = copied.getLastRow();
+  var dataRowCount = lastRow - startRow + 1;
 
-/**
- * Exporta spreadsheet temporal como XLSX y retorna base64
- * @param {string} ssId - ID del spreadsheet temporal
- * @param {string} fileName - Nombre del archivo
- * @return {Object} { base64, fileName }
- */
-function _exportarYLimpiar(ssId, fileName) {
+  if (dataRowCount > 0) {
+    copied.deleteRows(startRow, dataRowCount);
+  }
+
+  // 3. Insertar filas filtradas
+  if (filteredRows.length > 0) {
+    var numCols = copied.getLastColumn();
+    // Asegurar que las filas tienen el ancho correcto
+    var normalizedRows = filteredRows.map(function(row) {
+      var r = row.slice(0, numCols);
+      while (r.length < numCols) r.push('');
+      return r;
+    });
+    // Insertar filas vacías si es necesario
+    if (filteredRows.length > 1) {
+      copied.insertRowsAfter(startRow, filteredRows.length - 1);
+    }
+    copied.getRange(startRow, 1, normalizedRows.length, numCols)
+      .setValues(normalizedRows);
+  }
+
   SpreadsheetApp.flush();
 
+  // 4. Exportar como XLSX
   var exportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId + '/export?format=xlsx';
   var response = UrlFetchApp.fetch(exportUrl, {
     headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
@@ -69,7 +96,7 @@ function _exportarYLimpiar(ssId, fileName) {
   var base64 = Utilities.base64Encode(response.getContent());
   DriveApp.getFileById(ssId).setTrashed(true);
 
-  return { base64: base64, fileName: fileName };
+  return { base64: base64, fileName: fileName, filas: filteredRows.length };
 }
 
 /**
@@ -79,67 +106,26 @@ function _exportarYLimpiar(ssId, fileName) {
 function generarReporteSaldos() {
   var context = 'generarReporteSaldos';
   try {
-    var sheetName = getConfig('SHEETS.BASE', 'BD');
+    var sheetData = SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
+    var headers = sheetData.headers;
+    var rows = sheetData.rows;
 
-    // 1. Copiar hoja BD con formato
-    var copy = _copiarHojaBD(sheetName);
-    var sheet = copy.sheet;
-
-    // 2. Leer headers para encontrar columna IMPORTE
-    var headerRow = getConfig('BD.HEADER_ROW', 1);
-    var startRow = getConfig('BD.START_ROW', 2);
-    var lastRow = sheet.getLastRow();
-    var lastCol = sheet.getLastColumn();
-
-    var headers = sheet.getRange(headerRow, 1, 1, lastCol).getValues()[0];
     var importeIdx = _findColIdx(headers, 'IMPORTE');
-    if (importeIdx === -1) {
-      DriveApp.getFileById(copy.ssId).setTrashed(true);
-      return { ok: false, error: 'Columna IMPORTE no encontrada en BD' };
-    }
+    if (importeIdx === -1) return { ok: false, error: 'Columna IMPORTE no encontrada en BD' };
 
-    // 3. Leer valores de IMPORTE y determinar qué filas ELIMINAR
-    var dataRows = lastRow - startRow + 1;
-    if (dataRows <= 0) {
-      DriveApp.getFileById(copy.ssId).setTrashed(true);
-      return { ok: true, data: { base64: '', fileName: '', filas: 0 } };
-    }
+    var filtered = rows.filter(function(row) {
+      var val = row[importeIdx];
+      if (val === null || val === undefined || val === '') return true;
+      var num = Number(val);
+      return !isNaN(num) && num <= 0;
+    });
 
-    var importeValues = sheet.getRange(startRow, importeIdx + 1, dataRows, 1).getValues();
-
-    // Recopilar filas a eliminar (de abajo hacia arriba para no alterar índices)
-    var rowsToDelete = [];
-    for (var i = 0; i < importeValues.length; i++) {
-      var val = importeValues[i][0];
-      var keep = false;
-      if (val === null || val === undefined || val === '') {
-        keep = true; // vacío → incluir
-      } else {
-        var num = Number(val);
-        keep = !isNaN(num) && num <= 0; // negativo o cero → incluir
-      }
-      if (!keep) {
-        rowsToDelete.push(startRow + i); // fila 1-indexed
-      }
-    }
-
-    // 4. Eliminar filas de abajo hacia arriba
-    for (var j = rowsToDelete.length - 1; j >= 0; j--) {
-      sheet.deleteRow(rowsToDelete[j]);
-    }
-
-    var filas = dataRows - rowsToDelete.length;
-
-    // 5. Renombrar hoja
-    sheet.setName('Saldos a Favor');
-
-    // 6. Exportar
     var timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
     var fileName = 'Reporte de Saldos a Favor y Ajustes_' + timestamp + '.xlsx';
-    var result = _exportarYLimpiar(copy.ssId, fileName);
-    result.filas = filas;
 
-    Logger.log('[' + context + '] OK: ' + filas + ' registros');
+    var result = _generarReporteDesdeHojaBD(filtered, 'Saldos a Favor', fileName);
+
+    Logger.log('[' + context + '] OK: ' + result.filas + ' registros');
     return { ok: true, data: result };
 
   } catch (error) {
@@ -155,75 +141,35 @@ function generarReporteSaldos() {
 function generarReporteVencidos60() {
   var context = 'generarReporteVencidos60';
   try {
-    var sheetName = getConfig('SHEETS.BASE', 'BD');
-
-    // 1. Copiar hoja BD con formato
-    var copy = _copiarHojaBD(sheetName);
-    var sheet = copy.sheet;
-
-    // 2. Leer headers
-    var headerRow = getConfig('BD.HEADER_ROW', 1);
-    var startRow = getConfig('BD.START_ROW', 2);
-    var lastRow = sheet.getLastRow();
-    var lastCol = sheet.getLastColumn();
-
-    var headers = sheet.getRange(headerRow, 1, 1, lastCol).getValues()[0];
+    var sheetData = SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
+    var headers = sheetData.headers;
+    var rows = sheetData.rows;
 
     var fecVencIdx = _findColIdx(headers, 'FEC_VENCIMIENTO COB');
-    if (fecVencIdx === -1) fecVencIdx = 9; // Fallback: col J (idx 9)
+    if (fecVencIdx === -1) fecVencIdx = 9;
 
     var importeIdx = _findColIdx(headers, 'IMPORTE');
-    if (importeIdx === -1) importeIdx = 11; // Fallback: col L (idx 11)
-
-    // 3. Leer valores de ambas columnas
-    var dataRows = lastRow - startRow + 1;
-    if (dataRows <= 0) {
-      DriveApp.getFileById(copy.ssId).setTrashed(true);
-      return { ok: true, data: { base64: '', fileName: '', filas: 0 } };
-    }
-
-    // Leer todas las filas de datos para evaluar
-    var allData = sheet.getRange(startRow, 1, dataRows, lastCol).getValues();
+    if (importeIdx === -1) importeIdx = 11;
 
     var today = new Date();
     today.setHours(0, 0, 0, 0);
     var cutoffMs = 60 * 24 * 60 * 60 * 1000;
 
-    // Determinar filas a eliminar
-    var rowsToDelete = [];
-    for (var i = 0; i < allData.length; i++) {
-      var importe = Number(allData[i][importeIdx]);
-      var fecVenc = allData[i][fecVencIdx];
+    var filtered = rows.filter(function(row) {
+      var importe = Number(row[importeIdx]);
+      if (isNaN(importe) || importe <= 0) return false;
 
-      var keep = false;
-      if (!isNaN(importe) && importe > 0 &&
-          fecVenc instanceof Date && !isNaN(fecVenc.getTime())) {
-        var diffMs = today.getTime() - fecVenc.getTime();
-        keep = diffMs > cutoffMs;
-      }
+      var fecVenc = row[fecVencIdx];
+      if (!fecVenc || !(fecVenc instanceof Date) || isNaN(fecVenc.getTime())) return false;
+      return (today.getTime() - fecVenc.getTime()) > cutoffMs;
+    });
 
-      if (!keep) {
-        rowsToDelete.push(startRow + i);
-      }
-    }
-
-    // 4. Eliminar filas de abajo hacia arriba
-    for (var j = rowsToDelete.length - 1; j >= 0; j--) {
-      sheet.deleteRow(rowsToDelete[j]);
-    }
-
-    var filas = dataRows - rowsToDelete.length;
-
-    // 5. Renombrar hoja
-    sheet.setName('Vencidos +60');
-
-    // 6. Exportar
     var timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
     var fileName = 'Reporte de Cupones Vencidos +60 Dias sin Cobertura_' + timestamp + '.xlsx';
-    var result = _exportarYLimpiar(copy.ssId, fileName);
-    result.filas = filas;
 
-    Logger.log('[' + context + '] OK: ' + filas + ' registros');
+    var result = _generarReporteDesdeHojaBD(filtered, 'Vencidos +60', fileName);
+
+    Logger.log('[' + context + '] OK: ' + result.filas + ' registros');
     return { ok: true, data: result };
 
   } catch (error) {
