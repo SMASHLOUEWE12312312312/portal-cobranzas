@@ -1271,9 +1271,7 @@
             </style>
 
             <script>
-                // ========== DEBUG LOG GATE ==========
-                const _DEBUG = false;
-                function _log(...args) { if (_DEBUG) console.log(...args); }
+                // _DEBUG and _log are inherited from index.html global scope
 
                 // ========== SECURITY: HTML escape utility ==========
                 function _esc(str) {
