@@ -6,10 +6,25 @@ import { useRouter, useSearchParams } from 'next/navigation';
 /**
  * Login Form Component (wrapped in Suspense)
  */
+/**
+ * Validate redirect URL to prevent open redirect attacks
+ * Only allow internal paths starting with /
+ */
+function getSafeRedirect(url: string | null): string {
+    if (!url || !url.startsWith('/') || url.startsWith('//') || url.includes(':')) {
+        return '/dashboard';
+    }
+    // Block redirect to API routes
+    if (url.startsWith('/api/')) {
+        return '/dashboard';
+    }
+    return url;
+}
+
 function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const redirectTo = searchParams.get('from') || '/dashboard';
+    const redirectTo = getSafeRedirect(searchParams.get('from'));
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');

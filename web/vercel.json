@@ -11,7 +11,8 @@
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.powerbi.com https://*.powerbi.com https://*.msecnd.net https://vercel.live; style-src 'self' 'unsafe-inline' https://app.powerbi.com https://*.powerbi.com; img-src 'self' data: blob: https: http:; font-src 'self' data: https://*.powerbi.com https://*.msecnd.net; connect-src 'self' https://script.google.com https://app.powerbi.com https://*.powerbi.com https://*.analysis.windows.net https://*.microsoftonline.com wss://*.powerbi.com https://vercel.live; frame-src 'self' https://app.powerbi.com https://*.powerbi.com; child-src 'self' https://app.powerbi.com https://*.powerbi.com blob:; worker-src 'self' blob:; frame-ancestors 'self'; form-action 'self'; base-uri 'self'" }
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://app.powerbi.com https://*.powerbi.com https://*.msecnd.net https://vercel.live https://*.vercel.live; style-src 'self' 'unsafe-inline' https://app.powerbi.com https://*.powerbi.com; img-src 'self' data: blob: https: http:; font-src 'self' data: https://*.powerbi.com https://*.msecnd.net; connect-src 'self' https://script.google.com https://app.powerbi.com https://*.powerbi.com https://*.analysis.windows.net https://*.microsoftonline.com wss://*.powerbi.com https://vercel.live wss://vercel.live; frame-src 'self' https://app.powerbi.com https://*.powerbi.com; child-src 'self' https://app.powerbi.com https://*.powerbi.com blob:; worker-src 'self' blob:; frame-ancestors 'self'; form-action 'self'; base-uri 'self'" }
       ]
     },
     {
@@ -20,7 +21,10 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "Cache-Control", "value": "no-store, max-age=0" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+        { "key": "X-Permitted-Cross-Domain-Policies", "value": "none" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" }
       ]
     }
   ]

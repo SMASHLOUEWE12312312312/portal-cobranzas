@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 interface Ciclo {
     idCiclo: string;
@@ -106,8 +106,14 @@ export default function BitacoraPage() {
         loadAsegurados();
     }, []);
 
+    // Debounce filter changes to avoid rapid API calls
+    const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
-        loadBitacora();
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(() => {
+            loadBitacora();
+        }, 300);
+        return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
     }, [filters, page]);
 
     // Calcular KPIs desde los ciclos
@@ -319,9 +325,12 @@ export default function BitacoraPage() {
         }).format(value);
     }
 
-    const filteredAsegurados = asegurados.filter(a =>
-        a.toLowerCase().includes(searchAsegurado.toLowerCase())
-    ).slice(0, 50);
+    const filteredAsegurados = useMemo(() =>
+        asegurados.filter(a =>
+            a.toLowerCase().includes(searchAsegurado.toLowerCase())
+        ).slice(0, 50),
+        [asegurados, searchAsegurado]
+    );
 
     return (
         <div className="space-y-6">
@@ -538,8 +547,9 @@ export default function BitacoraPage() {
                                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                         {ciclos.length === 0 ? (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                                                    No se encontraron ciclos
+                                                <td colSpan={7} className="px-4 py-12 text-center">
+                                                    <p className="text-lg text-gray-400 dark:text-gray-500">No hay ciclos que mostrar</p>
+                                                    <p className="text-sm text-gray-400 dark:text-gray-600 mt-1">Intente ajustar los filtros o realizar una búsqueda diferente</p>
                                                 </td>
                                             </tr>
                                         ) : (

@@ -32,10 +32,10 @@ export async function GET(request: Request) {
             }, { status: 403 });
         }
 
-        // Parse query params
+        // Parse query params with bounds validation
         const { searchParams } = new URL(request.url);
-        const page = parseInt(searchParams.get('page') || '1', 10);
-        const pageSize = parseInt(searchParams.get('pageSize') || '25', 10);
+        const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+        const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '25', 10) || 25));
 
         // Build filters
         const filters: BitacoraFilters = {};
@@ -145,13 +145,33 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        // Sanitize text fields (XSS prevention)
-        const sanitize = (str: string) => str.replace(/[<>"']/g, '').trim();
+        // Sanitize text fields - strip HTML tags and control chars, limit length
+        const sanitize = (str: string, maxLen = 500) =>
+            str.replace(/<[^>]*>/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim().slice(0, maxLen);
+
+        // Validate enum fields against known values
+        const validTipos: string[] = ['ENVIO_EECC', 'LLAMADA', 'WHATSAPP', 'CORREO_INDIVIDUAL', 'REUNION', 'OTRO'];
+        const validEstados: string[] = ['SIN_RESPUESTA', 'EN_SEGUIMIENTO', 'COMPROMISO_PAGO', 'REPROGRAMADO',
+            'DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES', 'CERRADO_PAGADO', 'NO_COBRABLE', 'NO_CONTACTABLE'];
+
+        if (!validTipos.includes(body.tipoGestion)) {
+            return NextResponse.json({
+                ok: false, correlationId,
+                error: { code: 'VALIDATION_ERROR', message: 'Tipo de gestión inválido' },
+            }, { status: 400 });
+        }
+        if (!validEstados.includes(body.estadoGestion)) {
+            return NextResponse.json({
+                ok: false, correlationId,
+                error: { code: 'VALIDATION_ERROR', message: 'Estado de gestión inválido' },
+            }, { status: 400 });
+        }
+
         const sanitizedPayload: GestionInput = {
             ...body,
-            asegurado: sanitize(body.asegurado),
-            observaciones: body.observaciones ? sanitize(body.observaciones) : undefined,
-            proximaAccion: body.proximaAccion ? sanitize(body.proximaAccion) : undefined,
+            asegurado: sanitize(body.asegurado, 200),
+            observaciones: body.observaciones ? sanitize(body.observaciones, 1000) : undefined,
+            proximaAccion: body.proximaAccion ? sanitize(body.proximaAccion, 500) : undefined,
         };
 
         // Get GAS token

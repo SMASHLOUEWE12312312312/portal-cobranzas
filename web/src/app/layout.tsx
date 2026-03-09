@@ -39,16 +39,6 @@ export const viewport: Viewport = {
   ],
 };
 
-// Script to prevent flash of wrong theme
-const themeScript = `
-  (function() {
-    const theme = localStorage.getItem('portal-theme') || 'light';
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    }
-  })();
-`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -57,8 +47,8 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* Prevent flash of wrong theme */}
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Prevent flash of wrong theme - external script avoids dangerouslySetInnerHTML */}
+        <script src="/theme-init.js" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

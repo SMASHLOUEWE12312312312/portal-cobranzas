@@ -1,30 +1,19 @@
 import type { NextConfig } from "next";
 
-// CSP optimizada para Power BI embed
-const ContentSecurityPolicy = [
+// CSP restrictiva por defecto (las rutas Power BI se manejan en middleware.ts)
+const DefaultCSP = [
   "default-src 'self'",
-  // Scripts: self + Power BI + Microsoft CDNs
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.powerbi.com https://*.powerbi.com https://*.msecnd.net https://vercel.live",
-  // Estilos
-  "style-src 'self' 'unsafe-inline' https://app.powerbi.com https://*.powerbi.com",
-  // Imágenes
-  "img-src 'self' data: blob: https: http:",
-  // Fuentes
-  "font-src 'self' data: https://*.powerbi.com https://*.msecnd.net",
-  // Conexiones XHR/fetch
-  "connect-src 'self' https://script.google.com https://app.powerbi.com https://*.powerbi.com https://*.analysis.windows.net https://*.microsoftonline.com wss://*.powerbi.com https://vercel.live",
-  // Iframes (CRÍTICO para Power BI embed)
-  "frame-src 'self' https://app.powerbi.com https://*.powerbi.com",
-  // Child frames (legacy support)
-  "child-src 'self' https://app.powerbi.com https://*.powerbi.com blob:",
-  // Workers
-  "worker-src 'self' blob:",
-  // Quién puede embeber esta página
-  "frame-ancestors 'self'",
-  // Forms
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://script.google.com",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
   "form-action 'self'",
-  // Base URI
   "base-uri 'self'",
+  "upgrade-insecure-requests",
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -45,12 +34,24 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: ContentSecurityPolicy,
+            value: DefaultCSP,
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+          {
+            key: "X-Permitted-Cross-Domain-Policies",
+            value: "none",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
         ],
       },
       {
-        // API routes - más restrictivo
+        // API routes - restrictivo
         source: "/api/:path*",
         headers: [
           {
@@ -64,6 +65,14 @@ const nextConfig: NextConfig = {
           {
             key: "Cache-Control",
             value: "no-store, max-age=0",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
           },
         ],
       },

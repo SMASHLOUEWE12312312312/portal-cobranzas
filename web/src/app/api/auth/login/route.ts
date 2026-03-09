@@ -3,14 +3,65 @@ import { callGAS } from '@/lib/gas-client';
 import { createSession } from '@/lib/session';
 import type { User, UserRole } from '@/lib/types';
 
+// =============================================================================
+// In-memory rate limiter for login attempts (per IP)
+// =============================================================================
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const entry = loginAttempts.get(ip);
+
+    // Clean expired entries periodically
+    if (loginAttempts.size > 10000) {
+        for (const [key, val] of loginAttempts) {
+            if (now > val.resetAt) loginAttempts.delete(key);
+        }
+    }
+
+    if (!entry || now > entry.resetAt) {
+        loginAttempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+        return true;
+    }
+
+    if (entry.count >= MAX_LOGIN_ATTEMPTS) {
+        return false;
+    }
+
+    entry.count++;
+    return true;
+}
+
+function getClientIP(request: Request): string {
+    const forwarded = request.headers.get('x-forwarded-for');
+    if (forwarded) return forwarded.split(',')[0].trim();
+    const real = request.headers.get('x-real-ip');
+    return real || 'unknown';
+}
+
 /**
  * Login Endpoint
  * POST /api/auth/login
- * 
+ *
  * Authenticates user via GAS and creates BFF session
+ * Rate limited: 5 attempts per 15 minutes per IP
  */
 export async function POST(request: Request) {
     try {
+        // Rate limiting
+        const clientIP = getClientIP(request);
+        if (!checkRateLimit(clientIP)) {
+            return NextResponse.json({
+                ok: false,
+                error: {
+                    code: 'RATE_LIMITED',
+                    message: 'Demasiados intentos. Intente nuevamente en 15 minutos.',
+                },
+            }, { status: 429 });
+        }
+
         // Parse request body
         const body = await request.json();
         const { username, password } = body;
@@ -30,8 +81,14 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        // Sanitize username (basic XSS prevention)
-        const sanitizedUsername = username.trim().toLowerCase().replace(/[<>"'&]/g, '');
+        // Validate username format: only alphanumeric, dots, hyphens, underscores (max 50 chars)
+        const sanitizedUsername = username.trim().toLowerCase();
+        if (!/^[a-z0-9._-]{1,50}$/.test(sanitizedUsername)) {
+            return NextResponse.json({
+                ok: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Formato de usuario inválido' },
+            }, { status: 400 });
+        }
 
         // Call GAS login
         const gasResponse = await callGAS<{

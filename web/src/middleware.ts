@@ -80,10 +80,11 @@ function handleUnauthenticated(request: NextRequest, pathname: string): NextResp
 
 /**
  * CSP para rutas con Power BI embed
+ * Note: Power BI requires 'unsafe-inline' for styles but NOT 'unsafe-eval' for scripts
  */
 const POWERBI_CSP = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.powerbi.com https://*.powerbi.com https://*.msecnd.net https://vercel.live https://*.vercel.live",
+    "script-src 'self' https://app.powerbi.com https://*.powerbi.com https://*.msecnd.net https://vercel.live https://*.vercel.live",
     "style-src 'self' 'unsafe-inline' https://app.powerbi.com https://*.powerbi.com",
     "img-src 'self' data: blob: https: http:",
     "font-src 'self' data: https://*.powerbi.com https://*.msecnd.net",
@@ -94,6 +95,24 @@ const POWERBI_CSP = [
     "frame-ancestors 'self'",
     "form-action 'self'",
     "base-uri 'self'",
+].join("; ");
+
+/**
+ * CSP restrictiva para rutas normales (no Power BI)
+ */
+const DEFAULT_CSP = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://script.google.com",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "base-uri 'self'",
+    "upgrade-insecure-requests",
 ].join("; ");
 
 /**
@@ -110,13 +129,20 @@ function addSecurityHeaders(response: NextResponse, allowPowerBI = false): NextR
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
     // Permissions policy
-    response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+
+    // HSTS - enforce HTTPS
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+
+    // Prevent cross-domain policy loading
+    response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
 
     if (allowPowerBI) {
-        // Para rutas con Power BI: CSP permisiva, sin X-Frame-Options restrictivo
+        // Para rutas con Power BI: CSP permisiva para iframe, sin X-Frame-Options
         response.headers.set('Content-Security-Policy', POWERBI_CSP);
     } else {
-        // Para otras rutas: más restrictivo
+        // Para otras rutas: CSP restrictiva + X-Frame-Options
+        response.headers.set('Content-Security-Policy', DEFAULT_CSP);
         response.headers.set('X-Frame-Options', 'DENY');
     }
 

@@ -43,6 +43,32 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
+        // Validate file extension
+        const ext = fileName.toLowerCase().split('.').pop();
+        if (!ext || !['xlsx', 'xls', 'csv'].includes(ext)) {
+            return NextResponse.json({
+                ok: false,
+                correlationId,
+                error: { code: 'VALIDATION_ERROR', message: 'Tipo de archivo no soportado. Use .xlsx, .xls o .csv' },
+            }, { status: 400 });
+        }
+
+        // Validate file size (base64: ~4/3 of original size, limit to 50MB base64)
+        const maxBase64Size = 50 * 1024 * 1024;
+        if (base64Data.length > maxBase64Size) {
+            return NextResponse.json({
+                ok: false,
+                correlationId,
+                error: { code: 'VALIDATION_ERROR', message: 'Archivo demasiado grande (máx ~37MB)' },
+            }, { status: 413 });
+        }
+
+        // Sanitize filename - remove path traversal and invalid chars
+        const sanitizedFileName = fileName
+            .replace(/\.\./g, '')
+            .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+            .slice(-255);
+
         const gasToken = await getGasToken();
         if (!gasToken) {
             return NextResponse.json({
@@ -54,7 +80,7 @@ export async function POST(request: Request) {
 
         const response = await callGASAuthenticated<{ rowsLoaded: number }>(
             'conciliacion.uploadBDSisnet',
-            { base64Data, fileName, mimeType },
+            { base64Data, fileName: sanitizedFileName, mimeType },
             gasToken,
             { timeoutMs: 120000 }
         );
