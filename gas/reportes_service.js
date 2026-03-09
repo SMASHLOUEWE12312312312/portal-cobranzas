@@ -80,12 +80,21 @@ function generarReporteVencidos60() {
       Logger.log('[' + context + '] Columna no encontrada por nombre, usando col J (idx 9)');
     }
 
+    var importeCol = _findCol(columnMap, 'IMPORTE');
+    if (importeCol === undefined) {
+      importeCol = 11; // Fallback: columna L (índice 11)
+    }
+
     var today = new Date();
     today.setHours(0, 0, 0, 0);
     var cutoffMs = 60 * 24 * 60 * 60 * 1000; // 60 días en ms
 
-    // Filtrar: vencidos hace más de 60 días
+    // Filtrar: vencidos +60 días Y solo importes positivos
     var filtered = rows.filter(function(row) {
+      // Solo importes positivos (> 0)
+      var importe = Number(row[importeCol]);
+      if (isNaN(importe) || importe <= 0) return false;
+
       var val = row[fecVencCol];
       if (!val || !(val instanceof Date) || isNaN(val.getTime())) return false;
       var diffMs = today.getTime() - val.getTime();
