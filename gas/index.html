@@ -100,6 +100,10 @@
                     <span class="nav-icon">📄</span>
                     <span>Generar EECC</span>
                 </div>
+                <div class="nav-item" onclick="switchView('reportes')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('reportes')}" id="nav-reportes" tabindex="0" role="button">
+                    <span class="nav-icon">📋</span>
+                    <span>Reportes</span>
+                </div>
                 <div class="nav-item" onclick="switchView('enviar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('enviar')}" id="nav-enviar" tabindex="0" role="button">
                     <span class="nav-icon">📧</span>
                     <span>Enviar Correos</span>
@@ -450,6 +454,46 @@
                         <p class="text-muted" style="margin-top: 1rem">
                             Selecciona las filas que deseas excluir de la generación
                         </p>
+                    </div>
+                </div>
+
+                <!-- VIEW: REPORTES -->
+                <div id="view-reportes" class="view-section">
+                    <h2 class="text-2xl font-bold mb-6">📋 Reportes</h2>
+                    <p class="text-muted mb-4" style="font-size: 0.875rem;">
+                        Descarga reportes de la base de datos en formato Excel
+                    </p>
+
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 1.5rem;">💰</span>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Saldos a Favor y Ajustes</h3>
+                                <p style="margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--tp-text-tertiary);">
+                                    Registros con importe negativo, cero o vacío
+                                </p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="btnReporteSaldos" onclick="descargarReporteSaldos()" style="margin-top: 0.75rem;">
+                            📥 Descargar Reporte
+                        </button>
+                        <div id="statusReporteSaldos" style="margin-top: 0.5rem;"></div>
+                    </div>
+
+                    <div class="card">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 1.5rem;">⏰</span>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Vencidos +60 Días sin Cobertura</h3>
+                                <p style="margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--tp-text-tertiary);">
+                                    Cupones con más de 60 días de vencimiento
+                                </p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="btnReporteVencidos" onclick="descargarReporteVencidos()" style="margin-top: 0.75rem;">
+                            📥 Descargar Reporte
+                        </button>
+                        <div id="statusReporteVencidos" style="margin-top: 0.5rem;"></div>
                     </div>
                 </div>
 
@@ -3008,7 +3052,8 @@
             { id: 'nav_correos', icon: '✉️', title: 'Enviar Correos', subtitle: 'Módulo de envío de correos', action: () => showView('correos') },
             { id: 'nav_bitacora', icon: '📝', title: 'Bitácora', subtitle: 'Gestiones de cobranza', action: () => showView('bitacora') },
             { id: 'action_nueva_gestion', icon: '➕', title: 'Nueva Gestión', subtitle: 'Registrar gestión en bitácora', action: () => { showView('bitacora'); setTimeout(() => switchBitacoraTabEmbedded && switchBitacoraTabEmbedded('registrar'), 100); } },
-            { id: 'action_upload', icon: '📤', title: 'Actualizar Base', subtitle: 'Subir archivo de base de datos', action: () => showView('actualizar') }
+            { id: 'action_upload', icon: '📤', title: 'Actualizar Base', subtitle: 'Subir archivo de base de datos', action: () => showView('actualizar') },
+            { id: 'nav_reportes', icon: '📋', title: 'Reportes', subtitle: 'Descargar reportes Excel', action: () => switchView('reportes') }
         ];
 
         // ============================================================
@@ -10214,6 +10259,62 @@
             };
 
             reader.readAsDataURL(file);
+        }
+
+        // ========== REPORTES MODULE ==========
+
+        async function descargarReporteSaldos() {
+            const btn = document.getElementById('btnReporteSaldos');
+            const status = document.getElementById('statusReporteSaldos');
+            btn.disabled = true;
+            btn.textContent = 'Generando...';
+            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte, por favor espere...</span>';
+
+            try {
+                const result = await runGas('generarReporteSaldos');
+                if (result && result.ok) {
+                    downloadBase64File(result.data.base64, result.data.fileName,
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
+                        escapeHtml(result.data.filas + ' registros exportados') + '</span>';
+                } else {
+                    status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
+                        escapeHtml(result ? result.error : 'Error desconocido') + '</span>';
+                }
+            } catch (e) {
+                status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
+                    escapeHtml('Error: ' + e.message) + '</span>';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📥 Descargar Reporte';
+            }
+        }
+
+        async function descargarReporteVencidos() {
+            const btn = document.getElementById('btnReporteVencidos');
+            const status = document.getElementById('statusReporteVencidos');
+            btn.disabled = true;
+            btn.textContent = 'Generando...';
+            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte, por favor espere...</span>';
+
+            try {
+                const result = await runGas('generarReporteVencidos60');
+                if (result && result.ok) {
+                    downloadBase64File(result.data.base64, result.data.fileName,
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
+                        escapeHtml(result.data.filas + ' registros exportados') + '</span>';
+                } else {
+                    status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
+                        escapeHtml(result ? result.error : 'Error desconocido') + '</span>';
+                }
+            } catch (e) {
+                status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
+                    escapeHtml('Error: ' + e.message) + '</span>';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📥 Descargar Reporte';
+            }
         }
 
         /**
