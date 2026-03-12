@@ -4,6 +4,7 @@ import { hasPermission, RBACError } from '@/lib/rbac';
 import { callGASAuthenticated } from '@/lib/gas-client';
 import { logAccessDenied, logApiError } from '@/lib/audit';
 import type { Ciclo, BitacoraFilters, GestionInput, Pagination } from '@/lib/types';
+import { VALID_TIPOS_GESTION, VALID_ESTADOS_GESTION } from '@/lib/bitacora-enums';
 
 /**
  * Bitácora API Routes
@@ -149,10 +150,9 @@ export async function POST(request: Request) {
         const sanitize = (str: string, maxLen = 500) =>
             str.replace(/<[^>]*>/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim().slice(0, maxLen);
 
-        // Validate enum fields against known values
-        const validTipos: string[] = ['ENVIO_EECC', 'LLAMADA', 'WHATSAPP', 'CORREO_INDIVIDUAL', 'REUNION', 'OTRO'];
-        const validEstados: string[] = ['SIN_RESPUESTA', 'EN_SEGUIMIENTO', 'COMPROMISO_PAGO', 'REPROGRAMADO',
-            'DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES', 'CERRADO_PAGADO', 'NO_COBRABLE', 'NO_CONTACTABLE'];
+        // Validate enum fields against known values (synced with gas/config.js BITACORA config)
+        const validTipos: readonly string[] = VALID_TIPOS_GESTION;
+        const validEstados: readonly string[] = VALID_ESTADOS_GESTION;
 
         if (!validTipos.includes(body.tipoGestion)) {
             return NextResponse.json({

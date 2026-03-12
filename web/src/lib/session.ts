@@ -25,6 +25,11 @@ const SESSION_TTL_SECONDS = parseInt(process.env.SESSION_TTL_SECONDS || '28800',
 const INACTIVITY_TIMEOUT_SECONDS = 3600; // 1 hour
 const SESSION_COOKIE_NAME = 'portal_session';
 
+// P0-FIX: Validate secret length at module load time
+if (SESSION_SECRET && SESSION_SECRET.length < 32) {
+    console.warn('SESSION_SECRET is shorter than 32 chars - this is insecure');
+}
+
 // Encode secret for jose
 const getSecretKey = () => new TextEncoder().encode(SESSION_SECRET);
 
