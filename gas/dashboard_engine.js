@@ -102,8 +102,8 @@ const DashboardEngine = {
     // White canvas background on entire visible area (26 cols = Z)
     sheet.getRange(1, 1, 300, 26).setBackground(this.COLORS.WHITE);
 
-    // Professional column widths - wider, more breathing room
-    var widths = [50, 280, 120, 150, 150, 130, 130, 130];
+    // Professional column widths - extra wide name column
+    var widths = [50, 360, 120, 150, 150, 130, 130, 130];
     for (var i = 0; i < widths.length; i++) {
       sheet.setColumnWidth(i + 1, widths[i]);
     }
