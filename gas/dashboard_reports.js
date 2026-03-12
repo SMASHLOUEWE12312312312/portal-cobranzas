@@ -365,7 +365,7 @@ function generarReporteSaldosConDashboard() {
     try {
       // Dashboard sheet
       var dashSheet = tempSS.getSheets()[0];
-      dashSheet.setName('Dashboard');
+      dashSheet.setName('Reporte');
       DE.prepareCanvas(dashSheet);
 
       var r = DE.writeHeaderSection(dashSheet, 'SALDOS A FAVOR Y AJUSTES', 'Registros con importe negativo, cero o vacío', 1);
@@ -482,6 +482,7 @@ function generarReporteVencidos60ConDashboard() {
     var totalPEN = 0, totalUSD = 0, countPEN = 0, countUSD = 0;
     var ciaData = {};
     var asegData = {};
+    var ramData = {};
     var sumDiasMora = 0, sumImportes = 0;
 
     var agingBuckets = [
@@ -498,6 +499,7 @@ function generarReporteVencidos60ConDashboard() {
       var mon = _monKey(row[bd.monIdx]);
       var cia = String(row[bd.ciaIdx] || 'Sin CIA').trim();
       var aseg = String(row[bd.aseguradoIdx] || 'Sin Asegurado').trim();
+      var ram = String(row[bd.ramIdx] || 'Sin RAM').trim();
 
       if (mon === 'PEN') { totalPEN += imp; countPEN++; }
       else { totalUSD += imp; countUSD++; }
@@ -511,6 +513,11 @@ function generarReporteVencidos60ConDashboard() {
       asegData[aseg].count++;
       if (mon === 'PEN') asegData[aseg].pen += imp;
       else asegData[aseg].usd += imp;
+
+      if (!ramData[ram]) ramData[ram] = { count: 0, pen: 0, usd: 0 };
+      ramData[ram].count++;
+      if (mon === 'PEN') ramData[ram].pen += imp;
+      else ramData[ram].usd += imp;
 
       var fecha2 = _parseDateDash(row[bd.fecVencIdx]);
       if (fecha2) {
@@ -538,7 +545,7 @@ function generarReporteVencidos60ConDashboard() {
 
     try {
       var dashSheet = tempSS.getSheets()[0];
-      dashSheet.setName('Dashboard');
+      dashSheet.setName('Reporte');
       DE.prepareCanvas(dashSheet);
 
       var r = DE.writeHeaderSection(dashSheet, 'VENCIDOS +60 DÍAS SIN COBERTURA', 'Cupones con más de 60 días de vencimiento e importe positivo', 1);
@@ -581,6 +588,21 @@ function generarReporteVencidos60ConDashboard() {
         headers: ['Aseguradora', '# Cupones', 'Vencido PEN', 'Vencido USD', '% Concentración', 'Riesgo'],
         rows: ciaRows
       }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
+
+      // RAM Distribution
+      r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR RAMO (RAM)', r);
+      var ramKeys = Object.keys(ramData).sort(function(a, b) { return (ramData[b].pen + ramData[b].usd) - (ramData[a].pen + ramData[a].usd); });
+      var ramRows = [];
+      for (var rm = 0; rm < ramKeys.length; rm++) {
+        var rd = ramData[ramKeys[rm]];
+        var ramTotal = rd.pen + rd.usd;
+        ramRows.push([ramKeys[rm], rd.count, rd.pen, rd.usd,
+          totalVencido > 0 ? (ramTotal / totalVencido * 100).toFixed(1) : '0.0']);
+      }
+      r = DE.writeTable(dashSheet, {
+        headers: ['Ramo', '# Cupones', 'Vencido PEN', 'Vencido USD', '% del Total'],
+        rows: ramRows
+      }, r, { currencyCols: [2, 3], pctCols: [4] });
 
       // ALL Debtors
       r = DE.writeSectionTitle(dashSheet, 'DETALLE COMPLETO - ASEGURADOS MOROSOS +60 DÍAS (' + Object.keys(asegData).length + ')', r);

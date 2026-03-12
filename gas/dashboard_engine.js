@@ -74,7 +74,7 @@ const DashboardEngine = {
   createTempWorkbook(name) {
     var ss = SpreadsheetApp.create('TMP_DASH_' + name + '_' + Date.now());
     var sheet = ss.getSheets()[0];
-    sheet.setName('Dashboard');
+    sheet.setName('Reporte');
     return { ss: ss, sheet: sheet };
   },
 
@@ -99,8 +99,8 @@ const DashboardEngine = {
       // Fallback: paint white background on visible area
     }
 
-    // White canvas background on generous area
-    sheet.getRange(1, 1, 200, this.NUM_COLS).setBackground(this.COLORS.WHITE);
+    // White canvas background on entire visible area (26 cols = Z)
+    sheet.getRange(1, 1, 300, 26).setBackground(this.COLORS.WHITE);
 
     // Professional column widths - wider, more breathing room
     var widths = [50, 280, 120, 150, 150, 130, 130, 130];
