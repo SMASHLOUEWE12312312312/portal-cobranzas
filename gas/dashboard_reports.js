@@ -520,10 +520,16 @@ function generarReporteVencidos60ConDashboard() {
       if (mon === 'PEN') asegData[aseg].rams[ram].pen += imp;
       else asegData[aseg].rams[ram].usd += imp;
 
-      if (!ramData[ram]) ramData[ram] = { count: 0, pen: 0, usd: 0 };
+      if (!ramData[ram]) ramData[ram] = { count: 0, pen: 0, usd: 0, asegurados: {} };
       ramData[ram].count++;
       if (mon === 'PEN') ramData[ram].pen += imp;
       else ramData[ram].usd += imp;
+
+      // Asegurado per RAM
+      if (!ramData[ram].asegurados[aseg]) ramData[ram].asegurados[aseg] = { count: 0, pen: 0, usd: 0 };
+      ramData[ram].asegurados[aseg].count++;
+      if (mon === 'PEN') ramData[ram].asegurados[aseg].pen += imp;
+      else ramData[ram].asegurados[aseg].usd += imp;
 
       var fecha2 = _parseDateDash(row[bd.fecVencIdx]);
       if (fecha2) {
@@ -595,21 +601,82 @@ function generarReporteVencidos60ConDashboard() {
         rows: ciaRows
       }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
 
-      // RAM Distribution with severity
+      // RAM Distribution with asegurado sub-rows grouped
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR RAMO (RAM)', r);
       var ramKeys = Object.keys(ramData).sort(function(a, b) { return (ramData[b].pen + ramData[b].usd) - (ramData[a].pen + ramData[a].usd); });
-      var ramRows = [];
+      var ramDetailRows = [];
+      var ramGroupRanges = [];
+      var ramRowIdx = 0;
+
       for (var rm = 0; rm < ramKeys.length; rm++) {
         var rd = ramData[ramKeys[rm]];
         var ramTotal = rd.pen + rd.usd;
         var ramPct = totalVencido > 0 ? (ramTotal / totalVencido * 100) : 0;
         var ramSev = ramPct > 30 ? 'CRITICO' : ramPct > 15 ? 'ALTO' : ramPct > 5 ? 'NORMAL' : 'BAJO';
-        ramRows.push([ramKeys[rm], rd.count, rd.pen, rd.usd, ramPct.toFixed(1), ramSev]);
+        ramDetailRows.push([ramKeys[rm], rd.count, rd.pen, rd.usd, ramPct.toFixed(1), ramSev]);
+        ramRowIdx++;
+
+        // Asegurado sub-rows under this RAM
+        var ramAsegKeys = Object.keys(rd.asegurados).sort(function(a, b) {
+          return (rd.asegurados[b].pen + rd.asegurados[b].usd) - (rd.asegurados[a].pen + rd.asegurados[a].usd);
+        });
+        var ramGrpStart = ramRowIdx;
+        for (var ra = 0; ra < ramAsegKeys.length; ra++) {
+          var raData = rd.asegurados[ramAsegKeys[ra]];
+          ramDetailRows.push(['    ' + ramAsegKeys[ra], raData.count, raData.pen, raData.usd, '', '']);
+          ramRowIdx++;
+        }
+        if (ramAsegKeys.length > 0) {
+          ramGroupRanges.push({ start: ramGrpStart, count: ramAsegKeys.length });
+        }
       }
+
+      var ramTableStart = r;
       r = DE.writeTable(dashSheet, {
-        headers: ['Ramo', '# Cupones', 'Vencido PEN', 'Vencido USD', '% del Total', 'Criticidad'],
-        rows: ramRows
+        headers: ['Ramo / Asegurado', '# Cupones', 'Vencido PEN', 'Vencido USD', '% del Total', 'Criticidad'],
+        rows: ramDetailRows
       }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
+
+      // Group + collapse asegurado sub-rows under each RAM
+      var ramDataStart = ramTableStart + 1;
+      for (var rg = 0; rg < ramGroupRanges.length; rg++) {
+        var rgr = ramGroupRanges[rg];
+        try {
+          dashSheet.getRange(ramDataStart + rgr.start, 1, rgr.count).shiftRowGroupDepth(1);
+        } catch (e) { /* ignore */ }
+      }
+      // Collapse RAM groups + style sub-rows
+      try {
+        var ramCollapseReqs = [];
+        for (var rgc = 0; rgc < ramGroupRanges.length; rgc++) {
+          var rgrc = ramGroupRanges[rgc];
+          ramCollapseReqs.push({
+            updateDimensionProperties: {
+              range: {
+                sheetId: dashSheet.getSheetId(),
+                dimension: 'ROWS',
+                startIndex: ramDataStart + rgrc.start - 1,
+                endIndex: ramDataStart + rgrc.start - 1 + rgrc.count
+              },
+              properties: { hiddenByUser: true },
+              fields: 'hiddenByUser'
+            }
+          });
+        }
+        if (ramCollapseReqs.length > 0) {
+          Sheets.Spreadsheets.batchUpdate({ requests: ramCollapseReqs }, dashSheet.getParent().getId());
+        }
+      } catch (e) { /* ignore */ }
+      for (var rgs = 0; rgs < ramGroupRanges.length; rgs++) {
+        var rgrs = ramGroupRanges[rgs];
+        for (var rgi = 0; rgi < rgrs.count; rgi++) {
+          var rSubRow = ramDataStart + rgrs.start + rgi;
+          dashSheet.getRange(rSubRow, 2, 1, 1)
+            .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontWeight('normal').setFontSize(8);
+          dashSheet.getRange(rSubRow, 3, 1, 3)
+            .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontSize(8);
+        }
+      }
 
       // ALL Debtors with RAM grouping
       r = DE.writeSectionTitle(dashSheet, 'DETALLE COMPLETO - ASEGURADOS MOROSOS +60 DÍAS (' + Object.keys(asegData).length + ')', r);
