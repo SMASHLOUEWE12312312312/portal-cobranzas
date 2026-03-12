@@ -192,7 +192,7 @@ describe('UX Law #10: Active User Paradox - Onboarding & empty states', () => {
     expect(indexHtml).toContain('portal_onboarding_dismissed');
   });
 
-  it('should have onboarding steps linking to key views', () => {
+  it('should have onboarding steps linking to all 6 modules', () => {
     const bannerStart = indexHtml.indexOf('id="onboardingBanner"');
     const bannerEnd = indexHtml.indexOf('DASHBOARD ANALÍTICO', bannerStart);
     const banner = indexHtml.substring(bannerStart, bannerEnd);
@@ -200,6 +200,8 @@ describe('UX Law #10: Active User Paradox - Onboarding & empty states', () => {
     expect(banner).toContain("switchView('generar')");
     expect(banner).toContain("switchView('enviar')");
     expect(banner).toContain("switchView('bitacora')");
+    expect(banner).toContain("switchView('reportes')");
+    expect(banner).toContain("switchView('conciliacion')");
   });
 
   it('should have renderEmptyState helper for tables', () => {
