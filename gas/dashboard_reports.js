@@ -1684,6 +1684,88 @@ function generarReporteBitacoraConDashboard() {
         }, ar, { currencyCols: [1, 2] });
       }
 
+      // --- Hoja base de datos: última gestión por asegurado ---
+      var bdBitSheet = tempSS.insertSheet('Bitacora_Gestiones');
+      var bdBitHeaders = ['Asegurado', 'Estado', 'Tipo', 'Canal', 'Responsable',
+        'Fecha Registro', 'Días Desde Registro', 'Fecha Compromiso', 'Próxima Acción',
+        'Vencido PEN', 'Delta PEN', 'Tendencia PEN', 'Vencido USD', 'Delta USD',
+        'Tendencia USD', 'Observaciones'];
+      var bdBitRows = [];
+
+      // Iterate all individual asegurados (not grouped) for the raw data
+      var allAsegKeys = Object.keys(asegMap);
+      allAsegKeys.sort(function(a, b) {
+        var la = asegMap[a].latest, lb = asegMap[b].latest;
+        var da = _parseDateDash(la[iFecReg]) || new Date(0);
+        var db = _parseDateDash(lb[iFecReg]) || new Date(0);
+        return db - da;
+      });
+
+      for (var bd2 = 0; bd2 < allAsegKeys.length; bd2++) {
+        var am2 = asegMap[allAsegKeys[bd2]];
+        var lt = am2.latest;
+        var fReg = _parseDateDash(lt[iFecReg]);
+        var diasReg = fReg ? Math.floor((today - fReg) / 86400000) : 0;
+        var fComp2 = _parseDateDash(lt[iFecComp]);
+        var vP = _parseNum(lt[iVencPEN]);
+        var vU = _parseNum(lt[iVencUSD]);
+
+        // Calculate delta and tendencia
+        var dP = 0, dU = 0, tP = 'SIN_CAMBIO', tU = 'SIN_CAMBIO';
+        if (am2.gestiones.length >= 2) {
+          var srt = am2.gestiones.slice().sort(function(x, y) {
+            var dx2 = _parseDateDash(x[iFecReg]) || new Date(0);
+            var dy2 = _parseDateDash(y[iFecReg]) || new Date(0);
+            return dy2 - dx2;
+          });
+          var prevP = _parseNum(srt[1][iVencPEN]);
+          var prevU = _parseNum(srt[1][iVencUSD]);
+          dP = vP - prevP;
+          dU = vU - prevU;
+          if (dP > 0) tP = 'AUMENTO'; else if (dP < 0) tP = 'DISMINUCION';
+          if (dU > 0) tU = 'AUMENTO'; else if (dU < 0) tU = 'DISMINUCION';
+        }
+
+        bdBitRows.push([
+          am2.nombre,
+          String(lt[iEstado] || ''),
+          String(lt[iTipo] || ''),
+          String(lt[iCanal] || ''),
+          String(lt[iResp] || ''),
+          fReg || '',
+          diasReg,
+          fComp2 || '',
+          String(lt[iProxAcc] || ''),
+          vP, dP, tP,
+          vU, dU, tU,
+          String(lt[iObs] || '')
+        ]);
+      }
+
+      // Write headers + data
+      bdBitSheet.getRange(1, 1, 1, bdBitHeaders.length).setValues([bdBitHeaders])
+        .setFontWeight('bold').setBackground('#1A202C').setFontColor('#FFFFFF')
+        .setFontFamily('Calibri').setFontSize(9);
+      bdBitSheet.setFrozenRows(1);
+
+      if (bdBitRows.length > 0) {
+        bdBitSheet.getRange(2, 1, bdBitRows.length, bdBitHeaders.length).setValues(bdBitRows)
+          .setFontFamily('Calibri').setFontSize(9);
+        // Format currency columns
+        bdBitSheet.getRange(2, 10, bdBitRows.length, 1).setNumberFormat('#,##0.00'); // Vencido PEN
+        bdBitSheet.getRange(2, 11, bdBitRows.length, 1).setNumberFormat('#,##0.00'); // Delta PEN
+        bdBitSheet.getRange(2, 13, bdBitRows.length, 1).setNumberFormat('#,##0.00'); // Vencido USD
+        bdBitSheet.getRange(2, 14, bdBitRows.length, 1).setNumberFormat('#,##0.00'); // Delta USD
+        // Format date columns
+        bdBitSheet.getRange(2, 6, bdBitRows.length, 1).setNumberFormat('dd/mm/yyyy'); // Fecha Registro
+        bdBitSheet.getRange(2, 8, bdBitRows.length, 1).setNumberFormat('dd/mm/yyyy'); // Fecha Compromiso
+      }
+
+      // Auto-resize columns
+      for (var brc = 1; brc <= bdBitHeaders.length; brc++) {
+        bdBitSheet.autoResizeColumn(brc);
+      }
+
       SpreadsheetApp.flush();
       var base64 = _exportDashboardSS(ssId);
       var timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
