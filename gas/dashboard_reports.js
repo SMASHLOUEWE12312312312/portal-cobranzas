@@ -1363,23 +1363,49 @@ function generarReporteBitacoraConDashboard() {
     var cerrados = estadoCount['CERRADO_PAGADO'] ? estadoCount['CERRADO_PAGADO'].count : 0;
     var tasaCierre = totalClientes > 0 ? (cerrados / totalClientes * 100).toFixed(0) : '0';
 
-    // --- Aging buckets from active clients ---
+    // --- Aging buckets from BD (FEC_VENCIMIENTO COB), filtered to active bitacora groups only ---
+    var bd = _loadBDForDashboard();
     var agingBuckets = [
       { label: '0-30 días', min: 0, max: 30, severity: 'VERDE', count: 0, montoPEN: 0, montoUSD: 0 },
       { label: '31-60 días', min: 31, max: 60, severity: 'AMARILLO', count: 0, montoPEN: 0, montoUSD: 0 },
       { label: '61-90 días', min: 61, max: 90, severity: 'NARANJA', count: 0, montoPEN: 0, montoUSD: 0 },
       { label: '90+ días', min: 91, max: 99999, severity: 'ROJO', count: 0, montoPEN: 0, montoUSD: 0 }
     ];
-    for (var ca = 0; ca < clientesActivos.length; ca++) {
-      var cl = clientesActivos[ca];
-      for (var ab = 0; ab < agingBuckets.length; ab++) {
-        if (cl.dias >= agingBuckets[ab].min && cl.dias <= agingBuckets[ab].max) {
-          agingBuckets[ab].count++;
-          agingBuckets[ab].montoPEN += cl.vPEN;
-          agingBuckets[ab].montoUSD += cl.vUSD;
+    // Build set of active grupo names for filtering
+    var activeGrupos = {};
+    for (var cag = 0; cag < clientesActivos.length; cag++) {
+      activeGrupos[clientesActivos[cag].nombre.toUpperCase()] = true;
+    }
+    // Count unique grupos per bucket
+    var agingGrupoSets = [];
+    for (var bs = 0; bs < agingBuckets.length; bs++) agingGrupoSets.push({});
+
+    for (var bi = 0; bi < bd.rows.length; bi++) {
+      var bRow = bd.rows[bi];
+      var bImp = _parseNum(bRow[bd.importeIdx]);
+      if (bImp <= 0) continue;
+      var bFec = _parseDateDash(bRow[bd.fecVencIdx]);
+      if (!bFec) continue;
+      var bDias = Math.floor((today - bFec) / 86400000);
+      if (bDias < 0) continue; // not yet due
+      var bAseg = String(bRow[bd.aseguradoIdx] || '').trim();
+      var bGrupo = _getGrupoEconomico(bAseg).toUpperCase();
+      // Only include if this grupo/asegurado is active in bitacora
+      if (!activeGrupos[bGrupo]) continue;
+      var bMon = _monKey(bRow[bd.monIdx]);
+
+      for (var bb = 0; bb < agingBuckets.length; bb++) {
+        if (bDias >= agingBuckets[bb].min && bDias <= agingBuckets[bb].max) {
+          if (bMon === 'PEN') agingBuckets[bb].montoPEN += bImp;
+          else agingBuckets[bb].montoUSD += bImp;
+          agingGrupoSets[bb][bGrupo] = true;
           break;
         }
       }
+    }
+    // Set count as unique grupos per bucket
+    for (var bc = 0; bc < agingBuckets.length; bc++) {
+      agingBuckets[bc].count = Object.keys(agingGrupoSets[bc]).length;
     }
 
     // --- Tendencia buckets ---
@@ -1587,7 +1613,6 @@ function generarReporteBitacoraConDashboard() {
       }
 
       // --- Hojas de detalle por aging (desde BD, agrupado por grupo económico) ---
-      var bd = _loadBDForDashboard();
       var agingSheets = [
         { name: 'Mas de 90', min: 91, max: 99999 },
         { name: '61-90', min: 61, max: 90 },
