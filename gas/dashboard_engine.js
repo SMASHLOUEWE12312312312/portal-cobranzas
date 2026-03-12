@@ -96,20 +96,21 @@ const DashboardEngine = {
         }]
       }, sheet.getParent().getId());
     } catch (e) {
-      // Fallback: paint white background on visible area
+      // Sheets API not available - will rely on white background
     }
 
-    // White canvas background on entire visible area (26 cols = Z)
-    sheet.getRange(1, 1, 300, 26).setBackground(this.COLORS.WHITE);
+    // White canvas on entire visible area (500 rows x 30 cols)
+    // This ensures NO gridlines are visible even without Sheets API
+    sheet.getRange(1, 1, 500, 30).setBackground(this.COLORS.WHITE);
+
+    // Hide unused columns beyond our data (I through AD)
+    try { sheet.hideColumns(9, 22); } catch (e) { /* ignore */ }
 
     // Professional column widths - extra wide name column
-    var widths = [50, 360, 120, 150, 150, 130, 130, 130];
+    var widths = [40, 420, 110, 150, 150, 130, 130, 130];
     for (var i = 0; i < widths.length; i++) {
       sheet.setColumnWidth(i + 1, widths[i]);
     }
-
-    // Left margin column (col A) - narrow spacer
-    sheet.setColumnWidth(1, 50);
   },
 
   // ==================================================================

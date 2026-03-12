@@ -653,7 +653,7 @@ function generarReporteVencidos60ConDashboard() {
         rows: detailRows
       }, r, { currencyCols: [3, 4], severityCol: 5 });
 
-      // Apply row grouping for RAM sub-rows (collapsible)
+      // Apply row grouping for RAM sub-rows + collapse by default
       var dataStartRow = tableStartRow + 1; // +1 for header
       for (var g = 0; g < groupRanges.length; g++) {
         var gr = groupRanges[g];
@@ -662,6 +662,31 @@ function generarReporteVencidos60ConDashboard() {
           groupRange.shiftRowGroupDepth(1);
         } catch (e) { /* grouping not critical */ }
       }
+
+      // Collapse all groups via Sheets API (default collapsed)
+      try {
+        var sheetId = dashSheet.getSheetId();
+        var ssId = dashSheet.getParent().getId();
+        var requests = [];
+        for (var gc = 0; gc < groupRanges.length; gc++) {
+          var grc = groupRanges[gc];
+          requests.push({
+            updateDimensionProperties: {
+              range: {
+                sheetId: sheetId,
+                dimension: 'ROWS',
+                startIndex: dataStartRow + grc.start - 1, // 0-indexed
+                endIndex: dataStartRow + grc.start - 1 + grc.count
+              },
+              properties: { hiddenByUser: true },
+              fields: 'hiddenByUser'
+            }
+          });
+        }
+        if (requests.length > 0) {
+          Sheets.Spreadsheets.batchUpdate({ requests: requests }, ssId);
+        }
+      } catch (e) { /* collapse not critical */ }
 
       // Style RAM sub-rows (lighter font, indented look)
       for (var g2 = 0; g2 < groupRanges.length; g2++) {
