@@ -1321,7 +1321,7 @@
 
                     toast.innerHTML = `
                         <div style="font-size: 18px;">${iconMap[type] || 'ℹ️'}</div>
-                        <div style="flex: 1;">${message}</div>
+                        <div style="flex: 1;">${_esc(message)}</div>
                         <div style="cursor: pointer; opacity: 0.7;" onclick="this.parentElement.remove()">✕</div>
                     `;
 

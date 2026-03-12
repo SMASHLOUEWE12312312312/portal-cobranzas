@@ -318,12 +318,17 @@ function bitacoraGetAllDataV3Final() {
 
 /**
  * Infiere el rol del usuario basado en su nombre de usuario
+ * P1-FIX: Uses explicit AUTH.ADMIN_USERS list for admin check (consistent with isAdminSession_)
  * @param {string} username - Nombre de usuario
  * @return {string} Rol del usuario (ADMIN, COBRANZAS, LECTURA)
  */
 function _inferUserRole(username) {
-  const lowerUser = String(username).toLowerCase();
-  if (lowerUser.startsWith('admin')) return 'ADMIN';
+  const lowerUser = String(username).toLowerCase().trim();
+
+  // P1-FIX: Check explicit admin list instead of prefix matching
+  const adminUsers = getConfig('AUTH.ADMIN_USERS', []);
+  if (adminUsers.some(admin => admin.toLowerCase().trim() === lowerUser)) return 'ADMIN';
+
   if (lowerUser.startsWith('cobranzas')) return 'COBRANZAS';
   if (lowerUser.startsWith('supervisor')) return 'SUPERVISOR';
   if (lowerUser.startsWith('comercial')) return 'COMERCIAL';
@@ -395,35 +400,7 @@ function logout(token) {
   }
 }
 
-// ========== HEALTH CHECK ==========
-function healthCheck(token) {
-  try {
-    if (token) {
-      AuthService.validateSession(token);
-    }
-
-    const info = {
-      baseName: getConfig('SHEETS.BASE'),
-      timestamp: new Date(),
-      status: 'healthy'
-    };
-
-    const ss = SpreadsheetApp.getActive();
-    const base = ss.getSheetByName(info.baseName);
-
-    info.baseFound = !!base;
-
-    if (base) {
-      const baseData = SheetsIO.readSheet(info.baseName);
-      info.rows = baseData.rows.length;
-    }
-
-    return info;
-  } catch (error) {
-    Logger.error('healthCheck', 'Failed', error);
-    return { error: error.message };
-  }
-}
+// P0-FIX: Removed duplicate healthCheck (kept Phase 6 version below)
 
 // ========== PHASE 3: MONITORING ENDPOINTS ==========
 
@@ -544,8 +521,9 @@ function getMailTemplates(token) {
     // }
 
     // Read Mail_Templates sheet
+    // P2-FIX: Use SheetsIO._getSpreadsheet() for consistent access
     const sheetName = getConfig('SHEETS.MAIL_TEMPLATES', 'Mail_Templates');
-    const ss = SpreadsheetApp.openById(getConfig('SPREADSHEET_ID'));
+    const ss = SheetsIO._getSpreadsheet();
     const sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
@@ -599,8 +577,9 @@ function healthCheck(token) {
     let overallStatus = 'OK';
 
     // Check 1: Spreadsheet access
+    // P2-FIX: Use SheetsIO._getSpreadsheet() for consistent access
     try {
-      const ss = SpreadsheetApp.openById(getConfig('SPREADSHEET_ID'));
+      const ss = SheetsIO._getSpreadsheet();
       ss.getSheetByName('BD'); // Just access, don't read data
       checks.spreadsheet = { status: 'OK', message: 'Acceso confirmado' };
     } catch (e) {
@@ -610,8 +589,8 @@ function healthCheck(token) {
 
     // Check 2: Required sheets exist
     try {
-      const ss = SpreadsheetApp.openById(getConfig('SPREADSHEET_ID'));
-      const requiredSheets = ['BD', 'EECC', 'Bitacora'];
+      const ss = SheetsIO._getSpreadsheet();
+      const requiredSheets = ['BD', 'EECC_Template', 'Bitacora_Gestiones_EECC'];
       const missing = [];
       requiredSheets.forEach(name => {
         if (!ss.getSheetByName(name)) missing.push(name);
@@ -675,17 +654,33 @@ function getAseguradosSafe(token) {
       return { ok: true, list: JSON.parse(cached), cached: true };
     }
 
-    const baseData = SheetsIO.readSheet(getConfig('SHEETS.BASE'));
-    const aseguradoCol = Utils.findColumnIndex(baseData.headers, getConfig('BD.COLUMNS.ASEGURADO'));
+    // OPTIMIZADO: Leer solo la columna ASEGURADO en vez de toda la hoja
+    const ss = SheetsIO._getSpreadsheet();
+    const sheet = ss.getSheetByName(getConfig('SHEETS.BASE'));
+    if (!sheet) throw new Error('Hoja BD no encontrada');
 
-    if (aseguradoCol === -1) {
-      throw new Error('Columna ASEGURADO no encontrada');
+    const lastCol = sheet.getLastColumn();
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    const aseguradoColName = getConfig('BD.COLUMNS.ASEGURADO');
+    let aseguradoColIdx = -1;
+    for (let i = 0; i < headers.length; i++) {
+      if (Utils.cleanText(headers[i]) === Utils.cleanText(aseguradoColName)) {
+        aseguradoColIdx = i + 1;
+        break;
+      }
     }
 
+    if (aseguradoColIdx === -1) throw new Error('Columna ASEGURADO no encontrada');
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return { ok: true, list: [], cached: false };
+
+    const colData = sheet.getRange(2, aseguradoColIdx, lastRow - 1, 1).getValues();
     const set = new Set();
-    baseData.rows.forEach(row => {
-      const aseg = Utils.cleanText(row[aseguradoCol]);
-      if (aseg) set.add(aseg);
+    colData.forEach(row => {
+      const val = Utils.cleanText(row[0]);
+      if (val) set.add(val);
     });
 
     const list = Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
@@ -729,7 +724,8 @@ function getAseguradosPaged(token, options = {}) {
       Logger.debug(context, 'From cache', { count: allAsegurados.length });
     } else {
       // EFFICIENT READ: Only read headers + ASEGURADO column
-      const ss = SpreadsheetApp.getActive();
+      // P2-FIX: Use SheetsIO._getSpreadsheet() for Web App compatibility
+      const ss = SheetsIO._getSpreadsheet();
       const sheet = ss.getSheetByName(getConfig('SHEETS.BASE'));
       if (!sheet) {
         throw new Error('Hoja BD no encontrada');
@@ -945,13 +941,24 @@ function subirArchivoBase(payload, token) {
       throw new Error('Archivo no recibido');
     }
 
+    // Validar tipo de archivo por extensión
+    const nameLower = String(payload.name || '').toLowerCase();
+    if (!nameLower.endsWith('.xlsx') && !nameLower.endsWith('.xls') && !nameLower.endsWith('.csv')) {
+      throw new Error('Tipo de archivo no permitido. Solo se aceptan .xlsx, .xls, .csv');
+    }
+
+    var decoded;
+    try {
+      decoded = Utilities.base64Decode(payload.dataBase64);
+    } catch (decodeErr) {
+      throw new Error('Archivo corrupto o mal codificado');
+    }
+
     const blob = Utilities.newBlob(
-      Utilities.base64Decode(payload.dataBase64),
+      decoded,
       payload.mimeType || 'application/octet-stream',
       payload.name || 'archivo'
     );
-
-    const nameLower = String(payload.name || '').toLowerCase();
     let headers = [];
     let rows = [];
 
@@ -994,8 +1001,9 @@ function subirArchivoBase(payload, token) {
     return {
       ok: true,
       filas: result.rowsWritten,
-      mensaje: `Importación completa ✅ (${result.duplicatesRemoved} duplicados eliminados)`,
+      mensaje: `Importación completa (${result.duplicatesRemoved} duplicados eliminados)`,
       duplicatesRemoved: result.duplicatesRemoved,
+      warnings: result.warnings || [],
       t: { total: duration }
     };
 
@@ -1015,7 +1023,8 @@ function loadContactsFromSheet() {
 
   try {
     const sheetName = 'Mail_Contacts';
-    const ss = SpreadsheetApp.getActive();
+    // P1-FIX: Use SheetsIO._getSpreadsheet() for Web App compatibility
+    const ss = SheetsIO._getSpreadsheet();
     const sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
@@ -1133,10 +1142,24 @@ function findHeaderIndex(headers, possibleNames) {
 function parseEmails(emailString) {
   if (!emailString) return [];
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return String(emailString)
     .split(/[,;]/)
-    .map(email => email.trim())
-    .filter(email => email && email.includes('@') && email.length > 3);
+    .map(email => email.trim().replace(/[\r\n]/g, ''))
+    .filter(email => email && emailRegex.test(email));
+}
+
+/**
+ * Escapa HTML para prevenir inyección en templates de email
+ */
+function _escapeHtmlServer(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ========== MAIL: PREPARAR ADJUNTOS ==========
@@ -1207,12 +1230,12 @@ function renderEmailBody(data) {
 
   let bodyHtml = template.body;
 
-  bodyHtml = bodyHtml.replace(/{{ASEGURADO}}/g, data.asegurado || '');
-  bodyHtml = bodyHtml.replace(/{{FECHA_CORTE}}/g, data.fechaCorte || '');
-  bodyHtml = bodyHtml.replace(/{{SALUDO}}/g, data.saludo || 'Estimados');
+  bodyHtml = bodyHtml.replace(/{{ASEGURADO}}/g, _escapeHtmlServer(data.asegurado));
+  bodyHtml = bodyHtml.replace(/{{FECHA_CORTE}}/g, _escapeHtmlServer(data.fechaCorte));
+  bodyHtml = bodyHtml.replace(/{{SALUDO}}/g, _escapeHtmlServer(data.saludo || 'Estimados'));
 
   if (data.observaciones) {
-    bodyHtml = bodyHtml.replace(/{{OBS_OPCIONAL}}/g, `<p style="margin-top: 1rem; padding: 1rem; background: #FFF3E0; border-left: 4px solid #F57C00; border-radius: 4px;"><strong>Nota:</strong> ${data.observaciones}</p>`);
+    bodyHtml = bodyHtml.replace(/{{OBS_OPCIONAL}}/g, `<p style="margin-top: 1rem; padding: 1rem; background: #FFF3E0; border-left: 4px solid #F57C00; border-radius: 4px;"><strong>Nota:</strong> ${_escapeHtmlServer(data.observaciones)}</p>`);
   } else {
     bodyHtml = bodyHtml.replace(/{{OBS_OPCIONAL}}/g, '');
   }
@@ -1386,10 +1409,11 @@ function queueEmailsBatch_API(items, options, token) {
 
     const result = MailQueueService.enqueue(queueItems, options, token, correlationId);
 
-    // Trigger background processing immediately
+    // P2-FIX: Trigger background processing immediately
+    // jobProcesarCorreos_ is a standalone function, not a MailQueueService method
     if (result.ok) {
       try {
-        MailQueueService.jobProcesarCorreos_(); // Try to start processing immediately
+        jobProcesarCorreos_();
       } catch (e) {
         Logger.warn(context, 'Could not trigger immediate processing', e);
       }
@@ -1633,14 +1657,15 @@ function sendEmailsNow(items, options, token) {
         }
 
         // ENVIAR CORREO REAL
+        // P2-FIX: Use 'bodyHtml' (not 'htmlBody') to match MailerService parameter name
         const messageId = MailerService.sendEmail({
           to: contact.emailTo,
           cc: contact.emailCc,
           bcc: contact.emailBcc,
           subject: subject,
-          htmlBody: bodyHtml,
-          attachments: attachments,
-          name: 'Portal de Cobranzas'
+          bodyHtml: bodyHtml,
+          blobs: attachments.blobs || [],
+          urls: attachments.urls || []
         });
 
         // Phase 1: Pipeline ENVIADO transition
@@ -2067,11 +2092,12 @@ function registrarGestionManualBitacora(payload, token) {
     }
 
     // OPTIMIZACIÓN v4.2: Flush inmediato pero con timeout corto
-    // Si falla, los datos están en buffer y se escribirán en próximo ciclo
+    let flushWarning = null;
     try {
       BitacoraService.flush();
     } catch (flushError) {
       Logger.warn(context, 'Flush falló, datos en buffer', { error: flushError.message });
+      flushWarning = 'Registro guardado en buffer, se sincronizará en breve';
     }
 
     // Calcular dias_desde_registro para la respuesta
@@ -2089,11 +2115,14 @@ function registrarGestionManualBitacora(payload, token) {
     // Invalidar cache de resumen para que próxima carga refleje el cambio
     try {
       const cache = CacheService.getScriptCache();
-      // Invalidar páginas 1-5 (las más comunes)
-      cache.removeAll(['BITACORA_RESUMEN_P1_S100', 'BITACORA_RESUMEN_P1_S50',
-        'BITACORA_RESUMEN_P2_S100', 'BITACORA_RESUMEN_P2_S50',
-        'BITACORA_RESUMEN_P3_S100', 'BITACORA_RESUMEN_P3_S50']);
-      Logger.debug(context, '♻️ Cache de resumen invalidado');
+      // Invalidar todas las páginas cacheadas (1-10, tamaños 50 y 100)
+      const keysToInvalidate = [];
+      for (let p = 1; p <= 10; p++) {
+        keysToInvalidate.push('BITACORA_RESUMEN_P' + p + '_S50');
+        keysToInvalidate.push('BITACORA_RESUMEN_P' + p + '_S100');
+      }
+      cache.removeAll(keysToInvalidate);
+      Logger.debug(context, 'Cache de resumen invalidado (10 pages)');
     } catch (cacheErr) {
       Logger.warn(context, 'No se pudo invalidar cache', cacheErr);
     }
@@ -2109,9 +2138,10 @@ function registrarGestionManualBitacora(payload, token) {
         diasDesdeRegistro: diasDesdeRegistro,
         asegurado: payload.asegurado,
         estadoGestion: payload.estadoGestion,
-        snapshotVencidoPEN: resultado.snapshotVencidoPEN || 0,  // NUEVO
-        snapshotVencidoUSD: resultado.snapshotVencidoUSD || 0   // NUEVO
+        snapshotVencidoPEN: resultado.snapshotVencidoPEN || 0,
+        snapshotVencidoUSD: resultado.snapshotVencidoUSD || 0
       },
+      warning: flushWarning,
       duration: duration
     };
 
@@ -2356,15 +2386,7 @@ function bitacoraGetAllGestiones() {
     Logger.info(context, 'Iniciando lectura directa de bitácora');
 
     // 1. Obtener spreadsheet
-    var ss = SpreadsheetApp.getActive();
-    if (!ss) {
-      // Fallback: usar ID de config
-      var ssId = getConfig('SPREADSHEET_ID', '');
-      if (!ssId) {
-        return { ok: false, error: 'No se pudo acceder al spreadsheet' };
-      }
-      ss = SpreadsheetApp.openById(ssId);
-    }
+    var ss = SheetsIO._getSpreadsheet();
 
     // 2. Obtener hoja
     var sheet = ss.getSheetByName('Bitacora_Gestiones_EECC');
@@ -2594,19 +2616,14 @@ function bitacoraGetDataModal() {
   var context = 'bitacoraGetDataModal';
 
   try {
-    Logger.info(context, '1. Usando getActive() desde modal');
+    Logger.info(context, '1. Obteniendo spreadsheet');
 
-    // Paso 1: getActive() - DEBE funcionar en modales
     var ss;
     try {
-      ss = SpreadsheetApp.getActive();
-      if (!ss) {
-        Logger.error(context, 'getActive() devolvió null');
-        return { ok: false, error: 'No se pudo acceder al spreadsheet' };
-      }
-      Logger.info(context, '✅ Spreadsheet: ' + ss.getName());
+      ss = SheetsIO._getSpreadsheet();
+      Logger.info(context, '✅ Spreadsheet obtenido');
     } catch (e) {
-      Logger.error(context, 'Error en getActive()', e);
+      Logger.error(context, 'Error obteniendo spreadsheet', e);
       return { ok: false, error: 'Error al acceder al spreadsheet: ' + e.message };
     }
 
@@ -2734,12 +2751,14 @@ function bitacoraGetCompromisosActivos(token) {
 
     Logger.info(context, `${compromisos.length} compromisos activos encontrados`);
 
-    // Serializar fechas a ISO string
+    // Solo retornar campos necesarios para notificaciones (reduce payload y evita problemas de serialización)
     const compromisosParsed = compromisos.map(c => ({
-      ...c,
-      fechaEnvioEECC: c.fechaEnvioEECC instanceof Date ? c.fechaEnvioEECC.toISOString() : c.fechaEnvioEECC,
-      fechaRegistro: c.fechaRegistro instanceof Date ? c.fechaRegistro.toISOString() : c.fechaRegistro,
-      fechaCompromiso: c.fechaCompromiso instanceof Date ? c.fechaCompromiso.toISOString() : c.fechaCompromiso
+      asegurado: c.asegurado || '',
+      fechaCompromiso: c.fechaCompromiso instanceof Date ? c.fechaCompromiso.toISOString() : (c.fechaCompromiso || null),
+      tipoGestion: c.tipoGestion || '',
+      estadoGestion: c.estadoGestion || '',
+      snapshotVencidoPEN: c.snapshotVencidoPEN || 0,
+      compromisoVencido: !!c.compromisoVencido
     }));
 
     return {
@@ -2918,6 +2937,34 @@ function generateHeadless_API(asegurado, opts, token) {
 }
 
 /**
+ * Genera EECC para múltiples asegurados en batch (optimizado: 1 BD read, parallel exports)
+ * @param {Array<string>} asegurados - Lista de nombres de asegurados
+ * @param {Object} opts - { exportPdf, exportXlsx, includeObs, obsForRAM }
+ * @param {string} token - Token de autenticación
+ * @return {Object} { ok, results[], errors[], generatedCount, errorCount }
+ */
+function generateBatch_API(asegurados, opts, token) {
+  const context = 'generateBatch_API';
+  const MAX_BATCH = 20;
+  try {
+    AuthService.validateSession(token);
+
+    if (!Array.isArray(asegurados) || asegurados.length === 0) {
+      return { ok: false, error: 'Se requiere una lista de asegurados' };
+    }
+
+    if (asegurados.length > MAX_BATCH) {
+      return { ok: false, error: `Máximo ${MAX_BATCH} asegurados por batch (recibidos: ${asegurados.length})` };
+    }
+
+    return EECCCore.generateBatchHeadless(asegurados, opts);
+  } catch (error) {
+    Logger.error(context, 'Error', error);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
  * Crea un ZIP con los archivos generados
  * @param {Array<string>} fileUrls - URLs de los archivos
  * @param {string} zipName - Nombre del ZIP
@@ -2945,20 +2992,6 @@ function getTemplates_API(token) {
     return { ok: true, data: templates };
   } catch (error) {
     Logger.error('getTemplates_API', error);
-    return { ok: false, error: error.message };
-  }
-}
-
-/**
- * Programa un envío de correo
- */
-function scheduleJob_API(jobData, token) {
-  try {
-    AuthService.validateSession(token);
-    const result = SchedulerService.scheduleJob(jobData);
-    return result;
-  } catch (error) {
-    Logger.error('scheduleJob_API', error);
     return { ok: false, error: error.message };
   }
 }

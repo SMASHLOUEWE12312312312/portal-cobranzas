@@ -146,10 +146,10 @@ function generarReporteVencidos60() {
     var rows = sheetData.rows;
 
     var fecVencIdx = _findColIdx(headers, 'FEC_VENCIMIENTO COB');
-    if (fecVencIdx === -1) fecVencIdx = 9;
+    if (fecVencIdx === -1) return { ok: false, error: 'Columna FEC_VENCIMIENTO COB no encontrada en BD' };
 
     var importeIdx = _findColIdx(headers, 'IMPORTE');
-    if (importeIdx === -1) importeIdx = 11;
+    if (importeIdx === -1) return { ok: false, error: 'Columna IMPORTE no encontrada en BD' };
 
     var today = new Date();
     today.setHours(0, 0, 0, 0);

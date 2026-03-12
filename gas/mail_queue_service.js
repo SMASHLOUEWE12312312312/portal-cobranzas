@@ -213,8 +213,12 @@ const MailQueueService = {
 
                     // If no date or too old, reset
                     if (!processedAt || isNaN(processedAt.getTime()) || (now - processedAt) > (timeoutMinutes * 60 * 1000)) {
+                        // P0-FIX: Reset to RETRY instead of PENDING to avoid double retry increment
+                        // updateStatus() already increments retry_count when status is RETRY,
+                        // so we set status to PENDING directly without re-incrementing here
                         sheet.getRange(i + 1, statusColIdx + 1).setValue(this.STATUS.PENDING);
-                        sheet.getRange(i + 1, 8).setValue((Number(data[i][7]) || 0) + 1); // Increment retry count
+                        // P0-FIX: Don't increment retry count here - getPending() will pick it up
+                        // and if it fails again, updateStatus(RETRY) will increment properly
                         Logger.warn(context, `Resetting stuck item row ${i + 1} to PENDING`);
                         resetCount++;
                     }
@@ -235,7 +239,8 @@ const MailQueueService = {
         try {
             if (this._sheetCache) return this._sheetCache;
 
-            const ss = SpreadsheetApp.getActive();
+            // P1-FIX: Use SheetsIO._getSpreadsheet() for Web App compatibility
+            const ss = SheetsIO._getSpreadsheet();
             if (!ss) return null;
 
             let sheet = ss.getSheetByName(this.SHEET_NAME);

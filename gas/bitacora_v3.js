@@ -49,7 +49,7 @@ var BitacoraService = BitacoraService || {
 
   // ========== BUFFER Y CACHÉ (privado) ==========
 
-  _buffer: [],
+  _buffer: null,
   _sheetCache: null,
   _dataCache: null,        // Caché de datos de gestiones
   _dataCacheTime: null,     // Timestamp del caché de datos
@@ -203,6 +203,10 @@ var BitacoraService = BitacoraService || {
       const esGrupo = datos.esGrupo || GrupoEconomicoService.esGrupo(datos.asegurado);
       const snapshotVencidos = this._calcularSnapshotVencidos(datos.asegurado, esGrupo);
 
+      if (snapshotVencidos.error) {
+        Logger.warn(context, 'Snapshot calculado con error, registrando como 0', { error: snapshotVencidos.error });
+      }
+
       // Construir fila (ahora con 16 columnas)
       const fila = [
         idCiclo,                                    // 1. ID_CICLO
@@ -219,11 +223,12 @@ var BitacoraService = BitacoraService || {
         '',                                        // 12. FECHA_COMPROMISO (vacío inicialmente)
         'Esperar respuesta del cliente',           // 13. PROXIMA_ACCION
         datos.observaciones || 'Envío automático de EECC', // 14. OBSERVACIONES
-        snapshotVencidos.vencidoPEN,               // 15. SNAPSHOT_VENCIDO_PEN ← NUEVO
-        snapshotVencidos.vencidoUSD                // 16. SNAPSHOT_VENCIDO_USD ← NUEVO
+        snapshotVencidos.vencidoPEN ?? 0,          // 15. SNAPSHOT_VENCIDO_PEN ← NUEVO
+        snapshotVencidos.vencidoUSD ?? 0           // 16. SNAPSHOT_VENCIDO_USD ← NUEVO
       ];
 
       // Bufferizar
+      if (!this._buffer) this._buffer = [];
       this._buffer.push({
         fila: fila,
         estado: 'EN_SEGUIMIENTO',
@@ -423,6 +428,10 @@ var BitacoraService = BitacoraService || {
       const esGrupo = datos.esGrupo || GrupoEconomicoService.esGrupo(datos.asegurado);
       const snapshotVencidos = this._calcularSnapshotVencidos(datos.asegurado, esGrupo);
 
+      if (snapshotVencidos.error) {
+        Logger.warn(context, 'Snapshot calculado con error, registrando como 0', { error: snapshotVencidos.error });
+      }
+
       Logger.info(context, 'Snapshot de vencidos calculado', {
         asegurado: datos.asegurado,
         esGrupo: esGrupo,
@@ -446,11 +455,12 @@ var BitacoraService = BitacoraService || {
         datos.fechaCompromiso || '',                      // 12. FECHA_COMPROMISO
         datos.proximaAccion,                              // 13. PROXIMA_ACCION
         datos.observaciones || '',                        // 14. OBSERVACIONES
-        snapshotVencidos.vencidoPEN,                      // 15. SNAPSHOT_VENCIDO_PEN ← NUEVO
-        snapshotVencidos.vencidoUSD                       // 16. SNAPSHOT_VENCIDO_USD ← NUEVO
+        snapshotVencidos.vencidoPEN ?? 0,                 // 15. SNAPSHOT_VENCIDO_PEN ← NUEVO
+        snapshotVencidos.vencidoUSD ?? 0                  // 16. SNAPSHOT_VENCIDO_USD ← NUEVO
       ];
 
       // Bufferizar
+      if (!this._buffer) this._buffer = [];
       this._buffer.push({
         fila: fila,
         estado: datos.estadoGestion,
@@ -553,14 +563,12 @@ var BitacoraService = BitacoraService || {
       let gestiones;
       const ahora = Date.now();
 
-      // ⚡ OPTIMIZACIÓN: Verificar caché de datos (Phase 0: 30s cache)
+      // ⚡ OPTIMIZACIÓN: Verificar caché en memoria (misma invocación) o leer de sheet
       const cacheDuration = this._getDataCacheDuration();
       if (this._dataCache && this._dataCacheTime && (ahora - this._dataCacheTime < cacheDuration)) {
-        Logger.debug(context, '⚡ Usando caché de datos (edad: ' + (ahora - this._dataCacheTime) + 'ms, TTL: ' + cacheDuration + 'ms)');
         gestiones = this._dataCache;
       } else {
         // Leer del sheet
-        Logger.debug(context, '📡 Leyendo datos del sheet...');
         const sheet = this._getOrCreateSheetCached();
         const lastRow = sheet.getLastRow();
 
@@ -574,10 +582,9 @@ var BitacoraService = BitacoraService || {
         // Mapear a objetos
         gestiones = data.map(fila => this._filaToObject(fila));
 
-        // Guardar en caché
+        // Guardar en caché en memoria (útil si se llama múltiples veces en la misma invocación)
         this._dataCache = gestiones;
         this._dataCacheTime = ahora;
-        Logger.debug(context, '💾 Datos guardados en caché (' + gestiones.length + ' registros)');
       }
 
       // Aplicar filtros
@@ -596,8 +603,6 @@ var BitacoraService = BitacoraService || {
 
       // Ordenar por FECHA_REGISTRO desc
       resultado.sort((a, b) => b.fechaRegistro - a.fechaRegistro);
-
-      Logger.debug(context, 'Gestiones obtenidas', { count: resultado.length });
 
       return resultado;
 
@@ -641,9 +646,9 @@ var BitacoraService = BitacoraService || {
       const resumen = [];
       const hoy = this._getFechaPeru();
 
-      Logger.info(context, 'Total de asegurados únicos encontrados', { totalAsegurados: Object.keys(aseguradosMap).length });
+      const aseguradoKeys = Object.keys(aseguradosMap);
 
-      Object.keys(aseguradosMap).forEach(aseguradoNormalizado => {
+      aseguradoKeys.forEach(aseguradoNormalizado => {
         const { nombreOriginal, gestiones: todasGestionesAsegurado } = aseguradosMap[aseguradoNormalizado];
 
         // Ordenar TODAS las gestiones del asegurado por FECHA_REGISTRO desc (más reciente primero)
@@ -680,12 +685,20 @@ var BitacoraService = BitacoraService || {
           deltaVencidoPEN = Math.round((vencidoPENActual - vencidoPENAnterior) * 100) / 100;
           deltaVencidoUSD = Math.round((vencidoUSDActual - vencidoUSDAnterior) * 100) / 100;
 
-          // Calcular porcentaje de variación (solo si anterior > 0)
+          // Calcular porcentaje de variación
           if (vencidoPENAnterior > 0) {
             deltaPercentPEN = Math.round((deltaVencidoPEN / vencidoPENAnterior) * 10000) / 100; // 2 decimales
+          } else if (vencidoPENActual > 0) {
+            deltaPercentPEN = 100; // De 0 a algo = 100% aumento
+          } else {
+            deltaPercentPEN = 0; // Ambos en 0 = sin cambio
           }
           if (vencidoUSDAnterior > 0) {
             deltaPercentUSD = Math.round((deltaVencidoUSD / vencidoUSDAnterior) * 10000) / 100;
+          } else if (vencidoUSDActual > 0) {
+            deltaPercentUSD = 100;
+          } else {
+            deltaPercentUSD = 0;
           }
 
           // Determinar tendencia
@@ -702,25 +715,17 @@ var BitacoraService = BitacoraService || {
           tendenciaUSD = 'PRIMERA';
         }
 
-        Logger.debug(context, `Asegurado: ${nombreOriginal}`, {
-          normalizado: aseguradoNormalizado,
-          totalGestiones: todasGestionesAsegurado.length,
-          totalCiclos: ciclosUnicos.length,
-          cicloActual: ultimaGestion.idCiclo,
-          deltaVencidoPEN: deltaVencidoPEN,
-          deltaVencidoUSD: deltaVencidoUSD,
-          tendenciaPEN: tendenciaPEN,
-          tendenciaUSD: tendenciaUSD
-        });
-
         // Calcular días desde INICIO DEL CICLO ACTUAL (fechaEnvioEECC)
         const diasDesdeCiclo = this._calcularDiasDesde(ultimaGestion.fechaEnvioEECC, hoy);
+        // Calcular días desde la ÚLTIMA GESTIÓN (fechaRegistro)
+        const diasDesdeUltimaGestion = this._calcularDiasDesde(ultimaGestion.fechaRegistro, hoy);
 
         // Agregar al resumen (usando el nombre original, no el normalizado)
         resumen.push({
           ...ultimaGestion,
           asegurado: nombreOriginal,  // Usar el nombre original para mostrar
-          diasDesdeRegistro: diasDesdeCiclo,  // Días desde inicio del ciclo actual
+          diasDesdeCiclo: diasDesdeCiclo,     // Días desde inicio del ciclo
+          diasDesdeRegistro: diasDesdeUltimaGestion,  // Días desde última gestión
           numGestiones: todasGestionesAsegurado.length,  // Total de gestiones del asegurado (todos los ciclos)
           numCiclos: ciclosUnicos.length,  // Total de ciclos del asegurado
           // NUEVO: Campos de variación de deuda
@@ -809,6 +814,7 @@ var BitacoraService = BitacoraService || {
    */
   flush() {
     const context = 'BitacoraService.flush';
+    if (!this._buffer) this._buffer = [];
 
     if (this._buffer.length === 0) {
       this._flushScheduled = false;
@@ -818,24 +824,25 @@ var BitacoraService = BitacoraService || {
     try {
       const sheet = this._getOrCreateSheetCached();
 
-      // Extraer filas del buffer
+      // Extraer filas y estados del buffer ANTES de cualquier operación
       const rows = this._buffer.map(item => item.fila);
+      const bufferSnapshot = this._buffer.map(item => ({ estado: item.estado }));
 
       // UNA SOLA operación batch
       const lastRow = sheet.getLastRow();
       sheet.getRange(lastRow + 1, 1, rows.length, 16).setValues(rows);
 
-      // Aplicar formatos en batch
-      this._applyFormatsBatch(sheet, lastRow + 1, rows.length);
+      // Aplicar formatos en batch (usando snapshot, no el buffer mutable)
+      this._applyFormatsBatch(sheet, lastRow + 1, rows.length, bufferSnapshot);
 
       const count = rows.length;
+
+      // 🔥 IMPORTANTE: Limpiar cache ANTES del buffer para evitar lecturas stale
+      this._clearCache();
 
       // Limpiar buffer
       this._buffer = [];
       this._flushScheduled = false;
-
-      // 🔥 IMPORTANTE: Limpiar cache de la sheet para forzar lectura fresca
-      this._clearCache();
 
       // Forzar flush de Sheets para asegurar que los datos se escriban inmediatamente
       SpreadsheetApp.flush();
@@ -851,14 +858,14 @@ var BitacoraService = BitacoraService || {
   },
 
   clearBuffer() {
-    const count = this._buffer.length;
+    const count = (this._buffer || []).length;
     this._buffer = [];
     this._flushScheduled = false;
     return { ok: true, cleared: count };
   },
 
   getBufferSize() {
-    return this._buffer.length;
+    return (this._buffer || []).length;
   },
 
   // ========== HELPERS PRIVADOS ==========
@@ -880,7 +887,8 @@ var BitacoraService = BitacoraService || {
   _generarIdCiclo(asegurado) {
     const slug = Utils.safeName(asegurado).substring(0, 20);
     const timestamp = Utilities.formatDate(this._getFechaPeru(), this.TIMEZONE, 'yyyyMMdd_HHmmss');
-    return `CIC_${slug}_${timestamp}`;
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `CIC_${slug}_${timestamp}_${random}`;
   },
 
   /**
@@ -900,6 +908,13 @@ var BitacoraService = BitacoraService || {
    */
   _obtenerFechaEnvioEECC(idCiclo) {
     try {
+      // Intentar buscar en el cache de datos primero (evita lectura completa del sheet)
+      const gestiones = this.obtenerGestiones({ idCiclo: idCiclo });
+      if (gestiones.length > 0 && gestiones[0].fechaEnvioEECC) {
+        return gestiones[0].fechaEnvioEECC;
+      }
+
+      // Fallback: buscar directamente en el sheet si no está en cache
       const sheet = this._getOrCreateSheetCached();
       const lastRow = sheet.getLastRow();
 
@@ -907,7 +922,6 @@ var BitacoraService = BitacoraService || {
         return new Date();  // Fallback
       }
 
-      // Buscar el ciclo (leer col 0 = ID_CICLO, col 3 = FECHA_ENVIO_EECC)
       const data = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
 
       for (let i = 0; i < data.length; i++) {
@@ -941,6 +955,10 @@ var BitacoraService = BitacoraService || {
    * @private
    */
   _calcularDiasDesde(fechaRegistro, hoy) {
+    if (!fechaRegistro || !(fechaRegistro instanceof Date) || isNaN(fechaRegistro.getTime())) {
+      return 0;
+    }
+
     // Normalizar ambas fechas al inicio del día (00:00:00)
     const fechaRegistroNormalizada = new Date(fechaRegistro);
     fechaRegistroNormalizada.setHours(0, 0, 0, 0);
@@ -951,7 +969,7 @@ var BitacoraService = BitacoraService || {
     // Calcular diferencia en milisegundos y convertir a días
     const MS_PER_DAY = 1000 * 60 * 60 * 24;
     const diffMs = hoyNormalizado.getTime() - fechaRegistroNormalizada.getTime();
-    return Math.floor(diffMs / MS_PER_DAY);
+    return Math.max(0, Math.floor(diffMs / MS_PER_DAY));
   },
 
   /**
@@ -975,8 +993,8 @@ var BitacoraService = BitacoraService || {
       fechaCompromiso: fila[11] ? this._parseDate(fila[11]) : null,
       proximaAccion: fila[12],
       observaciones: fila[13],
-      snapshotVencidoPEN: this._parseNumber(fila[14]) || 0,  // NUEVO
-      snapshotVencidoUSD: this._parseNumber(fila[15]) || 0   // NUEVO
+      snapshotVencidoPEN: fila[14] !== '' && fila[14] != null ? this._parseNumber(fila[14]) : 0,
+      snapshotVencidoUSD: fila[15] !== '' && fila[15] != null ? this._parseNumber(fila[15]) : 0
     };
   },
 
@@ -1001,13 +1019,15 @@ var BitacoraService = BitacoraService || {
       }
     }
 
-    // Si es número (timestamp), convertir
+    // Si es número (timestamp), convertir (validar resultado)
     if (typeof value === 'number') {
-      return new Date(value);
+      const d = new Date(value);
+      return !isNaN(d.getTime()) ? d : null;
     }
 
-    // Fallback: retornar como Date
-    return new Date(value);
+    // Fallback: intentar convertir pero validar
+    const fallback = new Date(value);
+    return !isNaN(fallback.getTime()) ? fallback : null;
   },
 
   /**
@@ -1112,14 +1132,19 @@ var BitacoraService = BitacoraService || {
       const monIdx = colMap['MON'] ?? -1;
       const fecVencIdx = colMap['FEC_VENCIMIENTO_COB'] ?? colMap['FEC_VENCIMIENTO COB'] ?? colMap['FEC VENCIMIENTO COB'] ?? -1;
 
-      // Validar columnas necesarias
+      // Validar columnas necesarias - lanzar error en vez de fallo silencioso
       if (aseguradoIdx === -1 || importeIdx === -1 || fecVencIdx === -1) {
-        Logger.error(context, 'Columnas requeridas no encontradas', {
+        const missing = [];
+        if (aseguradoIdx === -1) missing.push('ASEGURADO');
+        if (importeIdx === -1) missing.push('IMPORTE');
+        if (fecVencIdx === -1) missing.push('FEC_VENCIMIENTO_COB');
+        Logger.error(context, 'Columnas requeridas no encontradas en hoja BD', {
           aseguradoIdx,
           importeIdx,
-          fecVencIdx
+          fecVencIdx,
+          columnasDisponibles: Object.keys(colMap).join(', ')
         });
-        return { vencidoPEN: 0, vencidoUSD: 0 };
+        return { vencidoPEN: null, vencidoUSD: null, error: `Columnas faltantes: ${missing.join(', ')}` };
       }
 
       // Fecha de hoy (inicio del día para comparación correcta)
@@ -1243,7 +1268,7 @@ var BitacoraService = BitacoraService || {
    * Aplica formatos en batch
    * @private
    */
-  _applyFormatsBatch(sheet, startRow, numRows) {
+  _applyFormatsBatch(sheet, startRow, numRows, bufferSnapshot) {
     if (numRows === 0) return;
 
     try {
@@ -1257,7 +1282,7 @@ var BitacoraService = BitacoraService || {
       const fontColors = [];
 
       for (let i = 0; i < numRows; i++) {
-        const estado = this._buffer[i].estado;
+        const estado = bufferSnapshot[i] ? bufferSnapshot[i].estado : '';
         const config = this._getEstadoColorConfig(estado);
         backgroundColors.push([config.bgColor]);
         fontColors.push([config.color]);
@@ -1366,31 +1391,18 @@ var BitacoraService = BitacoraService || {
         const tieneFechaCompromiso = ultimaGestion.fechaCompromiso &&
           (ultimaGestion.fechaCompromiso instanceof Date);
 
-        Logger.debug(context, `Cliente: ${nombreOriginal}`, {
-          totalGestiones: gestiones.length,
-          ultimoEstado: ultimaGestion.estadoGestion,
-          tieneFechaCompromiso: tieneFechaCompromiso,
-          esEstadoInactivo: esEstadoInactivo
-        });
+        // Verificar si el compromiso está vencido
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const compromisoVencido = tieneFechaCompromiso && ultimaGestion.fechaCompromiso < hoy;
 
-        // Solo agregar si:
-        // 1. Tiene fecha de compromiso
-        // 2. NO está en estado inactivo (derivado o cerrado)
+        // Solo agregar si tiene fecha de compromiso y NO está en estado inactivo
         if (tieneFechaCompromiso && !esEstadoInactivo) {
           compromisosActivos.push({
             ...ultimaGestion,
-            asegurado: nombreOriginal  // Usar nombre original para display
+            asegurado: nombreOriginal,
+            compromisoVencido: compromisoVencido
           });
-
-          Logger.info(context, `✅ Compromiso activo: ${nombreOriginal} - ${ultimaGestion.fechaCompromiso.toISOString().split('T')[0]} (${ultimaGestion.estadoGestion})`);
-        } else {
-          let razon = '';
-          if (!tieneFechaCompromiso) {
-            razon = 'sin fecha de compromiso';
-          } else if (esEstadoInactivo) {
-            razon = `estado inactivo: ${ultimaGestion.estadoGestion}`;
-          }
-          Logger.debug(context, `❌ Excluido: ${nombreOriginal} - ${razon}`);
         }
       });
 

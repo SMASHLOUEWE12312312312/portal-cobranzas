@@ -54,6 +54,8 @@ const AuthService = {
 
   /**
    * Login con rate limiting y protección brute-force
+   * P0-FIX: Uses LockService to prevent race condition on concurrent login attempts
+   * P1-FIX: Consistent timing delay on all failure paths
    */
   login(username, password) {
     const context = 'AuthService.login';
@@ -84,85 +86,98 @@ const AuthService = {
         };
       }
 
-      const users = this._loadUsers();
-      if (!users || users.length === 0) {
-        Logger.error(context, 'No users found in system');
-        return { ok: false, error: 'Sistema no inicializado. Contacta al administrador.' };
+      // P0-FIX: Acquire lock to prevent race condition on concurrent logins
+      // Two concurrent logins could both read stale loginAttempts and both succeed
+      const lock = LockService.getScriptLock();
+      if (!lock.tryLock(10000)) {
+        Logger.warn(context, 'Login lock busy', { user: cleanUsername });
+        return { ok: false, error: 'Sistema ocupado, intenta de nuevo.' };
       }
-
-      const user = users.find(u => u.user === cleanUsername);
-
-      if (!user) {
-        this._recordFailedAttempt(cleanUsername);
-        Logger.warn(context, 'User not found', { user: cleanUsername });
-        // Timing attack prevention - delay fijo
-        Utilities.sleep(Math.random() * 500 + 500);
-        return { ok: false, error: 'Usuario o contraseña inválidos' };
-      }
-
-      // Verificar si cuenta bloqueada
-      if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-        Logger.warn(context, 'Account locked', { user: cleanUsername });
-        return {
-          ok: false,
-          error: 'Cuenta bloqueada temporalmente. Intenta más tarde.'
-        };
-      }
-
-      // Verificar contraseña
-      const hash = this._strongHash(cleanPassword, user.salt);
-
-      if (hash !== user.hash) {
-        this._recordFailedAttempt(cleanUsername);
-        this._incrementUserLoginAttempts(cleanUsername);
-        Logger.warn(context, 'Invalid password', { user: cleanUsername });
-        Utilities.sleep(Math.random() * 500 + 500);
-        return { ok: false, error: 'Usuario o contraseña inválidos' };
-      }
-
-      // Login exitoso - generar token
-      const token = this._generateToken(user.user);
-      const ttl = getConfig('AUTH.SESSION_TTL_SEC', 28800);
 
       try {
-        const cache = CacheService.getScriptCache();
-        const now = Date.now();
-        const sessionData = JSON.stringify({
-          user: user.user,
-          loginAt: new Date().toISOString(),
-          lastActivity: now,  // Phase 1: track activity for sliding expiration
-          ip: this._getClientIP()
+        const users = this._loadUsers();
+        if (!users || users.length === 0) {
+          Logger.error(context, 'No users found in system');
+          return { ok: false, error: 'Sistema no inicializado. Contacta al administrador.' };
+        }
+
+        const user = users.find(u => u.user === cleanUsername);
+
+        if (!user) {
+          this._recordFailedAttempt(cleanUsername);
+          Logger.warn(context, 'User not found', { user: cleanUsername });
+          // Timing attack prevention - delay fijo
+          Utilities.sleep(Math.random() * 500 + 500);
+          return { ok: false, error: 'Usuario o contraseña inválidos' };
+        }
+
+        // Verificar si cuenta bloqueada
+        if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+          Logger.warn(context, 'Account locked', { user: cleanUsername });
+          return {
+            ok: false,
+            error: 'Cuenta bloqueada temporalmente. Intenta más tarde.'
+          };
+        }
+
+        // Verificar contraseña
+        const hash = this._strongHash(cleanPassword, user.salt);
+
+        if (hash !== user.hash) {
+          this._recordFailedAttempt(cleanUsername);
+          this._incrementUserLoginAttempts(cleanUsername);
+          Logger.warn(context, 'Invalid password', { user: cleanUsername });
+          Utilities.sleep(Math.random() * 500 + 500);
+          return { ok: false, error: 'Usuario o contraseña inválidos' };
+        }
+
+        // Login exitoso - generar token
+        const token = this._generateToken(user.user);
+        const ttl = getConfig('AUTH.SESSION_TTL_SEC', 28800);
+
+        try {
+          const cache = CacheService.getScriptCache();
+          const now = Date.now();
+          const sessionData = JSON.stringify({
+            user: user.user,
+            loginAt: new Date().toISOString(),
+            lastActivity: now,  // Phase 1: track activity for sliding expiration
+            ip: this._getClientIP()
+          });
+          // Phase 1: use TTL clamp for defensive cache.put
+          const ttlClamp = getConfig('AUTH.SESSION_TTL_SEC_CLAMP', 21600);
+          const ttlPut = Math.min(ttl, ttlClamp);
+          cache.put('sess:' + token, sessionData, ttlPut);
+        } catch (cacheError) {
+          Logger.error(context, 'Cache write failed', cacheError);
+          return { ok: false, error: 'Error al crear sesión. Intenta de nuevo.' };
+        }
+
+        // Actualizar último login y limpiar intentos fallidos
+        this._updateLastLogin(cleanUsername);
+        this._clearRateLimit(cleanUsername);
+
+        const duration = Date.now() - startTime;
+        Logger.info(context, 'Login successful', {
+          user: cleanUsername,
+          durationMs: duration
         });
-        // Phase 1: use TTL clamp for defensive cache.put
-        const ttlClamp = getConfig('AUTH.SESSION_TTL_SEC_CLAMP', 21600);
-        const ttlPut = Math.min(ttl, ttlClamp);
-        cache.put('sess:' + token, sessionData, ttlPut);
-      } catch (cacheError) {
-        Logger.error(context, 'Cache write failed', cacheError);
-        return { ok: false, error: 'Error al crear sesión. Intenta de nuevo.' };
+
+        // Phase 1: Audit login (soft-fail)
+        try {
+          AuditService.log(AuditService.ACTIONS.LOGIN, cleanUsername, { durationMs: duration });
+        } catch (e) { /* ignore audit errors */ }
+
+        return {
+          ok: true,
+          token,
+          user: user.user,
+          expiresIn: ttl
+        };
+
+      } finally {
+        lock.releaseLock();
       }
-
-      // Actualizar último login y limpiar intentos fallidos
-      this._updateLastLogin(cleanUsername);
-      this._clearRateLimit(cleanUsername);
-
-      const duration = Date.now() - startTime;
-      Logger.info(context, 'Login successful', {
-        user: cleanUsername,
-        durationMs: duration
-      });
-
-      // Phase 1: Audit login (soft-fail)
-      try {
-        AuditService.log(AuditService.ACTIONS.LOGIN, cleanUsername, { durationMs: duration });
-      } catch (e) { /* ignore audit errors */ }
-
-      return {
-        ok: true,
-        token,
-        user: user.user,
-        expiresIn: ttl
-      };
 
     } catch (error) {
       Logger.error(context, 'Login failed', error);
@@ -292,7 +307,10 @@ const AuthService = {
       const sessionData = cache.get('sess:' + token);
 
       if (sessionData) {
-        cache.put('sess:' + token, sessionData, ttl);
+        // P1-FIX: Use TTL clamp consistent with login/validateSession
+        const ttlClamp = getConfig('AUTH.SESSION_TTL_SEC_CLAMP', 21600);
+        const ttlPut = Math.min(ttl, ttlClamp);
+        cache.put('sess:' + token, sessionData, ttlPut);
         Logger.info(context, 'Session refreshed', { user: username });
         return { ok: true, message: 'Sesión actualizada' };
       }
@@ -401,7 +419,7 @@ const AuthService = {
         }
       }
 
-      return { ok: true, cleaned: cleaned || 0 };
+      return { ok: true, cleaned: typeof cleaned !== 'undefined' ? cleaned : 0 };
     } catch (error) {
       Logger.error(context, 'Cleanup failed', error);
       return { ok: false, error: error.message };

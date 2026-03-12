@@ -18,14 +18,15 @@ const MailerService = {
     
     let bodyHtml = template.body;
 
-    bodyHtml = bodyHtml.replace(/{{ASEGURADO}}/g, data.asegurado || '');
-    bodyHtml = bodyHtml.replace(/{{FECHA_CORTE}}/g, data.fechaCorte || '');
-    bodyHtml = bodyHtml.replace(/{{SALUDO}}/g, data.saludo || 'Estimados');
-    
+    const esc = (s) => _escapeHtmlServer ? _escapeHtmlServer(s) : String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    bodyHtml = bodyHtml.replace(/{{ASEGURADO}}/g, esc(data.asegurado));
+    bodyHtml = bodyHtml.replace(/{{FECHA_CORTE}}/g, esc(data.fechaCorte));
+    bodyHtml = bodyHtml.replace(/{{SALUDO}}/g, esc(data.saludo || 'Estimados'));
+
     if (data.observaciones) {
-      bodyHtml = bodyHtml.replace(/{{OBS_OPCIONAL}}/g, 
+      bodyHtml = bodyHtml.replace(/{{OBS_OPCIONAL}}/g,
         `<p style="margin-top: 1rem; padding: 1rem; background: #FFF3E0; border-left: 4px solid #F57C00; border-radius: 4px;">
-          <strong>Nota:</strong> ${data.observaciones}
+          <strong>Nota:</strong> ${esc(data.observaciones)}
         </p>`);
     } else {
       bodyHtml = bodyHtml.replace(/{{OBS_OPCIONAL}}/g, '');
@@ -99,16 +100,19 @@ const MailerService = {
         attachments: attachments
       };
 
+      // Sanitizar emails: eliminar \r\n para prevenir header injection
+      const sanitizeEmail = (e) => String(e).replace(/[\r\n]/g, '').trim();
+
       if (params.cc && params.cc.length > 0) {
-        options.cc = params.cc.join(',');
+        options.cc = params.cc.map(sanitizeEmail).join(',');
       }
 
       if (params.bcc && params.bcc.length > 0) {
-        options.bcc = params.bcc.join(',');
+        options.bcc = params.bcc.map(sanitizeEmail).join(',');
       }
 
       GmailApp.sendEmail(
-        params.to.join(','),
+        params.to.map(sanitizeEmail).join(','),
         params.subject,
         'Este correo requiere un cliente que soporte HTML.',
         options
@@ -117,7 +121,8 @@ const MailerService = {
       const duration = Date.now() - startTime;
       Logger.info(context, 'Email sent successfully', { durationMs: duration });
 
-      return 'sent-' + Date.now();
+      // P3-FIX: Generate a proper unique ID instead of fake timestamp-based ID
+      return 'msg-' + Utilities.getUuid();
 
     } catch (error) {
       Logger.error(context, 'Failed to send email', error);
@@ -139,9 +144,12 @@ const MailerService = {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const allEmails = [...params.to, ...(params.cc || []), ...(params.bcc || [])];
-    
+
     allEmails.forEach(email => {
-      const cleanEmail = email.replace(/<.*>/, '').trim();
+      // P2-FIX: Extract address from "Name <email>" format correctly
+      // The old regex /<.*>/ was wrong - it should extract the content INSIDE <>, not remove it
+      const angleMatch = email.match(/<([^>]+)>/);
+      const cleanEmail = angleMatch ? angleMatch[1].trim() : email.trim();
       if (!emailRegex.test(cleanEmail)) {
         throw new Error('Email inválido: ' + email);
       }

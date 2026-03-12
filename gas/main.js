@@ -279,7 +279,7 @@ function doGet(e) {
     // 🚀 PRE-CARGAR datos de bitácora para velocidad instantánea
     let bitacoraData = [];
     try {
-      const ss = SpreadsheetApp.getActive() || SpreadsheetApp.openById(getConfig('SPREADSHEET_ID', ''));
+      const ss = SheetsIO._getSpreadsheet();
       const sheet = ss.getSheetByName('Bitacora_Gestiones_EECC');
 
       if (sheet && sheet.getLastRow() >= 2) {
@@ -422,15 +422,8 @@ function doPost(e) {
       case 'validateSession':
         try {
           const username = AuthService.validateSession(token);
-          let userRole = 'LECTURA';
-          if (typeof _inferUserRole === 'function') {
-            userRole = _inferUserRole(username);
-          } else {
-            const lowerUser = String(username).toLowerCase();
-            if (lowerUser.startsWith('admin')) userRole = 'ADMIN';
-            else if (lowerUser.startsWith('cobranzas')) userRole = 'COBRANZAS';
-            else if (lowerUser.startsWith('supervisor')) userRole = 'SUPERVISOR';
-          }
+          // P1-FIX: Always use _inferUserRole which checks explicit admin list
+          const userRole = _inferUserRole(username);
           result = {
             ok: true,
             data: {

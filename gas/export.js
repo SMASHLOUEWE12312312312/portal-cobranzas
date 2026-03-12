@@ -109,6 +109,94 @@ const ExportService = {
   },
   
   /**
+   * Exporta múltiples spreadsheets completos en paralelo usando UrlFetchApp.fetchAll()
+   * Cada spreadsheet se exporta entero (todas sus hojas juntas) como un único PDF o XLSX.
+   *
+   * @param {Array<Object>} items - Array de { spreadsheetId: string, fileName: string }
+   * @param {Object} opts - { format: 'pdf'|'xlsx' }
+   * @return {Array<Object>} Array de { fileName, blob, ok, error? }
+   */
+  batchExportSpreadsheets(items, opts = {}) {
+    const context = 'ExportService.batchExportSpreadsheets';
+    const format = opts.format || 'pdf';
+    Logger.debug(context, 'Starting batch export', { count: items.length, format });
+
+    const token = ScriptApp.getOAuthToken();
+    const requests = [];
+
+    if (format === 'pdf') {
+      const pdfConfig = getConfig('EXPORT.PDF');
+      const baseParams = {
+        format: 'pdf',
+        portrait: pdfConfig.PORTRAIT,
+        size: pdfConfig.SIZE,
+        scale: 2,
+        fitw: pdfConfig.FIT_WIDTH,
+        horizontal_center: true,
+        vertical_center: false,
+        top_margin: pdfConfig.MARGINS.top,
+        bottom_margin: pdfConfig.MARGINS.bottom,
+        left_margin: pdfConfig.MARGINS.left,
+        right_margin: pdfConfig.MARGINS.right,
+        gridlines: false,
+        sheetnames: false,
+        printnotes: false,
+        printtitle: false,
+        fzr: true,
+        pagenum: pdfConfig.SHOW_PAGE_NUMBERS ? 'CENTER' : 'UNDEFINED',
+        attachment: false
+      };
+      const queryString = Object.entries(baseParams)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join('&');
+
+      for (const item of items) {
+        requests.push({
+          url: `https://docs.google.com/spreadsheets/d/${item.spreadsheetId}/export?${queryString}`,
+          headers: { Authorization: 'Bearer ' + token },
+          muteHttpExceptions: true
+        });
+      }
+    } else {
+      for (const item of items) {
+        requests.push({
+          url: `https://docs.google.com/spreadsheets/d/${item.spreadsheetId}/export?format=xlsx`,
+          headers: { Authorization: 'Bearer ' + token },
+          muteHttpExceptions: true
+        });
+      }
+    }
+
+    // Parallel fetch — single round-trip for all spreadsheets
+    const responses = UrlFetchApp.fetchAll(requests);
+
+    const results = [];
+    for (let i = 0; i < responses.length; i++) {
+      const resp = responses[i];
+      const item = items[i];
+
+      if (resp.getResponseCode() === 200) {
+        results.push({
+          fileName: item.fileName,
+          blob: resp.getBlob().setName(item.fileName),
+          ok: true
+        });
+      } else {
+        Logger.warn(context, `Export failed for ${item.fileName}`, { code: resp.getResponseCode() });
+        results.push({
+          fileName: item.fileName,
+          blob: null,
+          ok: false,
+          error: `HTTP ${resp.getResponseCode()}`
+        });
+      }
+    }
+
+    Logger.debug(context, 'Batch export complete', { total: results.length, ok: results.filter(r => r.ok).length });
+    return results;
+  },
+
+  /**
    * Exporta vista filtrada actual del portal a XLSX
    * Mantiene los mismos encabezados que se ven en la UI
    * @param {Array<Array>} rows - Filas filtradas

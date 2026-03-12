@@ -172,7 +172,7 @@ const ConciliacionCruceV2 = {
                 tramaStatusValues.push([this.STATUS.REGISTRADO]);
                 tramaBackgrounds.push([this.COLORS.REGISTRADO]);
                 contRegistrado++;
-                if (matchEntry) {
+                if (matchEntry && matchEntry.idx >= 0 && matchEntry.idx < bdCupones.length) {
                     bdCupones[matchEntry.idx].procesado = true;
                     bdCupones[matchEntry.idx].status = this.STATUS.REGISTRADO;
                 }
@@ -180,7 +180,8 @@ const ConciliacionCruceV2 = {
                 tramaStatusValues.push([this.STATUS.VALIDAR]);
                 tramaBackgrounds.push([this.COLORS.VALIDAR]);
                 contValidar++;
-                if (matchEntry) {
+                // P1-FIX: Bounds check on bdCupones array access
+                if (matchEntry && matchEntry.idx >= 0 && matchEntry.idx < bdCupones.length) {
                     bdCupones[matchEntry.idx].procesado = true;
                     bdCupones[matchEntry.idx].status = this.STATUS.VALIDAR;
                 }

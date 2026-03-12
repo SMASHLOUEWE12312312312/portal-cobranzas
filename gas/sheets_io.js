@@ -153,12 +153,33 @@ const SheetsIO = {
       const sheetName = getConfig('SHEETS.BASE', 'BD');
       const headerRow = getConfig('BD.HEADER_ROW', 1);
 
+      // Validar que hay headers y datos
+      if (headers.length === 0 && rows.length === 0) {
+        throw new Error('El archivo está vacío');
+      }
+
       // Limpiar datos (espacios, moneda, etc.)
       const cleaned = this._cleanData(headers, rows);
 
+      // Normalizar filas al mismo ancho que headers
+      const numCols = headers.length;
+      const normalized = numCols > 0 ? cleaned.map(row => {
+        const r = row.slice(0, numCols);
+        while (r.length < numCols) r.push('');
+        return r;
+      }) : cleaned;
+
+      // Verificar columna CUPON antes de deduplicar
+      const warnings = [];
+      const cuponColName = getConfig('BD.COLUMNS.CUPON', 'CUPON');
+      const cuponIdx = Utils.findColumnIndex(headers, cuponColName);
+      if (cuponIdx === -1) {
+        warnings.push('Columna CUPON no encontrada: no se realizó deduplicación');
+      }
+
       // Deduplicar por CUPON
-      const deduped = this._deduplicateByCupon(headers, cleaned);
-      const duplicatesRemoved = cleaned.length - deduped.length;
+      const deduped = this._deduplicateByCupon(headers, normalized);
+      const duplicatesRemoved = normalized.length - deduped.length;
 
       const ss = this._getSpreadsheet();
       let sheet = ss.getSheetByName(sheetName);
@@ -203,7 +224,8 @@ const SheetsIO = {
       return {
         ok: true,
         rowsWritten: deduped.length,
-        duplicatesRemoved
+        duplicatesRemoved,
+        warnings
       };
     } catch (error) {
       Logger.error(context, 'Update failed', error);

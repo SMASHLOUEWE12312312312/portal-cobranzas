@@ -12,7 +12,7 @@ const SchedulerService = {
     scheduleJob(jobData) {
         const context = 'SchedulerService.scheduleJob';
         const sheetName = getConfig('SHEETS.MAIL_SCHEDULE');
-        const ss = SpreadsheetApp.getActive();
+        const ss = SheetsIO._getSpreadsheet();
         let sheet = ss.getSheetByName(sheetName);
 
         if (!sheet) {
@@ -52,7 +52,7 @@ const SchedulerService = {
     processPendingJobs() {
         const context = 'SchedulerService.processPendingJobs';
         const sheetName = getConfig('SHEETS.MAIL_SCHEDULE');
-        const ss = SpreadsheetApp.getActive();
+        const ss = SheetsIO._getSpreadsheet();
         const sheet = ss.getSheetByName(sheetName);
 
         if (!sheet) return;

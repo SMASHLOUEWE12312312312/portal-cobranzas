@@ -2421,11 +2421,9 @@
 
   .login-logo {
     display: block;
-    width: 200px;
-    max-width: 80%;
+    width: auto;
+    max-width: 220px;
     height: auto;
-    aspect-ratio: 200 / 60;
-    /* PSI: Reserve space for logo to prevent CLS */
     margin: 0 auto var(--tp-space-6);
     object-fit: contain;
   }
@@ -3209,6 +3207,264 @@
   }
 
   /* ============================================================================
+   EECC GENERATION UX - Progress & Status
+   ============================================================================ */
+
+  /* Progress bar */
+  .eecc-progress-container {
+    margin-top: var(--tp-space-3);
+    display: none;
+  }
+
+  .eecc-progress-container.active {
+    display: block;
+  }
+
+  .eecc-progress-bar-track {
+    width: 100%;
+    height: 8px;
+    background: var(--tp-border-light);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: var(--tp-space-2);
+  }
+
+  .eecc-progress-bar-fill {
+    height: 100%;
+    background: var(--tp-primary);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.4s ease-out;
+  }
+
+  .eecc-progress-bar-fill.complete {
+    background: var(--tp-success);
+  }
+
+  .eecc-progress-bar-fill.has-errors {
+    background: var(--tp-warning);
+  }
+
+  .eecc-progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--tp-text-xs);
+    color: var(--tp-text-tertiary);
+  }
+
+  .eecc-progress-label {
+    font-weight: var(--tp-font-medium);
+    color: var(--tp-text-secondary);
+  }
+
+  .eecc-elapsed-time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Live status table during generation */
+  .eecc-live-status {
+    margin-top: var(--tp-space-3);
+    border: 1px solid var(--tp-border-light);
+    border-radius: var(--tp-radius-md);
+    overflow: hidden;
+    display: none;
+  }
+
+  .eecc-live-status.active {
+    display: block;
+  }
+
+  .eecc-live-status-body {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .eecc-live-status-body::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .eecc-live-status-body::-webkit-scrollbar-thumb {
+    background: var(--tp-border-medium);
+    border-radius: 3px;
+  }
+
+  .eecc-live-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--tp-space-2) var(--tp-space-3);
+    font-size: var(--tp-text-xs);
+    border-bottom: 1px solid var(--tp-border-light);
+  }
+
+  .eecc-live-row:last-child {
+    border-bottom: none;
+  }
+
+  .eecc-live-row-name {
+    flex: 1;
+    color: var(--tp-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: var(--tp-space-2);
+  }
+
+  .eecc-live-badge {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.6875rem;
+    font-weight: var(--tp-font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .eecc-live-badge.pending {
+    background: var(--tp-surface-overlay);
+    color: var(--tp-text-tertiary);
+  }
+
+  .eecc-live-badge.generating {
+    background: var(--tp-info-pale);
+    color: var(--tp-info);
+    animation: eecc-pulse 1.5s ease-in-out infinite;
+  }
+
+  .eecc-live-badge.done {
+    background: var(--tp-success-pale);
+    color: var(--tp-success);
+  }
+
+  .eecc-live-badge.error {
+    background: var(--tp-error-pale);
+    color: var(--tp-error);
+  }
+
+  @keyframes eecc-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Generate button states */
+  .btn-generate {
+    position: relative;
+    transition: all var(--tp-duration-fast) ease;
+  }
+
+  .btn-generate.loading {
+    pointer-events: none;
+    opacity: 0.85;
+  }
+
+  .btn-generate .btn-spinner {
+    display: none;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  .btn-generate.loading .btn-spinner {
+    display: inline-block;
+  }
+
+  /* Confirmation dialog */
+  .eecc-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.15s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .eecc-confirm-dialog {
+    background: var(--tp-surface);
+    border-radius: var(--tp-radius-lg);
+    padding: var(--tp-space-6);
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    animation: slideUp 0.2s ease-out;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .eecc-confirm-dialog h4 {
+    margin: 0 0 var(--tp-space-2);
+    font-size: var(--tp-text-base);
+  }
+
+  .eecc-confirm-dialog p {
+    margin: 0 0 var(--tp-space-5);
+    font-size: var(--tp-text-sm);
+    color: var(--tp-text-secondary);
+    line-height: 1.5;
+  }
+
+  .eecc-confirm-actions {
+    display: flex;
+    gap: var(--tp-space-2);
+    justify-content: flex-end;
+  }
+
+  /* Summary card after completion */
+  .eecc-summary {
+    margin-top: var(--tp-space-3);
+    padding: var(--tp-space-4);
+    border-radius: var(--tp-radius-md);
+    display: none;
+  }
+
+  .eecc-summary.active {
+    display: block;
+  }
+
+  .eecc-summary.success {
+    background: var(--tp-success-pale);
+    border: 1px solid var(--tp-success-light);
+  }
+
+  .eecc-summary.warning {
+    background: var(--tp-warning-pale);
+    border: 1px solid var(--tp-warning-light);
+  }
+
+  .eecc-summary.error {
+    background: var(--tp-error-pale);
+    border: 1px solid var(--tp-error-light);
+  }
+
+  .eecc-summary-stats {
+    display: flex;
+    gap: var(--tp-space-4);
+    font-size: var(--tp-text-sm);
+    font-weight: var(--tp-font-medium);
+  }
+
+  .eecc-summary-stat {
+    display: flex;
+    align-items: center;
+    gap: var(--tp-space-1);
+  }
+
+  /* ============================================================================
    FIN DE STYLES.HTML
    ============================================================================ */
   /* ============================================================================
@@ -3270,8 +3526,8 @@
   }
 
   .generated-files-card.expanded .generated-files-body {
-    max-height: 300px;
-    /* Altura máxima razonable */
+    max-height: 500px;
+    /* Altura máxima para grupos grandes */
     overflow-y: auto;
   }
 
@@ -3693,5 +3949,631 @@
 
   .error-state-option:hover {
     background: #FFCDD2 !important;
+  }
+
+  /* ============================================================================
+   LAWS OF UX - COMPREHENSIVE IMPROVEMENTS v3.0
+   Applied: 30 Laws from lawsofux.com/es/
+   ============================================================================ */
+
+  /* -----------------------------------------------------------------------
+   LEY DE FITTS: Bigger click targets for primary actions
+   Min 44x44px touch targets, generous padding on CTAs
+   ----------------------------------------------------------------------- */
+  .btn-primary,
+  .btn--primary {
+    min-height: 48px;
+    min-width: 120px;
+    padding: var(--tp-space-3) var(--tp-space-6);
+    font-size: var(--tp-text-md);
+  }
+
+  /* Login submit button: extra prominent (Fitts + Von Restorff) */
+  #loginForm .btn-primary {
+    min-height: 52px;
+    font-size: var(--tp-text-lg);
+    font-weight: var(--tp-font-bold);
+    letter-spacing: 0.02em;
+  }
+
+  /* Nav items: increase click area */
+  .nav-item {
+    min-height: 44px;
+    padding: var(--tp-space-3) var(--tp-space-5);
+  }
+
+  /* -----------------------------------------------------------------------
+   LEY DE HICK: Reduce decision time with progressive disclosure
+   + SOBRECARGA DE OPCIONES: Limit visible choices
+   ----------------------------------------------------------------------- */
+
+  /* Smooth reveal for secondary sections */
+  .card details summary {
+    cursor: pointer;
+    padding: var(--tp-space-3);
+    font-weight: var(--tp-font-medium);
+    color: var(--tp-text-secondary);
+    border-radius: var(--tp-radius-md);
+    transition: background var(--tp-duration-fast);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: var(--tp-space-2);
+  }
+
+  .card details summary:hover {
+    background: var(--tp-surface-overlay);
+  }
+
+  .card details summary::before {
+    content: '▶';
+    font-size: 0.625rem;
+    transition: transform var(--tp-duration-normal);
+  }
+
+  .card details[open] summary::before {
+    transform: rotate(90deg);
+  }
+
+  /* -----------------------------------------------------------------------
+   LEY DE MILLER: Chunk info in groups of 5-9
+   + FRAGMENTACION (CHUNKING): Visual grouping
+   ----------------------------------------------------------------------- */
+  .form-section {
+    margin-bottom: var(--tp-space-6);
+    padding-bottom: var(--tp-space-5);
+    border-bottom: 1px solid var(--tp-border-light);
+  }
+
+  .form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .form-section-title {
+    font-size: var(--tp-text-sm);
+    font-weight: var(--tp-font-semibold);
+    color: var(--tp-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--tp-space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--tp-space-2);
+  }
+
+  /* -----------------------------------------------------------------------
+   EFECTO VON RESTORFF: Make key elements visually distinct
+   Primary CTA pops out from secondary actions
+   ----------------------------------------------------------------------- */
+  .btn-primary,
+  .btn--primary {
+    box-shadow: 0 4px 14px rgba(211, 47, 47, 0.35);
+  }
+
+  .btn-primary:hover:not(:disabled),
+  .btn--primary:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(211, 47, 47, 0.45);
+  }
+
+  /* Active nav with stronger visual distinction */
+  .nav-item.active {
+    background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+    border-left-width: 4px;
+    font-weight: var(--tp-font-bold);
+    position: relative;
+  }
+
+  /* -----------------------------------------------------------------------
+   UMBRAL DE DOHERTY: System responds <400ms, perceived perf
+   Enhanced transition speeds + micro-interactions
+   ----------------------------------------------------------------------- */
+
+  /* Instant feedback on click */
+  .btn:active:not(:disabled) {
+    transition-duration: 50ms;
+  }
+
+  /* Toast progress bar for auto-dismiss timing */
+  .toast {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .toast::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: currentColor;
+    opacity: 0.3;
+    animation: toastProgress 3s linear forwards;
+  }
+
+  @keyframes toastProgress {
+    from { width: 100%; }
+    to { width: 0%; }
+  }
+
+  .toast {
+    --toast-duration: 3000ms;
+  }
+
+  .toast::after {
+    animation-duration: var(--toast-duration) !important;
+  }
+
+  .toast-success::after { background: var(--tp-success); }
+  .toast-error::after { background: var(--tp-error); }
+  .toast-warning::after { background: var(--tp-warning); }
+
+  /* -----------------------------------------------------------------------
+   EFECTO ESTETICA-USABILIDAD: Polish perceived quality
+   Subtle refinements that increase trust
+   ----------------------------------------------------------------------- */
+
+  /* Smoother card entrance on view switch */
+  .view-section.active .card {
+    animation: cardEnter var(--tp-duration-slow) var(--tp-ease-out) both;
+  }
+
+  .view-section.active .card:nth-child(2) { animation-delay: 50ms; }
+  .view-section.active .card:nth-child(3) { animation-delay: 100ms; }
+
+  @keyframes cardEnter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Refined login card */
+  .login-card {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--tp-primary), var(--tp-primary-light), var(--tp-primary));
+  }
+
+  /* -----------------------------------------------------------------------
+   EFECTO POSICION EN SERIE: First/last items remembered best
+   (Serial Position Effect)
+   ----------------------------------------------------------------------- */
+  /* Subtle emphasis on first and last nav items */
+  .sidebar-nav .nav-item:first-child {
+    margin-top: var(--tp-space-1);
+  }
+
+  .sidebar-nav .nav-item:last-child {
+    margin-bottom: var(--tp-space-2);
+    position: relative;
+  }
+
+  .sidebar-nav .nav-item:last-child::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: var(--tp-space-5);
+    right: var(--tp-space-5);
+    height: 1px;
+    background: var(--tp-border-light);
+  }
+
+  /* -----------------------------------------------------------------------
+   EFECTO TENDENCIA A LA META (Goal Gradient):
+   Progress feels faster as you approach completion
+   ----------------------------------------------------------------------- */
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--tp-border-light);
+    border-radius: var(--tp-radius-full);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress-bar__fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--tp-primary-light), var(--tp-primary));
+    border-radius: var(--tp-radius-full);
+    transition: width 0.4s var(--tp-ease-out);
+    position: relative;
+  }
+
+  /* Shimmer on progress to show activity */
+  .progress-bar__fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+    animation: progressShimmer 1.5s infinite;
+  }
+
+  @keyframes progressShimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+
+  /* Step completion indicators */
+  .step-complete {
+    position: relative;
+  }
+
+  .step-complete .step-indicator {
+    background: linear-gradient(135deg, var(--tp-success) 0%, #388E3C 100%);
+    box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+  }
+
+  .step-complete .step-indicator::after {
+    content: ' ✓';
+  }
+
+  /* -----------------------------------------------------------------------
+   EFECTO ZEIGARNIK: Incomplete tasks stay in memory
+   Visual cue for in-progress states
+   ----------------------------------------------------------------------- */
+  .task-incomplete {
+    border-left: 3px solid var(--tp-warning);
+    background: var(--tp-warning-pale);
+  }
+
+  .task-incomplete::before {
+    content: '⏳';
+    margin-right: var(--tp-space-2);
+  }
+
+  /* Unsaved changes indicator */
+  .form-dirty .card-title::after {
+    content: '●';
+    color: var(--tp-warning);
+    font-size: 0.5rem;
+    margin-left: var(--tp-space-2);
+    vertical-align: super;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  /* -----------------------------------------------------------------------
+   FLUIR (FLOW): Minimize interruptions, smooth transitions
+   ----------------------------------------------------------------------- */
+
+  /* Smooth scroll for main content */
+  .main-scroll {
+    scroll-behavior: smooth;
+  }
+
+  /* View transitions should feel seamless */
+  .view-section {
+    transition: opacity var(--tp-duration-slow) var(--tp-ease-out);
+  }
+
+  /* -----------------------------------------------------------------------
+   MEMORIA DE TRABAJO: Show context to reduce memorization
+   ----------------------------------------------------------------------- */
+
+  /* Breadcrumb-like context in topbar */
+  .topbar-context {
+    display: flex;
+    align-items: center;
+    gap: var(--tp-space-2);
+    font-size: var(--tp-text-sm);
+    opacity: 0.85;
+  }
+
+  .topbar-context__separator {
+    opacity: 0.5;
+  }
+
+  .topbar-context__current {
+    font-weight: var(--tp-font-semibold);
+  }
+
+  /* -----------------------------------------------------------------------
+   LEY DE SEMEJANZA: Similar things look similar
+   Consistent action button styling
+   ----------------------------------------------------------------------- */
+
+  /* Destructive actions always look dangerous */
+  .btn-danger,
+  .btn--danger {
+    background: var(--tp-error);
+    color: var(--tp-text-on-primary);
+    border-color: var(--tp-error);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: #B71C1C;
+    box-shadow: 0 4px 14px rgba(198, 40, 40, 0.35);
+  }
+
+  /* Success/confirm actions */
+  .btn-success,
+  .btn--success {
+    background: var(--tp-success);
+    color: var(--tp-text-on-primary);
+    border-color: var(--tp-success);
+  }
+
+  .btn-success:hover:not(:disabled) {
+    background: #1B5E20;
+    box-shadow: 0 4px 14px rgba(46, 125, 50, 0.35);
+  }
+
+  /* -----------------------------------------------------------------------
+   LEY DE PARKINSON: Constraints prevent scope creep
+   Clear boundaries on inputs
+   ----------------------------------------------------------------------- */
+
+  /* Character counter on textareas */
+  .textarea-wrapper {
+    position: relative;
+  }
+
+  .textarea-counter {
+    position: absolute;
+    bottom: var(--tp-space-2);
+    right: var(--tp-space-3);
+    font-size: var(--tp-text-xs);
+    color: var(--tp-text-tertiary);
+    pointer-events: none;
+    background: var(--tp-surface);
+    padding: 0 var(--tp-space-1);
+  }
+
+  .textarea-counter.near-limit {
+    color: var(--tp-warning);
+  }
+
+  .textarea-counter.at-limit {
+    color: var(--tp-error);
+    font-weight: var(--tp-font-semibold);
+  }
+
+  /* -----------------------------------------------------------------------
+   LEY DE PRAGNANZ: Simplest interpretation prevails
+   Clean, unambiguous visual hierarchy
+   ----------------------------------------------------------------------- */
+
+  /* Card hierarchy: remove hover lift for non-interactive cards */
+  .card--static {
+    cursor: default;
+  }
+
+  .card--static:hover {
+    transform: none;
+    box-shadow: var(--tp-shadow-sm);
+  }
+
+  /* Cleaner section headers */
+  .view-section > h2 {
+    font-size: var(--tp-text-xl);
+    font-weight: var(--tp-font-bold);
+    color: var(--tp-text-primary);
+    margin-bottom: var(--tp-space-6);
+    display: flex;
+    align-items: center;
+    gap: var(--tp-space-3);
+    line-height: var(--tp-leading-tight);
+  }
+
+  /* -----------------------------------------------------------------------
+   LEY DE TESLER: Move complexity to system, not user
+   Better defaults, less required input
+   ----------------------------------------------------------------------- */
+
+  /* Auto-filled fields look different */
+  input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px var(--tp-info-pale) inset;
+    border-color: var(--tp-info-light);
+  }
+
+  /* Optional fields clearly marked */
+  .form-label--optional::after {
+    content: ' (opcional)';
+    font-size: var(--tp-text-xs);
+    font-weight: var(--tp-font-normal);
+    color: var(--tp-text-tertiary);
+    font-style: italic;
+  }
+
+  /* -----------------------------------------------------------------------
+   PRINCIPIO DE PARETO: 80% of use comes from 20% of features
+   Emphasize most-used actions
+   ----------------------------------------------------------------------- */
+
+  /* Primary workflow buttons stand out */
+  .btn-primary-action {
+    position: relative;
+    background: linear-gradient(135deg, var(--tp-primary) 0%, var(--tp-primary-dark) 100%);
+    color: white;
+    font-weight: var(--tp-font-semibold);
+    min-height: 48px;
+    padding: var(--tp-space-3) var(--tp-space-8);
+    box-shadow: 0 4px 16px rgba(211, 47, 47, 0.3);
+    border: none;
+    border-radius: var(--tp-radius-md);
+    cursor: pointer;
+    font-family: var(--tp-font-primary);
+    font-size: var(--tp-text-md);
+    transition: all var(--tp-duration-normal) var(--tp-ease-out);
+  }
+
+  .btn-primary-action:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(211, 47, 47, 0.4);
+  }
+
+  .btn-primary-action:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  /* -----------------------------------------------------------------------
+   REGLA DE FIN DE PICO (Peak-End Rule):
+   End interactions on a positive note
+   ----------------------------------------------------------------------- */
+
+  /* Success state celebration */
+  .success-celebration {
+    text-align: center;
+    padding: var(--tp-space-8);
+    animation: celebrateIn 0.5s var(--tp-ease-out);
+  }
+
+  .success-celebration__icon {
+    font-size: 64px;
+    margin-bottom: var(--tp-space-4);
+    animation: celebrateBounce 0.6s var(--tp-ease-out) 0.2s both;
+  }
+
+  .success-celebration__title {
+    font-size: var(--tp-text-xl);
+    font-weight: var(--tp-font-bold);
+    color: var(--tp-success);
+    margin-bottom: var(--tp-space-2);
+  }
+
+  .success-celebration__message {
+    font-size: var(--tp-text-base);
+    color: var(--tp-text-secondary);
+  }
+
+  @keyframes celebrateIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes celebrateBounce {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  /* -----------------------------------------------------------------------
+   CARGA COGNITIVA: Reduce visual noise
+   + ATENCION SELECTIVA: Direct focus to what matters
+   ----------------------------------------------------------------------- */
+
+  /* Dim inactive sections during focused tasks */
+  .focused-mode .card:not(.card--active) {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(0.3);
+    transition: all var(--tp-duration-slow);
+  }
+
+  .focused-mode .card--active {
+    box-shadow: 0 0 0 2px var(--tp-primary), var(--tp-shadow-lg);
+    z-index: 10;
+  }
+
+  /* Highlight active form field's parent group */
+  .form-group:focus-within {
+    position: relative;
+  }
+
+  .form-group:focus-within .form-label {
+    color: var(--tp-primary);
+    font-weight: var(--tp-font-semibold);
+  }
+
+  /* -----------------------------------------------------------------------
+   SESGO COGNITIVO: Sensible defaults reduce errors
+   + MODELO MENTAL: Match user expectations
+   ----------------------------------------------------------------------- */
+
+  /* Confirmation dialogs: danger on left, safe on right */
+  .confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--tp-space-3);
+  }
+
+  .confirm-actions .btn-secondary {
+    order: 1;
+  }
+
+  .confirm-actions .btn-primary {
+    order: 2;
+  }
+
+  /* -----------------------------------------------------------------------
+   PARADOJA DEL USUARIO ACTIVO: Users prefer doing over reading
+   Minimize instructions, maximize interactivity
+   ----------------------------------------------------------------------- */
+
+  /* Inline help: compact, dismissible */
+  .inline-help {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--tp-space-2);
+    padding: var(--tp-space-3);
+    background: var(--tp-info-pale);
+    border-radius: var(--tp-radius-md);
+    font-size: var(--tp-text-sm);
+    color: var(--tp-text-secondary);
+    margin-bottom: var(--tp-space-4);
+    border: 1px solid rgba(25, 118, 210, 0.15);
+  }
+
+  .inline-help__icon {
+    flex-shrink: 0;
+    color: var(--tp-info);
+  }
+
+  .inline-help__dismiss {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--tp-text-tertiary);
+    cursor: pointer;
+    padding: var(--tp-space-1);
+    font-size: var(--tp-text-sm);
+  }
+
+  .inline-help__dismiss:hover {
+    color: var(--tp-text-primary);
+  }
+
+  /* -----------------------------------------------------------------------
+   RESPONSIVE REFINEMENTS FOR UX LAWS
+   ----------------------------------------------------------------------- */
+  @media (max-width: 768px) {
+    /* Fitts: Even bigger touch targets on mobile */
+    .btn-primary, .btn--primary {
+      min-height: 52px;
+      width: 100%;
+    }
+
+    .nav-item {
+      min-height: 48px;
+      padding: var(--tp-space-4) var(--tp-space-5);
+    }
+
+    /* Miller: Simpler nav labels on small screens */
+    .nav-item .nav-icon {
+      font-size: 1.25rem;
+    }
+
+    /* Pragnanz: Remove hover effects on touch */
+    .card:hover {
+      transform: none;
+    }
+
+    .step-card:hover {
+      transform: none;
+    }
   }
 </style>

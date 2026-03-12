@@ -94,10 +94,7 @@ const AuditService = {
                 return this._sheetCache;
             }
 
-            const ss = SpreadsheetApp.getActive();
-            if (!ss) {
-                return null;
-            }
+            const ss = SheetsIO._getSpreadsheet();
 
             let sheet = ss.getSheetByName(this.SHEET_NAME);
 

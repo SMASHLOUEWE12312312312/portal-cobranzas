@@ -35,7 +35,7 @@ const Logger = {
    * Buffer de logs en memoria
    * @private
    */
-  _buffer: [],
+  _buffer: null,
 
   /**
    * Tamaño máximo del buffer antes de auto-flush
@@ -137,6 +137,7 @@ const Logger = {
       };
 
       // Agregar al buffer (NO escribir a Sheets todavía)
+      if (!this._buffer) this._buffer = [];
       this._buffer.push(entry);
 
       // Auto-flush si buffer lleno
@@ -170,6 +171,7 @@ const Logger = {
   flush() {
     const context = 'Logger.flush';
 
+    if (!this._buffer) this._buffer = [];
     // Si no hay logs en buffer, no hacer nada
     if (this._buffer.length === 0) {
       this._flushScheduled = false;
@@ -231,7 +233,7 @@ const Logger = {
    * Útil para testing o cuando se quiere descartar logs
    */
   clearBuffer() {
-    const count = this._buffer.length;
+    const count = (this._buffer || []).length;
     this._buffer = [];
     this._flushScheduled = false;
     return { ok: true, cleared: count };
@@ -291,7 +293,7 @@ const Logger = {
       return this._sheetCache;
     }
 
-    const ss = SpreadsheetApp.getActive();
+    const ss = SheetsIO._getSpreadsheet();
     let logSheet = ss.getSheetByName(getConfig('SHEETS.DEBUG_LOG'));
 
     // Crear hoja si no existe

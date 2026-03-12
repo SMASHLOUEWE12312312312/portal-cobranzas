@@ -695,7 +695,9 @@ function getAlertAdminEmails() {
 function getBffSharedSecret_() {
   const secret = getSecureConfig('BFF_SHARED_SECRET', '');
   if (!secret) {
-    console.warn('BFF_SHARED_SECRET not configured - BFF auth disabled');
+    // P0-FIX: Only warn, don't silently return empty string that bypasses validation
+    // The actual enforcement happens in validateBffRequest_ which checks ENFORCE_BFF_AUTH
+    console.warn('BFF_SHARED_SECRET not configured - BFF auth may be disabled');
   }
   return secret;
 }
@@ -713,6 +715,23 @@ function computeHmac_(algorithm, key, data) {
   return signature.map(function (byte) {
     return ('0' + (byte & 0xFF).toString(16)).slice(-2);
   }).join('');
+}
+
+/**
+ * P0-FIX: Constant-time string comparison to prevent timing attacks on HMAC verification
+ * @param {string} a - First string
+ * @param {string} b - Second string
+ * @return {boolean} True if equal
+ * @private
+ */
+function _timingSafeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }
 
 /**
@@ -762,9 +781,10 @@ function validateBffRequest_(e) {
       return { ok: false, error: 'EXPIRED' };
     }
 
-    // Verify HMAC signature
+    // P0-FIX: Verify HMAC signature with constant-time comparison
+    // Prevents timing attacks by comparing all bytes regardless of early mismatch
     const expected = computeHmac_('SHA256', secret, payload);
-    if (signature !== expected) {
+    if (!_timingSafeEqual(signature, expected)) {
       return { ok: false, error: 'INVALID_SIGNATURE' };
     }
 

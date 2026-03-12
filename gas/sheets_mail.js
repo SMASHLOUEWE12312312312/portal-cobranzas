@@ -14,9 +14,11 @@ const SheetsMail = {
 
   /**
    * Buffer de logs de correo pendientes de escribir
+   * P0-FIX: Initialize as null, lazy-init in methods to avoid shared mutable state
+   * Arrays defined as object literals are shared across all invocations in the same runtime
    * @private
    */
-  _logBuffer: [],
+  _logBuffer: null,
 
   /**
    * Caché de referencia a la hoja de logs
@@ -39,7 +41,8 @@ const SheetsMail = {
     Logger.debug(context, 'Reading contacts');
 
     const sheetName = getConfig('SHEETS.MAIL_CONTACTS');
-    const ss = SpreadsheetApp.getActive();
+    // P1-FIX: Use SheetsIO._getSpreadsheet() instead of getActive() for Web App compatibility
+    const ss = SheetsIO._getSpreadsheet();
     let sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
@@ -226,7 +229,8 @@ const SheetsMail = {
     Logger.info(context, 'Upserting queue items', { count: items.length });
 
     const sheetName = getConfig('SHEETS.MAIL_QUEUE');
-    const ss = SpreadsheetApp.getActive();
+    // P1-FIX: Use SheetsIO._getSpreadsheet() instead of getActive() for Web App compatibility
+    const ss = SheetsIO._getSpreadsheet();
     let sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
@@ -288,6 +292,9 @@ const SheetsMail = {
         entry.sender || Session.getActiveUser().getEmail()
       ];
 
+      // P0-FIX: Lazy-init buffer to avoid shared mutable state
+      if (!this._logBuffer) this._logBuffer = [];
+
       // AGREGAR AL BUFFER (no escribir inmediatamente)
       this._logBuffer.push(row);
 
@@ -318,6 +325,9 @@ const SheetsMail = {
    */
   flushMailLog() {
     const context = 'SheetsMail.flushMailLog';
+
+    // P0-FIX: Lazy-init buffer
+    if (!this._logBuffer) this._logBuffer = [];
 
     // Si no hay logs en buffer, no hacer nada
     if (this._logBuffer.length === 0) {
@@ -359,7 +369,7 @@ const SheetsMail = {
    * Útil para testing
    */
   clearLogBuffer() {
-    const count = this._logBuffer.length;
+    const count = (this._logBuffer || []).length;
     this._logBuffer = [];
     return { ok: true, cleared: count };
   },
@@ -368,7 +378,7 @@ const SheetsMail = {
    * Obtiene tamaño actual del buffer de logs
    */
   getLogBufferSize() {
-    return this._logBuffer.length;
+    return (this._logBuffer || []).length;
   },
 
   /**
@@ -382,7 +392,8 @@ const SheetsMail = {
     }
 
     const sheetName = getConfig('SHEETS.MAIL_LOG');
-    const ss = SpreadsheetApp.getActive();
+    // P1-FIX: Use SheetsIO._getSpreadsheet() instead of getActive() for Web App compatibility
+    const ss = SheetsIO._getSpreadsheet();
     let sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {

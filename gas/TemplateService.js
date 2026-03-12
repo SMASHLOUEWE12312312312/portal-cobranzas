@@ -11,7 +11,8 @@ const TemplateService = {
     getTemplates() {
         const context = 'TemplateService.getTemplates';
         const sheetName = getConfig('SHEETS.MAIL_TEMPLATES');
-        const ss = SpreadsheetApp.getActive();
+        // P1-FIX: Use SheetsIO._getSpreadsheet() for Web App compatibility
+        const ss = SheetsIO._getSpreadsheet();
         let sheet = ss.getSheetByName(sheetName);
 
         if (!sheet) {
@@ -67,7 +68,31 @@ const TemplateService = {
         const template = templates.find(t => t.id === templateId);
 
         if (!template) {
-            throw new Error(`Plantilla no encontrada: ${templateId}`);
+            // P2-FIX: Fallback to hardcoded template instead of throwing
+            // This prevents email sending from crashing if template sheet is misconfigured
+            Logger.warn(context, 'Template not found, using fallback', { templateId });
+            const fallbackBody = getConfig(`MAIL.TEMPLATES.${templateId}.body`)
+                || getConfig('MAIL.TEMPLATES.REGULAR.body')
+                || '<p>{{SALUDO}}</p><p>Adjuntamos el Estado de Cuenta.</p>';
+            const fallbackSubject = getConfig(`MAIL.TEMPLATES.${templateId}.subject`)
+                || 'EECC {{ASEGURADO}} – {{FECHA_CORTE}}';
+
+            let bodyHtml = fallbackBody;
+            let subject = fallbackSubject;
+            const replacements = {
+                '{{ASEGURADO}}': data.asegurado || '',
+                '{{FECHA_CORTE}}': data.fechaCorte || '',
+                '{{SALUDO}}': data.saludo || 'Estimados',
+                '{{FOLIO}}': data.folio || '',
+                '{{OBS_OPCIONAL}}': data.obs || '',
+                '{{GRUPO_ECONOMICO}}': data.grupo || ''
+            };
+            for (const [key, value] of Object.entries(replacements)) {
+                const regex = new RegExp(key, 'g');
+                bodyHtml = bodyHtml.replace(regex, this._escapeHtml(value));
+                subject = subject.replace(regex, value);
+            }
+            return { subject, bodyHtml };
         }
 
         let bodyHtml = '';
@@ -108,11 +133,12 @@ const TemplateService = {
             '{{GRUPO_ECONOMICO}}': data.grupo || ''
         };
 
-        // Aplicar reemplazos
+        // Aplicar reemplazos (escapar valores para prevenir HTML injection)
         for (const [key, value] of Object.entries(replacements)) {
             const regex = new RegExp(key, 'g');
-            bodyHtml = bodyHtml.replace(regex, value);
-            subject = subject.replace(regex, value);
+            const safeValue = this._escapeHtml(value);
+            bodyHtml = bodyHtml.replace(regex, safeValue);
+            subject = subject.replace(regex, value); // Subject es texto plano, no escapar
         }
 
         return { subject, bodyHtml };

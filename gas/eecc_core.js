@@ -392,6 +392,206 @@ const EECCCore = {
   },
 
   /**
+   * Genera EECC para múltiples asegurados en batch
+   * Optimizaciones: 1 BD read, 1 template/logo read, parallel exports via fetchAll
+   * Cada asegurado obtiene su propio temp spreadsheet (preserva multi-moneda en un PDF/XLSX)
+   *
+   * @param {Array<string>} asegurados - Lista de asegurados
+   * @param {Object} opts - { exportPdf, exportXlsx, includeObs, obsForRAM }
+   * @return {Object} { ok, results[], errors[], generatedCount, errorCount }
+   */
+  generateBatchHeadless(asegurados, opts = {}) {
+    const context = 'EECCCore.generateBatchHeadless';
+    const startTime = Date.now();
+    Logger.info(context, 'Starting batch generation', { count: asegurados.length, opts });
+
+    try {
+      validateConfig();
+
+      const exportPdf = !!opts.exportPdf;
+      const exportXlsx = !!opts.exportXlsx;
+
+      if (!exportPdf && !exportXlsx) {
+        throw new Error('Selecciona al menos un tipo de archivo');
+      }
+
+      // ── 1. Single BD read ──
+      const baseData = SheetsIO.readSheet(getConfig('SHEETS.BASE'));
+      const aseguradoCol = Utils.findColumnIndex(baseData.headers, getConfig('BD.COLUMNS.ASEGURADO'));
+      if (aseguradoCol === -1) throw new Error('Columna ASEGURADO no encontrada');
+
+      const columnMap = this._buildColumnMap(baseData.headers);
+
+      // ── 2. Single template + logo read ──
+      const ss = SheetsIO._getSpreadsheet();
+      const template = ss.getSheetByName(getConfig('SHEETS.TEMPLATE'));
+      if (!template) throw new Error('Plantilla EECC_Template no encontrada');
+      const logo = DriveIO.getLogoCached();
+
+      // Procesar obsForRAM una sola vez
+      let obsForRAMSet = null;
+      if (opts.includeObs) {
+        const rawObsForRAM = opts.obsForRAM || '__ALL__';
+        if (Array.isArray(rawObsForRAM)) {
+          obsForRAMSet = new Set(rawObsForRAM.map(r => Utils.cleanText(r)));
+        } else if (rawObsForRAM === '__ALL__') {
+          obsForRAMSet = '__ALL__';
+        } else {
+          obsForRAMSet = new Set([Utils.cleanText(rawObsForRAM)]);
+        }
+      }
+
+      const tz = getConfig('FORMAT.TIMEZONE');
+      const dateStr = Utilities.formatDate(new Date(), tz, 'yyyyMMdd');
+      const prefix = getConfig('EXPORT.FILE_PREFIX');
+
+      // ── 3. Create one temp SS per asegurado (preserves multi-currency in single file) ──
+      const tempIds = []; // Track all temp IDs for cleanup
+      const exportRegistry = []; // { tempId, asegurado, folder, baseName }
+      const results = [];
+      const errors = [];
+
+      for (const nombre of asegurados) {
+        const cleanName = Utils.cleanText(nombre);
+        const rows = baseData.rows.filter(row => Utils.cleanText(row[aseguradoCol]) === cleanName);
+
+        if (rows.length === 0) {
+          errors.push({ asegurado: nombre, error: 'Sin datos en BD' });
+          continue;
+        }
+
+        try {
+          const byMoneda = this._groupByMoneda(rows, columnMap);
+          const folder = DriveIO.getOutputFolder(nombre);
+          const tempSpreadsheet = SpreadsheetApp.create('TMP_EECC_' + Date.now() + '_' + tempIds.length);
+          const tempId = tempSpreadsheet.getId();
+          tempIds.push(tempId);
+
+          const defaultSheet = tempSpreadsheet.getSheets()[0];
+          let defaultDeleted = false;
+
+          for (const [moneda, grupos] of Object.entries(byMoneda)) {
+            if (Object.keys(grupos).length === 0) continue;
+
+            this._createSheetForMoneda(
+              tempSpreadsheet, template, nombre, moneda, grupos, columnMap, logo,
+              { ...opts, includeObs: !!opts.includeObs, obsForRAM: obsForRAMSet }
+            );
+
+            if (!defaultDeleted) {
+              try {
+                tempSpreadsheet.deleteSheet(defaultSheet);
+                defaultDeleted = true;
+              } catch (e) { /* ignore */ }
+            }
+          }
+
+          const baseName = `${prefix}${Utils.safeName(nombre)}_${dateStr}`;
+          exportRegistry.push({ tempId, asegurado: nombre, folder, baseName });
+
+        } catch (e) {
+          errors.push({ asegurado: nombre, error: e.message });
+          Logger.warn(context, `Error preparing ${nombre}`, { error: e.message });
+        }
+      }
+
+      if (exportRegistry.length === 0) {
+        // Cleanup any temp files created before failure
+        tempIds.forEach(id => { try { DriveIO.deleteFile(id); } catch (e) { /* ignore */ } });
+        return {
+          ok: false,
+          error: 'No se pudieron preparar hojas para ningún asegurado',
+          results: [],
+          errors: errors
+        };
+      }
+
+      try {
+        // ── 4. Flush all spreadsheets, then parallel export ──
+        SpreadsheetApp.flush();
+
+        // Build export items for PDF and XLSX
+        const pdfItems = exportPdf ? exportRegistry.map(reg => ({
+          spreadsheetId: reg.tempId,
+          fileName: reg.baseName + '.pdf'
+        })) : [];
+
+        const xlsxItems = exportXlsx ? exportRegistry.map(reg => ({
+          spreadsheetId: reg.tempId,
+          fileName: reg.baseName + '.xlsx'
+        })) : [];
+
+        // Parallel export — one fetchAll call for all PDFs, one for all XLSXs
+        const pdfResults = pdfItems.length > 0 ? ExportService.batchExportSpreadsheets(pdfItems, { format: 'pdf' }) : [];
+        const xlsxResults = xlsxItems.length > 0 ? ExportService.batchExportSpreadsheets(xlsxItems, { format: 'xlsx' }) : [];
+
+        // ── 5. Upload to Drive ──
+        for (let i = 0; i < exportRegistry.length; i++) {
+          const reg = exportRegistry[i];
+          let pdfUrl = null;
+          let xlsxUrl = null;
+
+          if (pdfResults[i] && pdfResults[i].ok) {
+            const file = reg.folder.createFile(pdfResults[i].blob);
+            pdfUrl = file.getUrl();
+          }
+
+          if (xlsxResults[i] && xlsxResults[i].ok) {
+            const file = reg.folder.createFile(xlsxResults[i].blob);
+            xlsxUrl = file.getUrl();
+          }
+
+          if (pdfUrl || xlsxUrl) {
+            results.push({
+              asegurado: reg.asegurado,
+              pdfUrl: pdfUrl,
+              xlsxUrl: xlsxUrl,
+              folderPath: DriveIO.getFolderPath(reg.folder),
+              ok: true
+            });
+          } else {
+            errors.push({ asegurado: reg.asegurado, error: 'Export falló para PDF y XLSX' });
+          }
+        }
+
+        // Log export failures
+        [...pdfResults, ...xlsxResults].forEach(res => {
+          if (!res.ok) {
+            Logger.warn(context, `Export failed: ${res.fileName}`, { error: res.error });
+          }
+        });
+
+      } finally {
+        // ── 6. Cleanup ALL temp spreadsheets ──
+        tempIds.forEach(id => { try { DriveIO.deleteFile(id); } catch (e) { /* ignore */ } });
+      }
+
+      const duration = Date.now() - startTime;
+      Logger.info(context, 'Batch generation complete', {
+        total: asegurados.length,
+        generated: results.length,
+        errors: errors.length,
+        durationMs: duration
+      });
+
+      return {
+        ok: results.length > 0,
+        generatedCount: results.length,
+        errorCount: errors.length,
+        totalAsegurados: asegurados.length,
+        results: results,
+        errors: errors,
+        durationMs: duration,
+        message: `Batch completado: ${results.length}/${asegurados.length} generados en ${Math.round(duration / 1000)}s`
+      };
+
+    } catch (error) {
+      Logger.error(context, 'Batch generation failed', error);
+      return { ok: false, error: error.message, results: [], errors: [] };
+    }
+  },
+
+  /**
    * Genera EECC desde datos pre-filtrados (optimización para grupos)
    * // GRUPO_ECONOMICO - Método auxiliar para evitar re-lectura de BD
    * @private
@@ -478,7 +678,7 @@ const EECCCore = {
     const tempId = tempSpreadsheet.getId();
 
     try {
-      const ss = SpreadsheetApp.getActive();
+      const ss = SheetsIO._getSpreadsheet();
       const template = ss.getSheetByName(getConfig('SHEETS.TEMPLATE'));
 
       if (!template) {
@@ -618,7 +818,7 @@ const EECCCore = {
 
     // Copiar template
     const sheet = template.copyTo(tempSpreadsheet);
-    const sheetName = moneda === 'S/.' ? 'EECC_Soles' : 'EECC_Dolares';
+    const sheetName = opts.sheetNameOverride || (moneda === 'S/.' ? 'EECC_Soles' : 'EECC_Dolares');
     sheet.setName(sheetName);
 
     // Colocar logo

@@ -64,7 +64,8 @@ const MonitoringService = {
             timestamp: now.toISOString(),
             available: {
                 bitacora: false,
-                queue: false
+                queue: false,
+                debugLog: false
             },
             eecc: { today: 0, week: 0, errors24h: 0 },
             mail: { sent24h: 0, queuedNow: 0, failed24h: 0 },
@@ -85,9 +86,10 @@ const MonitoringService = {
                 let lastActivity = null;
 
                 bitacoraData.rows.forEach(row => {
-                    const origen = String(row[origenIdx] || '').toUpperCase();
-                    const fechaEnvio = this._parseDate(row[fechaEnvioIdx]);
-                    const fechaRegistro = this._parseDate(row[fechaRegistroIdx]);
+                    // P2-FIX: Guard against -1 column indices to prevent row[undefined]
+                    const origen = origenIdx >= 0 ? String(row[origenIdx] || '').toUpperCase() : '';
+                    const fechaEnvio = fechaEnvioIdx >= 0 ? this._parseDate(row[fechaEnvioIdx]) : null;
+                    const fechaRegistro = fechaRegistroIdx >= 0 ? this._parseDate(row[fechaRegistroIdx]) : null;
 
                     // EECC Stats logic: Match 'AUTO_ENVIO', 'MANUAL_PORTAL', or literal 'EECC'
                     const isEECC = origen.includes('AUTO') || origen.includes('MANUAL') || origen.includes('EECC');
@@ -119,9 +121,10 @@ const MonitoringService = {
                 const createdIdx = this._findColumnIndex(queueData.headers, ['CREATED_AT', 'FECHA_CREADO', 'TIMESTAMP']);
 
                 queueData.rows.forEach(row => {
-                    const status = String(row[statusIdx] || '').toUpperCase().trim();
-                    const processedAt = this._parseDate(row[processedIdx]);
-                    const createdAt = this._parseDate(row[createdIdx]);
+                    // P2-FIX: Guard against -1 column indices
+                    const status = statusIdx >= 0 ? String(row[statusIdx] || '').toUpperCase().trim() : '';
+                    const processedAt = processedIdx >= 0 ? this._parseDate(row[processedIdx]) : null;
+                    const createdAt = createdIdx >= 0 ? this._parseDate(row[createdIdx]) : null;
 
                     // PENDING logic
                     if (status.includes('PENDING') || status === 'RETRY') {
@@ -134,6 +137,33 @@ const MonitoringService = {
             }
         } catch (e) {
             Logger.warn(context, 'Mail_Queue read failed (soft-fail)', e);
+        }
+
+        // === EECC Errors & System Errors from Debug_Log ===
+        try {
+            const debugData = this._readSheetSafe('Debug_Log');
+            if (debugData) {
+                result.available.debugLog = true;
+                const levelIdx = this._findColumnIndex(debugData.headers, ['LEVEL', 'NIVEL', 'TIPO']);
+                const timestampIdx = this._findColumnIndex(debugData.headers, ['TIMESTAMP', 'FECHA', 'CREATED_AT']);
+                const contextIdx = this._findColumnIndex(debugData.headers, ['CONTEXT', 'CONTEXTO', 'FUNCION']);
+
+                debugData.rows.forEach(row => {
+                    // P2-FIX: Guard against -1 column indices
+                    const level = levelIdx >= 0 ? String(row[levelIdx] || '').toUpperCase() : '';
+                    const ts = timestampIdx >= 0 ? this._parseDate(row[timestampIdx]) : null;
+                    if (!ts || ts < yesterday) return;
+                    if (level !== 'ERROR' && level !== 'CRITICAL') return;
+
+                    result.system.errors24h++;
+                    const ctx = contextIdx >= 0 ? String(row[contextIdx] || '').toUpperCase() : '';
+                    if (ctx.includes('EECC') || ctx.includes('GENERAR')) {
+                        result.eecc.errors24h++;
+                    }
+                });
+            }
+        } catch (e) {
+            Logger.warn(context, 'Debug_Log read failed (soft-fail)', e);
         }
 
         return result;
@@ -220,18 +250,19 @@ const MonitoringService = {
             if (!queueData) return result;
 
             result.available = true;
-            const statusIdx = queueData.headers.indexOf('STATUS');
-            const createdIdx = queueData.headers.indexOf('CREATED_AT');
-            const processedIdx = queueData.headers.indexOf('PROCESSED_AT');
+            const statusIdx = this._findColumnIndex(queueData.headers, ['STATUS', 'ESTADO']);
+            const createdIdx = this._findColumnIndex(queueData.headers, ['CREATED_AT', 'FECHA_CREADO', 'TIMESTAMP']);
+            const processedIdx = this._findColumnIndex(queueData.headers, ['PROCESSED_AT', 'FECHA_PROCESADO']);
 
             let oldestPending = null;
             let oldestProcessing = null;
             let lastProcessed = null;
 
             queueData.rows.forEach(row => {
-                const status = String(row[statusIdx] || '').toUpperCase();
-                const createdAt = this._parseDate(row[createdIdx]);
-                const processedAt = this._parseDate(row[processedIdx]);
+                // P2-FIX: Guard against -1 column indices
+                const status = statusIdx >= 0 ? String(row[statusIdx] || '').toUpperCase() : '';
+                const createdAt = createdIdx >= 0 ? this._parseDate(row[createdIdx]) : null;
+                const processedAt = processedIdx >= 0 ? this._parseDate(row[processedIdx]) : null;
 
                 if (status === 'PENDING') {
                     result.pendingCount++;

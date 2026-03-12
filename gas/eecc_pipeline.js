@@ -165,15 +165,17 @@ const EECCPipeline = {
                 return { ok: false, error: 'Pipeline not found' };
             }
 
-            // Validate transition
+            // P0-FIX: Validate transition and BLOCK invalid ones (not just warn)
+            // Invalid transitions can corrupt pipeline state and cause data inconsistency
             const validNext = this.VALID_TRANSITIONS[currentState] || [];
             if (!validNext.includes(newState)) {
-                Logger.warn(context, 'Invalid state transition', {
+                Logger.warn(context, 'Invalid state transition BLOCKED', {
                     pipelineId,
                     from: currentState,
-                    to: newState
+                    to: newState,
+                    validTransitions: validNext
                 });
-                // Don't block, just warn
+                return { ok: false, error: `Invalid transition: ${currentState} → ${newState}` };
             }
 
             // Update row
@@ -287,7 +289,8 @@ const EECCPipeline = {
                 return this._sheetCache;
             }
 
-            const ss = SpreadsheetApp.getActive();
+            // P1-FIX: Use SheetsIO._getSpreadsheet() for Web App compatibility
+            const ss = SheetsIO._getSpreadsheet();
             if (!ss) return null;
 
             let sheet = ss.getSheetByName(this.SHEET_NAME);

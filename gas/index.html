@@ -50,8 +50,7 @@
     <!-- LOGIN -->
     <section id="loginSection" class="login-container">
         <div class="login-card">
-            <img src="https://i.imgur.com/RUhA0kt.png" alt="Transperuana Logo" class="login-logo" width="200"
-                height="60" />
+            <img src="https://i.imgur.com/RUhA0kt.png" alt="Transperuana Logo" class="login-logo" />
             <h1 class="login-title">Portal Cobranzas</h1>
             <form id="loginForm" onsubmit="return handleLogin(event)">
                 <div class="form-group">
@@ -135,6 +134,10 @@
             <header class="topbar">
                 <div class="header-title" style="font-size: 1.25rem;">
                     Portal Cobranzas
+                    <span class="topbar-context" id="topbarContext">
+                        <span class="topbar-context__separator">›</span>
+                        <span class="topbar-context__current" id="topbarCurrentView">Dashboard</span>
+                    </span>
                 </div>
                 <div class="header-right">
                     <div class="notification-container">
@@ -411,11 +414,34 @@
                                         <option value="__ALL__" selected>Todos los RAM</option>
                                     </select>
                                 </div>
-                                <button class="btn btn-primary" onclick="handleGenerate()" id="generateBtn" disabled
+                                <button class="btn btn-primary btn-generate" onclick="handleGenerate()" id="generateBtn" disabled
                                     style="margin-top: 1rem; width: 100%;">
-                                    ⚙ Generar EECC
+                                    <span class="btn-spinner"></span>
+                                    <span class="btn-label">Generar EECC</span>
                                 </button>
-                                <div id="generateStatus"></div>
+
+                                <!-- Progress bar -->
+                                <div id="eeccProgress" class="eecc-progress-container">
+                                    <div class="eecc-progress-bar-track">
+                                        <div id="eeccProgressFill" class="eecc-progress-bar-fill"></div>
+                                    </div>
+                                    <div class="eecc-progress-info">
+                                        <span id="eeccProgressLabel" class="eecc-progress-label"></span>
+                                        <span id="eeccElapsed" class="eecc-elapsed-time"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Live status per asegurado -->
+                                <div id="eeccLiveStatus" class="eecc-live-status">
+                                    <div id="eeccLiveBody" class="eecc-live-status-body"></div>
+                                </div>
+
+                                <!-- Summary after completion -->
+                                <div id="eeccSummary" class="eecc-summary">
+                                    <div id="eeccSummaryContent" class="eecc-summary-stats"></div>
+                                </div>
+
+                                <div id="generateStatus" class="hidden"></div>
 
                                 <div id="downloadLinks" class="hidden generated-files-card expanded"
                                     style="margin-top: 1rem;">
@@ -677,15 +703,41 @@
 
                         <!-- Filtros Avanzados -->
                         <div
-                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--tp-surface-secondary); border-radius: 8px;">
-                            <div class="form-group mb-0">
-                                <label class="form-label" for="filtroAseguradoEmb">🏢 Asegurado / Cliente</label>
-                                <select id="filtroAseguradoEmb" onchange="filtrarBitacoraEmbedded()"
-                                    style="width: 100%;">
-                                    <option value="">Todos</option>
-                                </select>
+                            style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--tp-surface-secondary); border-radius: 8px; align-items: flex-end;">
+                            <div class="form-group mb-0" style="grid-column: 1; min-width: 280px;">
+                                <label class="form-label">🏢 Asegurado / Cliente</label>
+                                <div class="autocomplete-wrapper" id="filtroAseguradoWrapper" style="overflow: visible;">
+                                    <div class="autocomplete-input-container">
+                                        <span class="autocomplete-icon">🔍</span>
+                                        <input type="text" id="filtroAseguradoEmb" class="autocomplete-input"
+                                            placeholder="Todos — escribe para buscar..."
+                                            autocomplete="off"
+                                            style="font-size: 0.8125rem; padding-left: 36px; padding-right: 60px;"
+                                            role="combobox" aria-expanded="false" aria-autocomplete="list"
+                                            aria-controls="filtroAseguradoOptions" aria-haspopup="listbox"
+                                            oninput="debouncedFiltrarAutocompleteFiltro()"
+                                            onkeydown="handleAutocompleteKeydownFiltro(event)"
+                                            onfocus="mostrarDropdownAutocompleteFiltro()" />
+                                        <button type="button" class="autocomplete-dropdown-btn"
+                                            onclick="toggleDropdownAutocompleteFiltro()" title="Ver todas las opciones">
+                                            ▼
+                                        </button>
+                                        <button type="button" class="autocomplete-clear-btn" id="clearFiltroAsegurado"
+                                            onclick="limpiarAutocompleteFiltro()" style="display: none;"
+                                            title="Limpiar selección">
+                                            ✕
+                                        </button>
+                                        <div id="filtroAseguradoDropdown" class="autocomplete-dropdown"
+                                            style="display: none; min-width: 360px; max-width: 520px;">
+                                            <div id="filtroAseguradoCounter" class="autocomplete-counter"
+                                                style="display: none;"></div>
+                                            <div id="filtroAseguradoOptions" class="autocomplete-options" role="listbox"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="filtroAseguradoValue" />
                             </div>
-                            <div class="form-group mb-0">
+                            <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
                                 <label class="form-label" for="filtroEstadoEmb">📌 Estado de Gestión</label>
                                 <select id="filtroEstadoEmb" onchange="filtrarBitacoraEmbedded()" style="width: 100%;">
                                     <option value="">Todos los estados</option>
@@ -701,14 +753,14 @@
                                     <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
                                 </select>
                             </div>
-                            <div class="form-group mb-0">
+                            <div class="form-group mb-0" style="flex: 1; min-width: 130px;">
                                 <label class="form-label" for="filtroResponsableEmb">👤 Responsable</label>
                                 <select id="filtroResponsableEmb" onchange="filtrarBitacoraEmbedded()"
                                     style="width: 100%;">
                                     <option value="">Todos</option>
                                 </select>
                             </div>
-                            <div class="form-group mb-0">
+                            <div class="form-group mb-0" style="flex: 1; min-width: 140px;">
                                 <label class="form-label" for="filtroDiasEmb">📅 Antigüedad</label>
                                 <select id="filtroDiasEmb" onchange="filtrarBitacoraEmbedded()" style="width: 100%;">
                                     <option value="">Todos los períodos</option>
@@ -718,7 +770,7 @@
                                     <option value="61-">⚠️ Crítico (+60 días)</option>
                                 </select>
                             </div>
-                            <div class="form-group mb-0">
+                            <div class="form-group mb-0" style="flex: 1; min-width: 130px;">
                                 <label class="form-label" for="filtroCompromisoEmb">🤝 Compromisos</label>
                                 <select id="filtroCompromisoEmb" onchange="filtrarBitacoraEmbedded()"
                                     style="width: 100%;">
@@ -729,7 +781,7 @@
                                 </select>
                             </div>
                             <!-- QUICK WIN: Filtro por Tendencia de Deuda -->
-                            <div class="form-group mb-0">
+                            <div class="form-group mb-0" style="flex: 1; min-width: 130px;">
                                 <label class="form-label" for="filtroTendenciaEmb">📈 Tendencia Deuda</label>
                                 <select id="filtroTendenciaEmb" onchange="filtrarBitacoraEmbedded()"
                                     style="width: 100%;">
@@ -740,9 +792,9 @@
                                     <option value="PRIMERA">🆕 Primera gestión</option>
                                 </select>
                             </div>
-                            <div class="form-group mb-0" style="display: flex; align-items: flex-end;">
+                            <div class="form-group mb-0" style="flex: 0 0 auto; display: flex; align-items: flex-end;">
                                 <button onclick="limpiarFiltrosBitacora()" class="btn btn-outline-secondary"
-                                    style="width: 100%; padding: 0.5rem;">
+                                    style="padding: 0.5rem 1rem; white-space: nowrap;">
                                     🧹 Limpiar
                                 </button>
                             </div>
@@ -2163,9 +2215,25 @@
             toast.className = `toast toast-${type}`;
             toast.setAttribute('role', 'alert');
             toast.setAttribute('aria-live', 'assertive');
-            toast.innerHTML = `<span class="toast-icon">${type === 'success' ? '✅' : '❌'}</span><div>${escapeHtml(message)}</div>`;
+            // UX: Icon map (Ley de Semejanza - consistent visual language)
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            const icon = icons[type] || icons.success;
+            toast.innerHTML = `<span class="toast-icon">${icon}</span><div>${escapeHtml(message)}</div>`;
             document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            // UX: Doherty + Peak-End: errors stay longer so user can read
+            const duration = type === 'error' ? 5000 : type === 'warning' ? 4000 : 3000;
+            // UX: Update CSS animation duration to match dismiss time
+            toast.style.setProperty('--toast-duration', duration + 'ms');
+            toast.style.animationName = 'slideUp';
+            const afterStyle = document.createElement('style');
+            afterStyle.textContent = `#${toast.id || 'toast-' + Date.now()} .toast::after { animation-duration: ${duration}ms; }`;
+            toast.id = toast.id || 'toast-' + Date.now();
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.2s ease';
+                setTimeout(() => toast.remove(), 200);
+            }, duration);
         }
 
         function showLoading(show, text = 'Cargando...') {
@@ -2221,6 +2289,20 @@
             _log(`[LOADER] hideGlobalLoader(${reason}) -> hidden=${hidden}`);
         }
 
+        /**
+         * UX: Peak-End Rule - Show success celebration for key milestones
+         */
+        function showSuccessCelebration(container, title, message) {
+            if (!container) return;
+            container.innerHTML = `
+                <div class="success-celebration">
+                    <div class="success-celebration__icon">🎉</div>
+                    <div class="success-celebration__title">${escapeHtml(title)}</div>
+                    <div class="success-celebration__message">${escapeHtml(message)}</div>
+                </div>
+            `;
+        }
+
         function showStatus(elementId, message, type = 'info') {
             const el = document.getElementById(elementId);
             if (!el) return;
@@ -2264,7 +2346,7 @@
             if (selectedView) {
                 selectedView.classList.add('active');
             } else {
-                console.error(`View not found: view-${viewName}`);
+                _log(`View not found: view-${viewName}`);
             }
 
             // 4. Activate nav item
@@ -2277,7 +2359,31 @@
             const mainScroll = document.getElementById('mainScroll');
             if (mainScroll) mainScroll.scrollTop = 0;
 
+            // UX: Memoria de Trabajo - show current context in topbar
+            const viewLabels = {
+                dashboard: 'Dashboard', actualizar: 'Actualizar Base', generar: 'Generar EECC',
+                reportes: 'Reportes', enviar: 'Enviar Correos', bitacora: 'Bitácora', conciliacion: 'Conciliación'
+            };
+            const ctxEl = document.getElementById('topbarCurrentView');
+            if (ctxEl) ctxEl.textContent = viewLabels[viewName] || viewName;
+
             log(`Navegado a: ${viewName}`, 'info');
+
+            // 6. Dashboard auto-refresh: start when entering, stop when leaving
+            if (viewName === 'dashboard') {
+                refreshDashboardStats();
+                loadQueueHealth();
+                startDashboardAutoRefresh();
+            } else {
+                stopDashboardAutoRefresh();
+            }
+
+            // LAZY-LOAD: Cargar asegurados solo cuando se necesitan
+            if ((viewName === 'generar' || viewName === 'bitacora' || viewName === 'enviar') &&
+                ASEGURADOS_DS.items.length === 0 && !ASEGURADOS_DS.loading) {
+                _log('[switchView] Lazy-loading asegurados para vista:', viewName);
+                loadAsegurados();
+            }
 
             // AUTO-CARGAR módulos inline cuando se navega a ellos
             if (viewName === 'enviar') {
@@ -2502,8 +2608,11 @@
         // ============================================================
         // LOGIN Y LOGOUT
         // ============================================================
+        let _loginInProgress = false;
         function handleLogin(event) {
             event.preventDefault();
+            if (_loginInProgress) return false;
+            _loginInProgress = true;
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             const btnText = document.getElementById('loginBtnText');
@@ -2517,6 +2626,7 @@
 
             google.script.run
                 .withSuccessHandler(response => {
+                    _loginInProgress = false;
                     showLoading(false);
                     spinner.classList.add('hidden');
                     btnText.textContent = 'Iniciar sesión';
@@ -2557,6 +2667,7 @@
                     initPortal();
                 })
                 .withFailureHandler(error => {
+                    _loginInProgress = false;
                     showLoading(false);
                     spinner.classList.add('hidden');
                     btnText.textContent = 'Iniciar sesión';
@@ -2569,11 +2680,12 @@
         }
 
         function handleLogout() {
-            // Cleanup: stop notification polling
+            // Cleanup: stop all polling intervals
             if (NOTIF_INTERVAL_ID) {
                 clearInterval(NOTIF_INTERVAL_ID);
                 NOTIF_INTERVAL_ID = null;
             }
+            stopDashboardAutoRefresh();
             if (TOKEN) google.script.run.logout(TOKEN);
             location.reload();
         }
@@ -2590,22 +2702,41 @@
             if (pbiFrame) {
                 pbiFrame.dataset.src = PBI_URL;
                 _log('[initPortal] ✅ PBI URL preparada (lazy)');
-                log('Dashboard PBI listo (carga bajo demanda)', 'info');
             } else {
                 console.error('[initPortal] ❌ pbiFrame no encontrado');
             }
 
-            // Cargar asegurados y grupos (critical for first interaction)
-            loadAsegurados();
+            // Cargar grupos (lightweight, needed across views)
             loadGrupos();
+
+            // Precargar asegurados en background (no bloquea el dashboard)
+            // Se cargan silenciosamente para que estén listos cuando el usuario navegue a Generar/Bitácora
+            setTimeout(() => loadAsegurados(), 500);
 
             // Inicializar notificaciones
             inicializarNotificaciones();
 
-            // Phase 3: Load Dashboard Stats
+            // Dashboard Stats
             refreshDashboardStats();
             loadQueueHealth();
             startDashboardAutoRefresh();
+
+            // Pausar polling cuando el tab está oculto
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    stopDashboardAutoRefresh();
+                    if (NOTIF_INTERVAL_ID) { clearInterval(NOTIF_INTERVAL_ID); NOTIF_INTERVAL_ID = null; }
+                    _log('[visibility] Tab oculto - polling pausado');
+                } else {
+                    // Reanudar solo lo necesario
+                    const currentView = document.querySelector('.view-section.active');
+                    if (currentView && currentView.id === 'view-dashboard') {
+                        startDashboardAutoRefresh();
+                    }
+                    inicializarNotificaciones();
+                    _log('[visibility] Tab visible - polling reanudado');
+                }
+            });
 
             // PSI: Defer non-critical init to reduce TBT
             const _ric = window.requestIdleCallback || (cb => setTimeout(cb, 100));
@@ -2647,8 +2778,9 @@
                     }
                 })
                 .withFailureHandler(err => {
-                    console.warn('[Phase3] Dashboard stats failed', err);
-                    document.getElementById('statsLastUpdated').textContent = 'No disponible';
+                    _log('[Phase3] Dashboard stats failed: ' + err);
+                    document.getElementById('statsLastUpdated').textContent = 'Error al cargar';
+                    document.getElementById('statsLastUpdated').style.color = '#C62828';
                 })
                 .getDashboardStats(TOKEN);
         }
@@ -2707,9 +2839,11 @@
                     _log('[Phase3] Queue health loaded', result);
                 })
                 .withFailureHandler(err => {
-                    console.warn('[Phase3] Queue health failed', err);
+                    _log('[Phase3] Queue health failed: ' + err);
                     document.getElementById('queueHealthIndicator').textContent = '❓';
                     document.getElementById('queueHealthBadge').textContent = 'Error';
+                    document.getElementById('queueHealthBadge').style.background = '#FFEBEE';
+                    document.getElementById('queueHealthBadge').style.color = '#C62828';
                 })
                 .getMailQueueHealth(TOKEN);
         }
@@ -2727,15 +2861,18 @@
         }
 
         function startDashboardAutoRefresh() {
-            // Only auto-refresh when Dashboard view is active
             if (dashboardStatsInterval) clearInterval(dashboardStatsInterval);
             dashboardStatsInterval = setInterval(() => {
-                const dashboardView = document.getElementById('view-dashboard');
-                if (dashboardView && dashboardView.classList.contains('active')) {
-                    refreshDashboardStats();
-                    loadQueueHealth();
-                }
+                refreshDashboardStats();
+                loadQueueHealth();
             }, 60000); // 60 seconds
+        }
+
+        function stopDashboardAutoRefresh() {
+            if (dashboardStatsInterval) {
+                clearInterval(dashboardStatsInterval);
+                dashboardStatsInterval = null;
+            }
         }
 
         // ============================================================
@@ -2984,7 +3121,7 @@
                         <div class="tp-empty-state">
                             <div class="tp-empty-state-icon">❌</div>
                             <div class="tp-empty-state-title">Error</div>
-                            <div class="tp-empty-state-message">${error.message || 'Error al cargar historial'}</div>
+                            <div class="tp-empty-state-message">${escapeHtml(error.message || 'Error al cargar historial')}</div>
                         </div>
                     `;
                 })
@@ -3017,12 +3154,12 @@
                 html += `
                     <div class="tp-timeline-item">
                         <div class="tp-timeline-icon">${icon}</div>
-                        <div class="tp-timeline-date">${fecha}</div>
+                        <div class="tp-timeline-date">${escapeHtml(fecha)}</div>
                         <div class="tp-timeline-title">
                             <span class="tp-timeline-badge" style="background: ${colors.bg}; color: ${colors.text};">
-                                ${(g.estadoGestion || '').replace(/_/g, ' ')}
+                                ${escapeHtml((g.estadoGestion || '').replace(/_/g, ' '))}
                             </span>
-                            ${(g.tipoGestion || '').replace(/_/g, ' ')}
+                            ${escapeHtml((g.tipoGestion || '').replace(/_/g, ' '))}
                         </div>
                         ${obs ? `<div class="tp-timeline-body">${escapeHtml(obs)}</div>` : ''}
                         <div style="font-size: 0.75rem; color: #999; margin-top: 0.5rem;">
@@ -3441,105 +3578,88 @@
         }
 
         // Phase 2: Fetch Paged Data - AUTO-CARGA COMPLETA (v2.1)
-        // Carga automáticamente TODAS las páginas hasta hasMore=false
-        function fetchAseguradosPaged(search = '', cursor = null, reset = false) {
+        // ============================================================
+        // CARGA DE ASEGURADOS - v3 (single-call + sessionStorage cache)
+        // ============================================================
+        const ASEGURADOS_CACHE_KEY = 'portal_asegurados_cache';
+        const ASEGURADOS_CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+
+        function loadAsegurados() {
             if (ASEGURADOS_DS.loading) return;
+            if (ASEGURADOS_DS.items.length > 0) return; // Ya cargado
 
-            ASEGURADOS_DS.loading = true;
-            if (reset) {
-                ASEGURADOS_DS.items = [];
-                ASEGURADOS_DS.nextCursor = null;
-                ASEGURADOS_DS.hasMore = true;
-                ASEGURADOS_DS.search = search;
-                ASEGURADOS_DS.totalExpected = 0;
-            }
-
-            _log(`[fetchPage] search="${search}" cursor=${cursor} reset=${reset}`);
-
-            // DEBUG: Validate TOKEN before API call
-            if (!TOKEN) {
-                console.error('[fetchPage] ❌ CRITICAL: TOKEN is null/undefined!');
-                ASEGURADOS_DS.loading = false;
-                alert('Error: Sesión no válida. Por favor, vuelve a iniciar sesión.');
-                return;
-            }
-            _log('[fetchPage] 🔑 Using TOKEN:', TOKEN ? 'OK' : 'MISSING');
-
-            google.script.run
-                .withSuccessHandler(res => {
-                    if (!res.ok) {
-                        ASEGURADOS_DS.loading = false;
-                        console.warn('[fetchPage] Server error:', res.error);
-                        if (reset) fallbackLoadSafe();
-                        return;
-                    }
-
-                    // Acumular items
-                    if (reset) ASEGURADOS_DS.items = res.items || [];
-                    else ASEGURADOS_DS.items = [...ASEGURADOS_DS.items, ...(res.items || [])];
-
-                    ASEGURADOS_DS.nextCursor = res.nextCursor;
-                    ASEGURADOS_DS.hasMore = res.hasMore;
-                    ASEGURADOS_DS.totalExpected = res.total || ASEGURADOS_DS.items.length;
-
-                    // Compatibilidad legacy
-                    ALL_CLIENTES = ASEGURADOS_DS.items;
-
-                    // Log de progreso
-                    const progress = ASEGURADOS_DS.totalExpected > 0
-                        ? Math.round((ASEGURADOS_DS.items.length / ASEGURADOS_DS.totalExpected) * 100)
-                        : 100;
-
-                    // AUTO-CARGA: Si hay más páginas, cargar automáticamente la siguiente
-                    if (res.hasMore && res.nextCursor) {
-                        log(`⏳ Cargando asegurados... ${ASEGURADOS_DS.items.length}/${ASEGURADOS_DS.totalExpected} (${progress}%)`, 'info');
-                        // Reset loading flag ONLY for the recursive self-call
-                        ASEGURADOS_DS.loading = false;
-                        // Use setTimeout to avoid deep call stacks on large datasets
-                        setTimeout(() => fetchAseguradosPaged(search, res.nextCursor, false), 0);
-                    } else {
-                        // CARGA COMPLETA - Finalizar
-                        ASEGURADOS_DS.loading = false;
+            // Intentar cache de sessionStorage primero
+            try {
+                const cached = sessionStorage.getItem(ASEGURADOS_CACHE_KEY);
+                if (cached) {
+                    const { data, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < ASEGURADOS_CACHE_TTL && Array.isArray(data) && data.length > 0) {
+                        _log('[loadAsegurados] Cache hit - ' + data.length + ' asegurados desde sessionStorage');
+                        ASEGURADOS_DS.items = data;
+                        ASEGURADOS_DS.hasMore = false;
+                        ALL_CLIENTES = data;
                         renderAutocompleteOptionsEECC();
-
-                        // FIX: También actualizar autocomplete de Bitácora si está en modo asegurado
                         if (BITACORA_MODE === 'asegurado' && typeof loadClientesAutocompleteEmb === 'function') {
                             loadClientesAutocompleteEmb();
                         }
-
-                        log(`✅ ${ASEGURADOS_DS.items.length} asegurados cargados (100% completo)`, 'success');
-                        _log(`[fetchPage] ✅ Carga completa: ${ASEGURADOS_DS.items.length} asegurados`);
+                        log(data.length + ' asegurados cargados (cache)', 'success');
+                        return;
                     }
+                }
+            } catch (e) {
+                _log('[loadAsegurados] sessionStorage read error:', e);
+            }
+
+            // Single server call
+            ASEGURADOS_DS.loading = true;
+            log('Cargando asegurados...', 'info');
+
+            google.script.run
+                .withSuccessHandler(res => {
+                    ASEGURADOS_DS.loading = false;
+                    if (!res || !res.ok) {
+                        console.warn('[loadAsegurados] Server error:', res?.error);
+                        log('Error cargando asegurados: ' + (res?.error || 'desconocido'), 'error');
+                        return;
+                    }
+
+                    const items = res.list || [];
+                    ASEGURADOS_DS.items = items;
+                    ASEGURADOS_DS.hasMore = false;
+                    ALL_CLIENTES = items;
+
+                    renderAutocompleteOptionsEECC();
+                    if (BITACORA_MODE === 'asegurado' && typeof loadClientesAutocompleteEmb === 'function') {
+                        loadClientesAutocompleteEmb();
+                    }
+
+                    // Guardar en sessionStorage
+                    try {
+                        sessionStorage.setItem(ASEGURADOS_CACHE_KEY, JSON.stringify({
+                            data: items,
+                            timestamp: Date.now()
+                        }));
+                    } catch (e) {
+                        _log('[loadAsegurados] sessionStorage write error:', e);
+                    }
+
+                    log(items.length + ' asegurados cargados', 'success');
+                    _log('[loadAsegurados] ' + items.length + ' asegurados en una sola llamada');
                 })
                 .withFailureHandler(err => {
                     ASEGURADOS_DS.loading = false;
-                    console.error('[fetchPage] Fatal:', err);
-                    if (reset) fallbackLoadSafe();
-                })
-                .getAseguradosPaged(TOKEN, { limit: 500, cursor: cursor, search: search });
-        }
-
-        function fallbackLoadSafe() {
-            _log('[Fallback] Reverting to getAseguradosSafe...');
-            google.script.run
-                .withSuccessHandler(res => {
-                    if (res.ok) {
-                        ALL_CLIENTES = res.list || [];
-                        ASEGURADOS_DS.items = ALL_CLIENTES;
-                        ASEGURADOS_DS.hasMore = false;
-                        renderAutocompleteOptionsEECC();
-                        log(`Fallback exitoso: ${ALL_CLIENTES.length} clientes`, 'warning');
-                    } else {
-                        alert('Error crítico cargando asegurados: ' + res.error);
-                    }
+                    console.error('[loadAsegurados] Error:', err);
+                    log('Error cargando asegurados: ' + err.message, 'error');
                 })
                 .getAseguradosSafe(TOKEN);
         }
 
-        function loadAsegurados() {
-            log('Cargando asegurados (v2)...');
-            // Initial load: Page 1, no search
-            fetchAseguradosPaged('', null, true);
+        /** Invalida el cache de asegurados (llamar después de actualizar la base) */
+        function invalidateAseguradosCache() {
+            try { sessionStorage.removeItem(ASEGURADOS_CACHE_KEY); } catch (e) {}
+            ASEGURADOS_DS.items = [];
+            ALL_CLIENTES = [];
+            _log('[loadAsegurados] Cache invalidado');
         }
 
         function loadGrupos() {
@@ -3624,6 +3744,14 @@
 
             // Limpiar selección actual
             limpiarAutocompleteEECC();
+
+            // Limpiar preview y resultados al cambiar modo
+            const previewSection = document.getElementById('previewSection');
+            if (previewSection) previewSection.classList.add('hidden');
+            const previewBody = document.getElementById('previewTableBody');
+            if (previewBody) previewBody.innerHTML = '';
+            const downloadLinks = document.getElementById('downloadLinks');
+            if (downloadLinks) downloadLinks.classList.add('hidden');
 
             // Actualizar placeholder según modo
             const input = document.getElementById('aseguradoSelect');
@@ -4269,10 +4397,29 @@
             }
 
             const file = fileInput.files[0];
-            const reader = new FileReader();
 
-            log(`📤 Subiendo: ${file.name}`, 'info');
-            uploadLog(`Iniciando carga de: ${file.name}`, 'info');
+            // Validar tipo de archivo
+            const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (!allowedExtensions.includes(ext)) {
+                uploadLog(`Tipo de archivo no permitido: ${ext}. Solo se aceptan .xlsx, .xls, .csv`, 'error');
+                showStatus('uploadStatus', 'Tipo de archivo no válido', 'error');
+                return;
+            }
+
+            // Validar tamaño (máximo 5MB — GAS tiene límite de 6MB por ejecución)
+            const MAX_SIZE_MB = 5;
+            if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+                uploadLog(`Archivo demasiado grande: ${(file.size / 1024 / 1024).toFixed(2)} MB. Máximo: ${MAX_SIZE_MB} MB`, 'error');
+                showStatus('uploadStatus', `Archivo excede el límite de ${MAX_SIZE_MB} MB`, 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            const safeName = escapeHtml(file.name);
+
+            log(`Subiendo: ${safeName}`, 'info');
+            uploadLog(`Iniciando carga de: ${safeName}`, 'info');
             uploadLog(`Tamaño: ${(file.size / 1024).toFixed(2)} KB`, 'info');
             btn.disabled = true;
             btn.textContent = 'Subiendo...';
@@ -4292,29 +4439,29 @@
                         if (result && result.ok) {
                             const mensaje = result.mensaje || result.message || 'Base actualizada';
                             const filas = result.filas || result.rows || 0;
-                            const duplicados = result.duplicados || 0;
-                            const nuevos = result.nuevos || 0;
+                            const duplicados = result.duplicatesRemoved || 0;
 
-                            log(`✅ ${mensaje}`, 'success');
+                            log(`${mensaje}`, 'success');
                             uploadLog(`Procesamiento completado`, 'success');
-                            uploadLog(`📊 Filas procesadas: ${filas}`, 'success');
+                            uploadLog(`Filas escritas: ${filas}`, 'success');
                             if (duplicados > 0) {
-                                uploadLog(`🔄 Cupones duplicados omitidos: ${duplicados}`, 'warning');
+                                uploadLog(`Cupones duplicados omitidos: ${duplicados}`, 'warning');
                             }
-                            if (nuevos > 0) {
-                                uploadLog(`✨ Registros nuevos agregados: ${nuevos}`, 'success');
+                            // Mostrar warnings del backend (ej: columna CUPON no encontrada)
+                            if (result.warnings && result.warnings.length > 0) {
+                                result.warnings.forEach(w => uploadLog(w, 'warning'));
                             }
                             uploadLog(`Base de datos actualizada exitosamente`, 'success');
 
                             showStatus('uploadStatus', mensaje, 'success');
                             showToast(`Base actualizada: ${filas} filas`, 'success');
                             fileInput.value = '';
+                            invalidateAseguradosCache();
                             loadAsegurados();
                             loadGrupos();
-                            checkLogin();
                         } else {
                             const error = result?.mensaje || result?.error || 'Error desconocido';
-                            log(`❌ ${error}`, 'error');
+                            log(`${error}`, 'error');
                             uploadLog(`Error: ${error}`, 'error');
                             showStatus('uploadStatus', error, 'error');
                         }
@@ -4323,7 +4470,7 @@
                         showLoading(false);
                         btn.disabled = false;
                         btn.textContent = 'Subir y actualizar';
-                        log(`❌ ${error.message}`, 'error');
+                        log(`${error.message}`, 'error');
                         uploadLog(`Error fatal: ${error.message}`, 'error');
                         showStatus('uploadStatus', error.message, 'error');
                     })
@@ -4333,6 +4480,14 @@
                         dataBase64: base64,
                         tieneEncabezado: hasHeader
                     }, TOKEN);
+            };
+
+            reader.onerror = () => {
+                showLoading(false);
+                btn.disabled = false;
+                btn.textContent = 'Subir y actualizar';
+                uploadLog('Error al leer el archivo. Verifica que no esté dañado.', 'error');
+                showStatus('uploadStatus', 'Error al leer archivo', 'error');
             };
 
             reader.readAsDataURL(file);
@@ -4348,38 +4503,39 @@
 
             if (INCLUDE_OBS) {
                 container.classList.remove('hidden');
-                btn.textContent = '📝 Quitar OBS';
+                btn.textContent = 'Quitar OBS';
 
-                // Cargar RAMs instantáneamente del asegurado seleccionado
+                // Cargar RAMs del asegurado seleccionado
                 const asegurado = document.getElementById('aseguradoSelect').value;
                 if (asegurado) {
                     _log('[toggleObs] Cargando RAMs para:', asegurado);
+                    btn.disabled = true;
 
-                    // Mostrar loading en el select
                     const ramSelect = document.getElementById('ramSelect');
-                    ramSelect.innerHTML = '<option>⏳ Cargando RAMs...</option>';
+                    ramSelect.innerHTML = '<option>Cargando RAMs...</option>';
 
-                    // Cargar RAMs desde el servidor
                     google.script.run
                         .withSuccessHandler(result => {
+                            btn.disabled = false;
                             if (result && result.rams && result.rams.length > 0) {
                                 ramSelect.innerHTML = '<option value="__ALL__" selected>Todos los RAM</option>' +
-                                    result.rams.map(r => `<option value="${r}">${r}</option>`).join('');
-                                _log('[toggleObs] ✅ RAMs cargados:', result.rams.length);
+                                    result.rams.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+                                _log('[toggleObs] RAMs cargados:', result.rams.length);
                             } else {
                                 ramSelect.innerHTML = '<option value="__ALL__">Todos los RAM</option>';
-                                _log('[toggleObs] ⚠️ No hay RAMs disponibles');
+                                _log('[toggleObs] No hay RAMs disponibles');
                             }
                         })
                         .withFailureHandler(error => {
-                            console.error('[toggleObs] Error al cargar RAMs:', error);
+                            btn.disabled = false;
+                            _log('[toggleObs] Error al cargar RAMs: ' + error);
                             ramSelect.innerHTML = '<option value="__ALL__">Todos los RAM</option>';
                         })
                         .previewAsegurado(asegurado, 1, false, null, TOKEN);
                 }
             } else {
                 container.classList.add('hidden');
-                btn.textContent = '📝 Agregar OBS';
+                btn.textContent = 'Agregar OBS';
             }
         }
 
@@ -4486,8 +4642,132 @@
         }
 
         // ============================================================
-        // GENERAR ESTADO DE CUENTA
+        // GENERAR ESTADO DE CUENTA - UX Mejorado
         // ============================================================
+
+        let _elapsedInterval = null;
+
+        /** Inicia el timer de tiempo transcurrido */
+        function startElapsedTimer() {
+            const start = Date.now();
+            const el = document.getElementById('eeccElapsed');
+            _elapsedInterval = setInterval(() => {
+                const secs = Math.floor((Date.now() - start) / 1000);
+                const mins = Math.floor(secs / 60);
+                const s = secs % 60;
+                el.textContent = mins > 0 ? `${mins}m ${s}s` : `${s}s`;
+            }, 1000);
+        }
+
+        function stopElapsedTimer() {
+            if (_elapsedInterval) { clearInterval(_elapsedInterval); _elapsedInterval = null; }
+        }
+
+        /** Actualiza la barra de progreso */
+        function updateProgress(pct, label) {
+            const container = document.getElementById('eeccProgress');
+            const fill = document.getElementById('eeccProgressFill');
+            const labelEl = document.getElementById('eeccProgressLabel');
+            container.classList.add('active');
+            fill.style.width = pct + '%';
+            if (label) labelEl.textContent = label;
+        }
+
+        /** Resetea el estado de generación */
+        function resetGenerateUI() {
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.querySelector('.btn-label').textContent = 'Generar EECC';
+            stopElapsedTimer();
+        }
+
+        /** Muestra el botón en estado loading */
+        function setGenerateLoading(label) {
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.querySelector('.btn-label').textContent = label || 'Generando...';
+        }
+
+        /** Construye la tabla de estado en vivo para batch */
+        function initLiveStatus(asegurados) {
+            const container = document.getElementById('eeccLiveStatus');
+            const body = document.getElementById('eeccLiveBody');
+            let html = '';
+            asegurados.forEach((name, i) => {
+                html += `<div class="eecc-live-row" id="liveRow_${i}">
+                    <span class="eecc-live-row-name">${escapeHtml(name)}</span>
+                    <span class="eecc-live-badge pending" id="liveBadge_${i}">Pendiente</span>
+                </div>`;
+            });
+            body.innerHTML = html;
+            container.classList.add('active');
+        }
+
+        /** Actualiza el badge de un asegurado en la tabla live */
+        function updateLiveBadge(index, status) {
+            const badge = document.getElementById('liveBadge_' + index);
+            if (!badge) return;
+            badge.className = 'eecc-live-badge ' + status;
+            const labels = { pending: 'Pendiente', generating: 'Generando...', done: 'Listo', error: 'Error' };
+            badge.textContent = labels[status] || status;
+            // Auto-scroll to show current item
+            if (status === 'generating') {
+                const row = document.getElementById('liveRow_' + index);
+                if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+
+        /** Muestra el resumen final */
+        function showSummary(successCount, errorCount, total, durationMs) {
+            const summary = document.getElementById('eeccSummary');
+            const content = document.getElementById('eeccSummaryContent');
+            const type = errorCount > 0 ? (successCount > 0 ? 'warning' : 'error') : 'success';
+            summary.className = 'eecc-summary active ' + type;
+
+            const durationStr = durationMs > 0 ? Math.round(durationMs / 1000) + 's' : '';
+            let html = `<span class="eecc-summary-stat">${successCount}/${total} generados</span>`;
+            if (errorCount > 0) html += `<span class="eecc-summary-stat" style="color: var(--tp-error)">${errorCount} con error</span>`;
+            if (durationStr) html += `<span class="eecc-summary-stat">${durationStr}</span>`;
+            content.innerHTML = html;
+        }
+
+        /** Oculta elementos de progreso */
+        function hideProgressUI() {
+            document.getElementById('eeccProgress').classList.remove('active');
+            document.getElementById('eeccLiveStatus').classList.remove('active');
+            document.getElementById('eeccSummary').className = 'eecc-summary';
+            // Reset fill bar for next run
+            const fill = document.getElementById('eeccProgressFill');
+            fill.style.width = '0%';
+            fill.style.background = '';
+            fill.className = 'eecc-progress-bar-fill';
+        }
+
+        /** Diálogo de confirmación para grupos grandes */
+        function confirmGroupGeneration(groupName, count) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'eecc-confirm-overlay';
+                overlay.innerHTML = `
+                    <div class="eecc-confirm-dialog">
+                        <h4>Confirmar generación grupal</h4>
+                        <p>Se generarán estados de cuenta para <strong>${count} asegurados</strong> del grupo <strong>${escapeHtml(groupName)}</strong>.<br><br>
+                        Este proceso puede tardar varios minutos.</p>
+                        <div class="eecc-confirm-actions">
+                            <button class="btn btn-secondary" id="eeccConfirmCancel">Cancelar</button>
+                            <button class="btn btn-primary" id="eeccConfirmOk">Generar</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                document.getElementById('eeccConfirmCancel').onclick = () => { overlay.remove(); resolve(false); };
+                document.getElementById('eeccConfirmOk').onclick = () => { overlay.remove(); resolve(true); };
+                overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } });
+            });
+        }
+
         function handleGenerate() {
             const asegurado = document.getElementById('aseguradoSelect').value;
             if (!asegurado) {
@@ -4495,10 +4775,10 @@
                 return;
             }
 
-            const btn = document.getElementById('generateBtn');
-            btn.disabled = true;
-            btn.textContent = 'Generando...';
+            // Reset UI
+            hideProgressUI();
             document.getElementById('downloadLinks').classList.add('hidden');
+            document.getElementById('generateStatus').classList.add('hidden');
 
             const { exportPdf, exportXlsx } = getExportType();
 
@@ -4516,194 +4796,273 @@
 
             log(`Generando EECC para ${asegurado}...`);
 
-            // GRUPO_ECONOMICO - Lógica condicional
-            // GRUPO_ECONOMICO - Lógica secuencial desde Frontend (para evitar timeouts)
+            // GRUPO_ECONOMICO - Sub-batch optimizado con UX mejorado
             if (EECC_MODE === 'grupo') {
-                showStatus('generateStatus', 'Obteniendo miembros del grupo...', 'info');
+                setGenerateLoading('Obteniendo grupo...');
+                updateProgress(0, 'Obteniendo miembros del grupo...');
+                startElapsedTimer();
 
-                // 1. Obtener lista de asegurados del grupo
                 google.script.run
                     .withSuccessHandler(async (response) => {
                         if (!response || !response.ok || !response.data || response.data.length === 0) {
-                            btn.disabled = false;
-                            btn.textContent = '⚙ Generar';
+                            resetGenerateUI();
+                            hideProgressUI();
                             showStatus('generateStatus', 'Error: El grupo no tiene asegurados o no existe', 'error');
                             return;
                         }
 
                         const asegurados = response.data;
                         const total = asegurados.length;
-                        const results = [];
-                        let successCount = 0;
-                        let errorCount = 0;
 
-                        log(`Grupo ${asegurado} tiene ${total} asegurados. Iniciando generación secuencial...`);
-
-                        // 2. Iterar secuencialmente (uno por uno)
-                        for (let i = 0; i < total; i++) {
-                            const currentAsegurado = asegurados[i];
-                            const progressMsg = `Generando ${i + 1}/${total}: ${currentAsegurado}...`;
-
-                            showStatus('generateStatus', progressMsg, 'info');
-                            btn.textContent = `⚙ ${Math.round(((i) / total) * 100)}%`;
-
-                            try {
-                                // Promesa para envolver google.script.run
-                                const result = await new Promise((resolve, reject) => {
-                                    google.script.run
-                                        .withSuccessHandler(resolve)
-                                        .withFailureHandler(reject)
-                                        .generateHeadless_API(currentAsegurado, {
-                                            exportPdf: exportPdf,
-                                            exportXlsx: exportXlsx,
-                                            includeObs: INCLUDE_OBS,
-                                            obsForRAM: obsForRAM,
-                                            rowsToSkip: [] // No aplicar skip rows en grupo
-                                        }, TOKEN);
-                                });
-
-                                if (result.ok) {
-                                    successCount++;
-                                    results.push({
-                                        asegurado: currentAsegurado,
-                                        pdfUrl: result.pdfUrl,
-                                        xlsxUrl: result.xlsxUrl
-                                    });
-                                    log(`✅ ${currentAsegurado} generado OK`, 'success');
-                                } else {
-                                    errorCount++;
-                                    log(`❌ ${currentAsegurado} falló: ${result.error}`, 'error');
-                                }
-
-                            } catch (err) {
-                                errorCount++;
-                                log(`❌ Error crítico en ${currentAsegurado}: ${err.message}`, 'error');
+                        // Confirmación para grupos con más de 5 asegurados
+                        if (total > 5) {
+                            stopElapsedTimer();
+                            const confirmed = await confirmGroupGeneration(asegurado, total);
+                            if (!confirmed) {
+                                resetGenerateUI();
+                                hideProgressUI();
+                                return;
                             }
-
-                            // Pequeña pausa para no saturar UI
-                            await new Promise(r => setTimeout(r, 500));
+                            startElapsedTimer();
                         }
 
-                        // 3. Finalizar
-                        btn.disabled = false;
-                        btn.textContent = '⚙ Generar';
+                        // Inicializar live status
+                        initLiveStatus(asegurados);
 
-                        const finalMsg = `Generación grupal completada. Éxitos: ${successCount}/${total}`;
-                        showStatus('generateStatus', finalMsg, errorCount > 0 ? 'warning' : 'success');
-                        showToast(finalMsg, errorCount > 0 ? 'warning' : 'success');
+                        const SUB_BATCH_SIZE = 5;
+                        const BATCH_TIMEOUT_MS = 120000;
+                        const chunks = [];
+                        for (let i = 0; i < asegurados.length; i += SUB_BATCH_SIZE) {
+                            chunks.push(asegurados.slice(i, i + SUB_BATCH_SIZE));
+                        }
 
-                        // Mostrar resultados en tabla compacta
-                        if (results.length > 0) {
-                            const container = document.getElementById('linksContainer');
-                            const footer = document.getElementById('generatedFilesFooter');
-                            const downloadLinks = document.getElementById('downloadLinks');
+                        log(`Grupo ${asegurado}: ${total} asegurados en ${chunks.length} sub-batch(es) de ${SUB_BATCH_SIZE}`);
 
-                            // Construir tabla interna
-                            let tableHtml = `
-                                <table class="generated-files-table">
-                                    <thead>
+                        const allResults = [];
+                        const allErrors = [];
+                        let totalDurationMs = 0;
+
+                        try {
+                            for (let c = 0; c < chunks.length; c++) {
+                                const chunk = chunks[c];
+                                const chunkStartIdx = c * SUB_BATCH_SIZE;
+                                const progressPct = Math.round((chunkStartIdx / total) * 100);
+
+                                // Update progress bar
+                                updateProgress(progressPct, `Batch ${c + 1}/${chunks.length} (${chunk.length} asegurados)`);
+                                setGenerateLoading(`${progressPct}%`);
+
+                                // Mark chunk items as "generating"
+                                for (let j = 0; j < chunk.length; j++) {
+                                    updateLiveBadge(chunkStartIdx + j, 'generating');
+                                }
+
+                                const batchResult = await Promise.race([
+                                    new Promise((resolve, reject) => {
+                                        google.script.run
+                                            .withSuccessHandler(resolve)
+                                            .withFailureHandler(reject)
+                                            .generateBatch_API(chunk, {
+                                                exportPdf: exportPdf,
+                                                exportXlsx: exportXlsx,
+                                                includeObs: INCLUDE_OBS,
+                                                obsForRAM: obsForRAM
+                                            }, TOKEN);
+                                    }),
+                                    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout: batch ${c + 1} excedio 120s`)), BATCH_TIMEOUT_MS))
+                                ]);
+
+                                if (batchResult && batchResult.ok) {
+                                    allResults.push(...(batchResult.results || []));
+                                    totalDurationMs += (batchResult.durationMs || 0);
+                                    log(`Batch ${c + 1}/${chunks.length}: ${batchResult.generatedCount || 0} generados`, 'success');
+
+                                    // Mark successful items as "done"
+                                    const resultNames = (batchResult.results || []).map(r => r.asegurado);
+                                    for (let j = 0; j < chunk.length; j++) {
+                                        const globalIdx = chunkStartIdx + j;
+                                        if (resultNames.includes(chunk[j])) {
+                                            updateLiveBadge(globalIdx, 'done');
+                                        }
+                                    }
+                                } else {
+                                    chunk.forEach((name, j) => {
+                                        allErrors.push({ asegurado: name, error: batchResult?.error || 'Error desconocido' });
+                                        updateLiveBadge(chunkStartIdx + j, 'error');
+                                    });
+                                    log(`Batch ${c + 1}/${chunks.length} fallo: ${batchResult?.error || 'desconocido'}`, 'error');
+                                }
+
+                                if (batchResult && batchResult.errors) {
+                                    allErrors.push(...batchResult.errors);
+                                    batchResult.errors.forEach(e => {
+                                        log(`${e.asegurado}: ${e.error}`, 'error');
+                                        // Mark specific errors
+                                        const errIdx = asegurados.indexOf(e.asegurado);
+                                        if (errIdx >= 0) updateLiveBadge(errIdx, 'error');
+                                    });
+                                }
+
+                                if (c < chunks.length - 1) {
+                                    await new Promise(r => setTimeout(r, 500));
+                                }
+                            }
+
+                            // Completion
+                            const successCount = allResults.length;
+                            const errorCount = allErrors.length;
+
+                            // Final progress bar state
+                            updateProgress(100, 'Completado');
+                            const fill = document.getElementById('eeccProgressFill');
+                            fill.classList.add(errorCount > 0 ? 'has-errors' : 'complete');
+
+                            stopElapsedTimer();
+                            resetGenerateUI();
+
+                            // Show summary
+                            showSummary(successCount, errorCount, total, totalDurationMs);
+
+                            const finalMsg = `Completado: ${successCount}/${total} generados`;
+                            showToast(finalMsg, errorCount > 0 ? 'warning' : 'success');
+
+                            // Mostrar tabla de resultados
+                            if (allResults.length > 0) {
+                                const container = document.getElementById('linksContainer');
+                                const footer = document.getElementById('generatedFilesFooter');
+                                const downloadLinks = document.getElementById('downloadLinks');
+
+                                let tableHtml = `
+                                    <table class="generated-files-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Asegurado</th>
+                                                <th class="text-center">PDF</th>
+                                                <th class="text-center">Excel</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                `;
+
+                                const allFileUrls = [];
+
+                                allResults.forEach(res => {
+                                    let pdfLink = '<span class="text-muted">-</span>';
+                                    let xlsxLink = '<span class="text-muted">-</span>';
+
+                                    if (res.pdfUrl) {
+                                        pdfLink = `<a href="${res.pdfUrl}" target="_blank" class="btn btn-sm btn-outline-danger" title="Ver PDF" style="padding: 2px 8px; font-size: 0.75rem;">PDF</a>`;
+                                        allFileUrls.push(res.pdfUrl);
+                                    }
+
+                                    if (res.xlsxUrl) {
+                                        xlsxLink = `<a href="${res.xlsxUrl}" target="_blank" class="btn btn-sm btn-outline-success" title="Ver Excel" style="padding: 2px 8px; font-size: 0.75rem;">Excel</a>`;
+                                        allFileUrls.push(res.xlsxUrl);
+                                    }
+
+                                    tableHtml += `
                                         <tr>
-                                            <th>Asegurado</th>
-                                            <th class="text-center">PDF</th>
-                                            <th class="text-center">Excel</th>
+                                            <td>${escapeHtml(res.asegurado)}</td>
+                                            <td class="text-center">${pdfLink}</td>
+                                            <td class="text-center">${xlsxLink}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                            `;
+                                    `;
+                                });
 
-                            const allFileUrls = [];
+                                // Add error rows to the table
+                                allErrors.forEach(err => {
+                                    tableHtml += `
+                                        <tr style="background: var(--tp-error-pale);">
+                                            <td>${escapeHtml(err.asegurado)}</td>
+                                            <td colspan="2" class="text-center" style="color: var(--tp-error); font-size: 0.75rem;">${escapeHtml(err.error)}</td>
+                                        </tr>
+                                    `;
+                                });
 
-                            results.forEach(res => {
-                                let pdfLink = '<span class="text-muted">-</span>';
-                                let xlsxLink = '<span class="text-muted">-</span>';
+                                tableHtml += `</tbody></table>`;
+                                container.innerHTML = tableHtml;
 
-                                if (res.pdfUrl) {
-                                    pdfLink = `<a href="${res.pdfUrl}" target="_blank" class="btn btn-sm btn-outline-danger" title="Ver PDF" style="padding: 2px 8px; font-size: 0.75rem;">📄 PDF</a>`;
-                                    allFileUrls.push(res.pdfUrl);
+                                if (allFileUrls.length > 0) {
+                                    footer.innerHTML = `
+                                        <div class="d-grid">
+                                            <button id="btnDownloadZip" class="btn btn-primary" style="width: 100%">
+                                                Descargar Todo (ZIP)
+                                            </button>
+                                            <div id="zipStatus" class="text-center text-muted small mt-1"></div>
+                                        </div>
+                                    `;
+                                    document.getElementById('btnDownloadZip').addEventListener('click', () => {
+                                        downloadZip(asegurado, allFileUrls);
+                                    });
+                                    footer.classList.remove('hidden');
+                                } else {
+                                    footer.classList.add('hidden');
                                 }
 
-                                if (res.xlsxUrl) {
-                                    xlsxLink = `<a href="${res.xlsxUrl}" target="_blank" class="btn btn-sm btn-outline-success" title="Ver Excel" style="padding: 2px 8px; font-size: 0.75rem;">📊 Excel</a>`;
-                                    allFileUrls.push(res.xlsxUrl);
+                                downloadLinks.classList.remove('hidden');
+                                if (allResults.length > 10) {
+                                    downloadLinks.classList.remove('expanded');
+                                } else {
+                                    downloadLinks.classList.add('expanded');
                                 }
-
-                                tableHtml += `
-                                    <tr>
-                                        <td>${res.asegurado}</td>
-                                        <td class="text-center">${pdfLink}</td>
-                                        <td class="text-center">${xlsxLink}</td>
-                                    </tr>
-                                `;
-                            });
-
-                            tableHtml += `</tbody></table>`;
-
-                            // Inyectar tabla en el cuerpo
-                            container.innerHTML = tableHtml;
-
-                            // Botón ZIP en el footer
-                            if (allFileUrls.length > 0) {
-                                footer.innerHTML = `
-                                    <div class="d-grid">
-                                        <button id="btnDownloadZip" class="btn btn-primary" onclick="downloadZip('${asegurado}', ${JSON.stringify(allFileUrls).replace(/"/g, '&quot;')})" style="width: 100%">
-                                            📦 Descargar Todo (ZIP)
-                                        </button>
-                                        <div id="zipStatus" class="text-center text-muted small mt-1"></div>
-                                    </div>
-                                `;
-                                footer.classList.remove('hidden');
-                            } else {
-                                footer.classList.add('hidden');
                             }
 
-                            // Mostrar tarjeta
-                            downloadLinks.classList.remove('hidden');
-
-                            // Si son muchos, colapsar por defecto (opcional, aquí lo dejamos expandido pero con scroll)
-                            // Si se prefiere colapsar si > 5 items:
-                            if (results.length > 10) {
-                                downloadLinks.classList.remove('expanded');
-                            } else {
-                                downloadLinks.classList.add('expanded');
-                            }
+                        } catch (err) {
+                            stopElapsedTimer();
+                            resetGenerateUI();
+                            updateProgress(100, 'Error');
+                            document.getElementById('eeccProgressFill').style.background = 'var(--tp-error)';
+                            showStatus('generateStatus', 'Error: ' + err.message, 'error');
+                            showToast('Error: ' + err.message, 'error');
+                            log('Error batch: ' + err.message, 'error');
                         }
                     })
                     .withFailureHandler(error => {
-                        btn.disabled = false;
-                        btn.textContent = '⚙ Generar';
+                        stopElapsedTimer();
+                        resetGenerateUI();
+                        hideProgressUI();
                         showStatus('generateStatus', 'Error al obtener grupo: ' + error.message, 'error');
                     })
                     .getAseguradosPorGrupo_API(asegurado, TOKEN);
 
             } else {
-                // Lógica original para asegurado individual
+                // Lógica para asegurado individual con UX mejorado
+                setGenerateLoading('Generando...');
+                updateProgress(30, 'Generando estado de cuenta...');
+                startElapsedTimer();
+
                 google.script.run
                     .withSuccessHandler(result => {
-                        btn.disabled = false;
-                        btn.textContent = '⚙ Generar';
+                        stopElapsedTimer();
+                        resetGenerateUI();
 
                         if (result && result.ok) {
-                            showStatus('generateStatus', 'Generación exitosa', 'success');
+                            updateProgress(100, 'Completado');
+                            document.getElementById('eeccProgressFill').classList.add('complete');
+                            showSummary(1, 0, 1, 0);
                             showToast('EECC generado exitosamente', 'success');
                             log('EECC generado', 'success');
 
                             const links = [];
-                            if (result.pdfUrl) links.push(`<a href="${result.pdfUrl}" target="_blank" class="btn btn-secondary">📄 PDF</a>`);
-                            if (result.xlsxUrl) links.push(`<a href="${result.xlsxUrl}" target="_blank" class="btn btn-secondary">📊 XLSX</a>`);
+                            if (result.pdfUrl) links.push(`<a href="${result.pdfUrl}" target="_blank" class="btn btn-secondary">PDF</a>`);
+                            if (result.xlsxUrl) links.push(`<a href="${result.xlsxUrl}" target="_blank" class="btn btn-secondary">XLSX</a>`);
 
                             if (links.length > 0) {
-                                document.getElementById('linksContainer').innerHTML = links.join('');
+                                document.getElementById('linksContainer').innerHTML = links.join(' ');
                                 document.getElementById('downloadLinks').classList.remove('hidden');
                             }
                         } else {
-                            showStatus('generateStatus', 'Error: ' + (result?.error || 'desconocido'), 'error');
+                            updateProgress(100, 'Error');
+                            document.getElementById('eeccProgressFill').style.background = 'var(--tp-error)';
+                            showSummary(0, 1, 1, 0);
                             showToast('Error al generar EECC', 'error');
                         }
                     })
                     .withFailureHandler(error => {
-                        btn.disabled = false;
-                        btn.textContent = '⚙ Generar';
-                        showStatus('generateStatus', 'Error: ' + error.message, 'error');
+                        stopElapsedTimer();
+                        resetGenerateUI();
+                        updateProgress(100, 'Error');
+                        document.getElementById('eeccProgressFill').style.background = 'var(--tp-error)';
                         showToast('Error: ' + error.message, 'error');
                         log('Error: ' + error.message, 'error');
                     })
@@ -5115,12 +5474,15 @@
                             });
                         }
 
-                        showToast(`✅ ${result.sent} correos enviados`, 'success');
-
-                        if (result.failed > 0 && result.errors) {
-                            let errorMsg = `⚠️ ${result.failed} fallidos:\n\n`;
-                            result.errors.forEach(err => errorMsg += `• ${err.aseguradoId}: ${err.error}\n`);
-                            setTimeout(() => alert(errorMsg), 1000);
+                        if (result.failed > 0) {
+                            showToast(`${result.sent} enviados, ${result.failed} fallidos`, 'warning');
+                            if (result.errors) {
+                                let errorMsg = `${result.failed} correos fallaron:\n\n`;
+                                result.errors.forEach(err => errorMsg += `- ${err.aseguradoId}: ${err.error}\n`);
+                                setTimeout(() => alert(errorMsg), 500);
+                            }
+                        } else {
+                            showToast(`${result.sent} correos enviados`, 'success');
                         }
 
                         setTimeout(() => closeMailModal(), 2000);
@@ -5187,7 +5549,7 @@
 
         /**
          * Carga y procesa las notificaciones de compromisos
-         * OPTIMIZADO: Usa caché de 2 minutos para carga instantánea
+         * OPTIMIZADO: Usa caché de 2 minutos + timeout de 15s para evitar "Cargando" infinito
          */
         function cargarNotificaciones(forceRefresh = false) {
             _log('[Notificaciones] Cargando compromisos (forceRefresh=' + forceRefresh + ')...');
@@ -5215,9 +5577,26 @@
                 procesarNotificaciones(NOTIFICACIONES_CACHE, true); // fromCache = true
             }
 
+            // Timeout de seguridad: si el servidor no responde en 15s, mostrar error/fallback
+            let responded = false;
+            const timeoutId = setTimeout(function () {
+                if (responded) return;
+                responded = true;
+                console.warn('[Notificaciones] ⏱️ Timeout: el servidor no respondió en 15s');
+                if (NOTIFICACIONES_CACHE) {
+                    _log('[Notificaciones] Usando caché tras timeout');
+                    procesarNotificaciones(NOTIFICACIONES_CACHE, true);
+                } else {
+                    body.innerHTML = '<div class="notification-empty"><div class="notification-empty-icon">⏱️</div><p>No se pudieron cargar las notificaciones</p><button onclick="cargarNotificaciones(true)" style="margin-top:8px;padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">Reintentar</button></div>';
+                }
+            }, 15000);
+
             // Cargar datos frescos del servidor
             google.script.run
                 .withSuccessHandler(function (result) {
+                    if (responded) return;
+                    responded = true;
+                    clearTimeout(timeoutId);
                     _log('[Notificaciones] ✅ Respuesta recibida del servidor');
 
                     if (result && result.ok && result.data) {
@@ -5232,6 +5611,9 @@
                     }
                 })
                 .withFailureHandler(function (error) {
+                    if (responded) return;
+                    responded = true;
+                    clearTimeout(timeoutId);
                     console.error('[Notificaciones] ❌ Error:', error);
 
                     // Si hay caché, mantenerlo en caso de error
@@ -5239,7 +5621,7 @@
                         _log('[Notificaciones] ⚠️ Error del servidor, usando caché antiguo');
                         procesarNotificaciones(NOTIFICACIONES_CACHE);
                     } else {
-                        body.innerHTML = '<div class="notification-empty"><div class="notification-empty-icon">❌</div><p>Error: ' + escapeHtml(error.message) + '</p></div>';
+                        body.innerHTML = '<div class="notification-empty"><div class="notification-empty-icon">❌</div><p>Error: ' + escapeHtml(error.message || 'Error desconocido') + '</p><button onclick="cargarNotificaciones(true)" style="margin-top:8px;padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">Reintentar</button></div>';
                     }
                 })
                 .bitacoraGetCompromisosActivos(TOKEN);
@@ -5481,53 +5863,75 @@
          * Carga inicial de notificaciones al cargar el portal
          * OPTIMIZADO: Carga en segundo plano y actualiza badge inmediatamente
          */
+        /**
+         * Helper: llama a bitacoraGetCompromisosActivos con timeout de seguridad
+         * Evita que google.script.run se quede colgado si postMessage es descartado
+         */
+        function _fetchCompromisosConTimeout(onSuccess, onFailure, timeoutMs) {
+            let responded = false;
+            const timer = setTimeout(function () {
+                if (responded) return;
+                responded = true;
+                onFailure(new Error('Timeout: servidor no respondió en ' + (timeoutMs / 1000) + 's'));
+            }, timeoutMs || 15000);
+
+            google.script.run
+                .withSuccessHandler(function (result) {
+                    if (responded) return;
+                    responded = true;
+                    clearTimeout(timer);
+                    onSuccess(result);
+                })
+                .withFailureHandler(function (error) {
+                    if (responded) return;
+                    responded = true;
+                    clearTimeout(timer);
+                    onFailure(error);
+                })
+                .bitacoraGetCompromisosActivos(TOKEN);
+        }
+
         function inicializarNotificaciones() {
             _log('[Notificaciones] 🚀 Inicializando sistema...');
 
-            // Cargar notificaciones en segundo plano de forma optimizada
-            google.script.run
-                .withSuccessHandler(function (result) {
+            // Cargar notificaciones en segundo plano con timeout
+            _fetchCompromisosConTimeout(
+                function (result) {
                     if (result && result.ok && result.data) {
                         _log('[Notificaciones] ✅ Datos iniciales recibidos:', result.data.length, 'compromisos');
-
-                        // Guardar en caché inmediatamente
                         NOTIFICACIONES_CACHE = result.data;
                         NOTIFICACIONES_CACHE_TIME = Date.now();
-
-                        // Procesar y actualizar badge
                         procesarNotificaciones(result.data);
                     }
-                })
-                .withFailureHandler(function (error) {
-                    console.error('[Notificaciones] ❌ Error al cargar inicialmente:', error);
-                })
-                .bitacoraGetCompromisosActivos(TOKEN);
+                },
+                function (error) {
+                    console.warn('[Notificaciones] ⚠️ Error al cargar inicialmente:', error.message || error);
+                },
+                20000 // 20s timeout para carga inicial
+            );
 
-            // Actualizar cada 3 minutos (más frecuente que el caché de 2min)
+            // Actualizar cada 5 minutos
             if (NOTIF_INTERVAL_ID) clearInterval(NOTIF_INTERVAL_ID);
-            NOTIF_INTERVAL_ID = setInterval(() => {
+            NOTIF_INTERVAL_ID = setInterval(function () {
                 _log('[Notificaciones] 🔄 Actualización automática en background...');
 
-                // Actualizar en background sin mostrar loader
-                google.script.run
-                    .withSuccessHandler(function (result) {
+                _fetchCompromisosConTimeout(
+                    function (result) {
                         if (result && result.ok && result.data) {
-                            // Actualizar caché silenciosamente
                             NOTIFICACIONES_CACHE = result.data;
                             NOTIFICACIONES_CACHE_TIME = Date.now();
-
-                            // Solo procesar si cambió el número de notificaciones
                             if (result.data.length !== NOTIFICACIONES.length) {
                                 _log('[Notificaciones] 📢 Cambio detectado, actualizando badge...');
                                 procesarNotificaciones(result.data);
                             }
                         }
-                    })
-                    .withFailureHandler(function (error) {
-                        console.warn('[Notificaciones] ⚠️ Error en actualización automática:', error.message);
-                    })
-                    .bitacoraGetCompromisosActivos(TOKEN);
-            }, 3 * 60 * 1000);
+                    },
+                    function (error) {
+                        console.warn('[Notificaciones] ⚠️ Error en actualización automática:', error.message || error);
+                    },
+                    15000
+                );
+            }, 5 * 60 * 1000);
         }
 
         // ============================================================
@@ -5548,11 +5952,11 @@
 
         // ========== PROMISE WRAPPER PARA google.script.run (v4.1+) ==========
         function runGas(fnName, ...args) {
-            const TIMEOUT_MS = 30000; // 30s timeout
+            const TIMEOUT_MS = 60000; // 60s timeout (increased from 30s - GAS sheet reads can be slow)
             return new Promise((resolve, reject) => {
                 let settled = false;
                 const timer = setTimeout(() => {
-                    if (!settled) { settled = true; reject(new Error('Timeout: ' + fnName + ' tardó más de 30s')); }
+                    if (!settled) { settled = true; reject(new Error('Timeout: ' + fnName + ' tardó más de 60s')); }
                 }, TIMEOUT_MS);
                 google.script.run
                     .withSuccessHandler(result => { if (!settled) { settled = true; clearTimeout(timer); resolve(result); } })
@@ -6085,21 +6489,277 @@
          * Poblar filtros de Bitácora Estado Actual
          * CORREGIDO: Ya no intenta llenar el autocomplete como select
          */
+        // ════════════════════════════════════════════════════════════════════════════════
+        // AUTOCOMPLETE: Filtro Asegurado Bitácora (Estado Actual)
+        // ════════════════════════════════════════════════════════════════════════════════
+        let AUTOCOMPLETE_FILTRO_OPTIONS = [];
+        let AUTOCOMPLETE_FILTRO_FILTERED = [];
+        let AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX = -1;
+
+        const debouncedFiltrarAutocompleteFiltro = _debounce(function () { filtrarAutocompleteFiltro(); }, 150);
+
+        function filtrarAutocompleteFiltro() {
+            const input = document.getElementById('filtroAseguradoEmb');
+            if (!input) return;
+
+            const search = normalizeText(input.value);
+            const dropdown = document.getElementById('filtroAseguradoDropdown');
+            const clearBtn = document.getElementById('clearFiltroAsegurado');
+            const counter = document.getElementById('filtroAseguradoCounter');
+
+            // Mostrar/ocultar botón limpiar
+            if (clearBtn) clearBtn.style.display = input.value.trim() ? 'flex' : 'none';
+
+            // Si no hay texto, mostrar todas las opciones
+            if (!search) {
+                AUTOCOMPLETE_FILTRO_FILTERED = AUTOCOMPLETE_FILTRO_OPTIONS.slice();
+            } else {
+                // Filtrar y rankear
+                AUTOCOMPLETE_FILTRO_FILTERED = AUTOCOMPLETE_FILTRO_OPTIONS
+                    .map(function (opt) {
+                        var norm = normalizeText(opt);
+                        var idx = norm.indexOf(search);
+                        if (idx === -1) return null;
+                        var rank = idx === 0 ? 0 : (norm.startsWith(search) ? 1 : 2 + idx);
+                        return { text: opt, rank: rank };
+                    })
+                    .filter(Boolean)
+                    .sort(function (a, b) { return a.rank - b.rank || a.text.localeCompare(b.text); })
+                    .map(function (item) { return item.text; });
+            }
+
+            AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX = -1;
+
+            // Mostrar contador
+            if (counter) {
+                counter.textContent = AUTOCOMPLETE_FILTRO_FILTERED.length + ' de ' + AUTOCOMPLETE_FILTRO_OPTIONS.length + ' resultados';
+                counter.style.display = 'block';
+            }
+
+            // Renderizar opciones
+            renderAutocompleteFiltroOptions();
+
+            // Mostrar dropdown
+            if (dropdown) {
+                dropdown.style.display = 'block';
+                input.setAttribute('aria-expanded', 'true');
+            }
+
+            // Si el usuario está escribiendo, limpiar el filtro activo para que no quede un valor viejo
+            var hidden = document.getElementById('filtroAseguradoValue');
+            if (hidden) hidden.value = '';
+            // Activar el filtro en tiempo real (sin selección = filtrar por coincidencia parcial)
+            filtrarBitacoraEmbedded();
+        }
+
+        function renderAutocompleteFiltroOptions() {
+            var container = document.getElementById('filtroAseguradoOptions');
+            if (!container) return;
+
+            var fragment = document.createDocumentFragment();
+            var input = document.getElementById('filtroAseguradoEmb');
+            var searchText = input ? input.value.trim() : '';
+
+            // Opción "Todos" siempre primero
+            var todosDiv = document.createElement('div');
+            todosDiv.className = 'autocomplete-option';
+            todosDiv.setAttribute('role', 'option');
+            todosDiv.innerHTML = '<strong style="color: var(--tp-primary);">✔ Todos</strong>';
+            todosDiv.onclick = function () { seleccionarOpcionFiltro('', 'Todos'); };
+            fragment.appendChild(todosDiv);
+
+            // Opciones filtradas
+            AUTOCOMPLETE_FILTRO_FILTERED.forEach(function (opt, idx) {
+                var div = document.createElement('div');
+                div.className = 'autocomplete-option';
+                div.setAttribute('role', 'option');
+                div.setAttribute('data-index', idx);
+                div.innerHTML = highlightSearchText(opt, searchText);
+                div.onclick = function () { seleccionarOpcionFiltro(opt, opt); };
+                fragment.appendChild(div);
+            });
+
+            if (AUTOCOMPLETE_FILTRO_FILTERED.length === 0 && searchText) {
+                var noResult = document.createElement('div');
+                noResult.className = 'autocomplete-option disabled';
+                noResult.style.color = 'var(--tp-text-tertiary)';
+                noResult.style.fontStyle = 'italic';
+                noResult.textContent = 'Sin resultados para "' + searchText + '"';
+                fragment.appendChild(noResult);
+            }
+
+            container.innerHTML = '';
+            container.appendChild(fragment);
+        }
+
+        function seleccionarOpcionFiltro(value, display) {
+            var input = document.getElementById('filtroAseguradoEmb');
+            var hidden = document.getElementById('filtroAseguradoValue');
+            var dropdown = document.getElementById('filtroAseguradoDropdown');
+            var clearBtn = document.getElementById('clearFiltroAsegurado');
+            var counter = document.getElementById('filtroAseguradoCounter');
+
+            if (input) {
+                input.value = value ? display : '';
+                input.setAttribute('aria-expanded', 'false');
+            }
+            if (hidden) hidden.value = value;
+            if (dropdown) dropdown.style.display = 'none';
+            if (clearBtn) clearBtn.style.display = value ? 'flex' : 'none';
+            if (counter) counter.style.display = 'none';
+
+            AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX = -1;
+
+            // Disparar filtrado de bitácora
+            filtrarBitacoraEmbedded();
+
+            _log('[filtroAutocomplete] Seleccionado:', value || '(Todos)');
+        }
+
+        function mostrarDropdownAutocompleteFiltro() {
+            var dropdown = document.getElementById('filtroAseguradoDropdown');
+            if (!dropdown) return;
+
+            // Inicializar filtro con todas las opciones
+            var input = document.getElementById('filtroAseguradoEmb');
+            if (input && !input.value.trim()) {
+                AUTOCOMPLETE_FILTRO_FILTERED = AUTOCOMPLETE_FILTRO_OPTIONS.slice();
+            }
+
+            var counter = document.getElementById('filtroAseguradoCounter');
+            if (counter) {
+                counter.textContent = AUTOCOMPLETE_FILTRO_FILTERED.length + ' de ' + AUTOCOMPLETE_FILTRO_OPTIONS.length + ' resultados';
+                counter.style.display = 'block';
+            }
+
+            renderAutocompleteFiltroOptions();
+            dropdown.style.display = 'block';
+            if (input) input.setAttribute('aria-expanded', 'true');
+        }
+
+        function toggleDropdownAutocompleteFiltro() {
+            var dropdown = document.getElementById('filtroAseguradoDropdown');
+            if (!dropdown) return;
+
+            if (dropdown.style.display === 'none' || !dropdown.style.display) {
+                mostrarDropdownAutocompleteFiltro();
+            } else {
+                dropdown.style.display = 'none';
+                var input = document.getElementById('filtroAseguradoEmb');
+                if (input) input.setAttribute('aria-expanded', 'false');
+            }
+        }
+
+        function limpiarAutocompleteFiltro() {
+            var input = document.getElementById('filtroAseguradoEmb');
+            var hidden = document.getElementById('filtroAseguradoValue');
+            var dropdown = document.getElementById('filtroAseguradoDropdown');
+            var clearBtn = document.getElementById('clearFiltroAsegurado');
+            var counter = document.getElementById('filtroAseguradoCounter');
+
+            if (input) {
+                input.value = '';
+                input.setAttribute('aria-expanded', 'false');
+                input.focus();
+            }
+            if (hidden) hidden.value = '';
+            if (dropdown) dropdown.style.display = 'none';
+            if (clearBtn) clearBtn.style.display = 'none';
+            if (counter) counter.style.display = 'none';
+
+            AUTOCOMPLETE_FILTRO_FILTERED = AUTOCOMPLETE_FILTRO_OPTIONS.slice();
+            AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX = -1;
+
+            filtrarBitacoraEmbedded();
+        }
+
+        function handleAutocompleteKeydownFiltro(event) {
+            var dropdown = document.getElementById('filtroAseguradoDropdown');
+            if (!dropdown || dropdown.style.display === 'none') {
+                if (event.key === 'ArrowDown' || event.key === 'Enter') {
+                    mostrarDropdownAutocompleteFiltro();
+                    event.preventDefault();
+                }
+                return;
+            }
+
+            // +1 for "Todos" option at index 0
+            var totalOptions = AUTOCOMPLETE_FILTRO_FILTERED.length + 1;
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX = Math.min(AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX + 1, totalOptions - 1);
+                highlightAutocompleteFiltroOption(AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX = Math.max(AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX - 1, -1);
+                highlightAutocompleteFiltroOption(AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX);
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                if (AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX === 0) {
+                    seleccionarOpcionFiltro('', 'Todos');
+                } else if (AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX > 0) {
+                    var opt = AUTOCOMPLETE_FILTRO_FILTERED[AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX - 1];
+                    if (opt) seleccionarOpcionFiltro(opt, opt);
+                } else if (AUTOCOMPLETE_FILTRO_FILTERED.length === 1) {
+                    seleccionarOpcionFiltro(AUTOCOMPLETE_FILTRO_FILTERED[0], AUTOCOMPLETE_FILTRO_FILTERED[0]);
+                }
+            } else if (event.key === 'Escape') {
+                dropdown.style.display = 'none';
+                var input = document.getElementById('filtroAseguradoEmb');
+                if (input) input.setAttribute('aria-expanded', 'false');
+                AUTOCOMPLETE_FILTRO_HIGHLIGHT_INDEX = -1;
+            } else if (event.key === 'Tab') {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        function highlightAutocompleteFiltroOption(index) {
+            var options = document.querySelectorAll('#filtroAseguradoOptions .autocomplete-option:not(.disabled)');
+            options.forEach(function (opt, i) {
+                if (i === index) {
+                    opt.classList.add('autocomplete-option-highlighted');
+                    opt.style.background = 'var(--tp-primary-pale, #FEE2E2)';
+                    opt.style.borderLeft = '3px solid var(--tp-primary)';
+                    opt.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                } else {
+                    opt.classList.remove('autocomplete-option-highlighted');
+                    opt.style.background = '';
+                    opt.style.borderLeft = '';
+                }
+            });
+        }
+
+        // Cerrar dropdown al hacer click fuera
+        document.addEventListener('click', function (e) {
+            var wrapper = document.getElementById('filtroAseguradoWrapper');
+            var dropdown = document.getElementById('filtroAseguradoDropdown');
+            if (wrapper && dropdown && !wrapper.contains(e.target)) {
+                dropdown.style.display = 'none';
+                var input = document.getElementById('filtroAseguradoEmb');
+                if (input) input.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        // ════════════════════════════════════════════════════════════════════════════════
+
         function populateFiltrosEmb() {
             _log('[populateFiltrosEmb] 📋 Poblando filtros con', BITACORA_DATA.length, 'registros');
 
-            // ═══ FILTRO: Asegurados ═══
-            const asegSelect = document.getElementById('filtroAseguradoEmb');
-            if (asegSelect && BITACORA_DATA.length > 0) {
-                const valorActual = asegSelect.value; // Preservar selección actual
-                const asegurados = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
-                asegSelect.innerHTML = '<option value="">Todos</option>' +
-                    asegurados.map(a => '<option value="' + escapeHtml(a) + '">' + escapeHtml(a) + '</option>').join('');
-                // Restaurar valor si existe
-                if (valorActual && asegurados.includes(valorActual)) {
-                    asegSelect.value = valorActual;
+            // ═══ FILTRO: Asegurados (Autocomplete) ═══
+            if (BITACORA_DATA.length > 0) {
+                var valorActual = document.getElementById('filtroAseguradoValue')?.value || '';
+                var asegurados = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
+                AUTOCOMPLETE_FILTRO_OPTIONS = asegurados;
+                AUTOCOMPLETE_FILTRO_FILTERED = asegurados.slice();
+                // Restaurar selección
+                if (valorActual) {
+                    var input = document.getElementById('filtroAseguradoEmb');
+                    if (input) input.value = valorActual;
+                    var clearBtn = document.getElementById('clearFiltroAsegurado');
+                    if (clearBtn) clearBtn.style.display = 'flex';
                 }
-                _log('[populateFiltrosEmb] ✅ Asegurados:', asegurados.length);
+                _log('[populateFiltrosEmb] ✅ Asegurados autocomplete:', asegurados.length);
             }
 
             // ═══ FILTRO: Responsables ═══
@@ -6116,12 +6776,10 @@
             }
 
             // ═══ ACTUALIZAR AUTOCOMPLETE del formulario de registro ═══
-            // Ya no llenamos como select, solo actualizamos la lista de opciones para el autocomplete
             if (BITACORA_DATA.length > 0) {
                 const aseguradosUnicos = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
-                // Actualizar las opciones del autocomplete embebido
                 AUTOCOMPLETE_EMB_OPTIONS = aseguradosUnicos;
-                _log('[populateFiltrosEmb] ✅ Autocomplete actualizado con', aseguradosUnicos.length, 'asegurados');
+                _log('[populateFiltrosEmb] ✅ Autocomplete registro actualizado con', aseguradosUnicos.length, 'asegurados');
             }
         }
 
@@ -7404,7 +8062,11 @@
         };
 
         function filtrarBitacoraEmbedded() {
-            const aseg = document.getElementById('filtroAseguradoEmb')?.value || '';
+            // Leer asegurado del hidden (selección exacta) o del input (búsqueda parcial)
+            const asegExacto = document.getElementById('filtroAseguradoValue')?.value || '';
+            const asegInput = document.getElementById('filtroAseguradoEmb')?.value?.trim() || '';
+            const aseg = asegExacto || '';
+            const asegBusqueda = !asegExacto && asegInput ? normalizeText(asegInput) : '';
             const estado = document.getElementById('filtroEstadoEmb')?.value || '';
             const resp = document.getElementById('filtroResponsableEmb')?.value || '';
             const dias = document.getElementById('filtroDiasEmb')?.value || '';
@@ -7415,8 +8077,9 @@
             hoy.setHours(0, 0, 0, 0);
 
             BITACORA_FILTERED = BITACORA_DATA.filter(function (g) {
-                // Filtro por asegurado
+                // Filtro por asegurado (exacto si seleccionado, parcial si escribiendo)
                 if (aseg && g.asegurado !== aseg) return false;
+                if (asegBusqueda && !normalizeText(g.asegurado).includes(asegBusqueda)) return false;
 
                 // Filtro por estado
                 if (estado && g.estadoGestion !== estado) return false;
@@ -7471,7 +8134,15 @@
          */
         function aplicarFiltroRapido(tipo) {
             // Primero limpiar filtros existentes (sin trigger)
-            const filtros = ['filtroAseguradoEmb', 'filtroEstadoEmb', 'filtroResponsableEmb', 'filtroDiasEmb', 'filtroCompromisoEmb', 'filtroTendenciaEmb'];
+            // Limpiar autocomplete asegurado
+            var acInput = document.getElementById('filtroAseguradoEmb');
+            var acHidden = document.getElementById('filtroAseguradoValue');
+            var acClear = document.getElementById('clearFiltroAsegurado');
+            if (acInput) acInput.value = '';
+            if (acHidden) acHidden.value = '';
+            if (acClear) acClear.style.display = 'none';
+
+            const filtros = ['filtroEstadoEmb', 'filtroResponsableEmb', 'filtroDiasEmb', 'filtroCompromisoEmb', 'filtroTendenciaEmb'];
             filtros.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.selectedIndex = 0;
@@ -7537,9 +8208,11 @@
          * QUICK WIN: Limpiar todos los filtros de bitácora
          */
         function limpiarFiltrosBitacora() {
+            // Resetear autocomplete del asegurado
+            limpiarAutocompleteFiltro();
+
             // Resetear todos los selects de filtro
             const filtros = [
-                'filtroAseguradoEmb',
                 'filtroEstadoEmb',
                 'filtroResponsableEmb',
                 'filtroDiasEmb',
@@ -7829,58 +8502,38 @@
          * Carga datos desde el servidor
          * @param {boolean} silent - No mostrar indicadores de carga
          */
-        function loadBitacoraDataFromServer(silent = false) {
+        async function loadBitacoraDataFromServer(silent = false) {
             if (!silent) {
                 _log('[loadBitacoraData] 📡 Cargando estado actual (1 registro por asegurado)...');
             }
 
-            google.script.run
-                .withSuccessHandler(function (result) {
+            try {
+                const result = await runGas('bitacoraGetResumenCiclos', TOKEN);
+
+                if (!result || !result.ok) {
                     if (!silent) {
-                        _log('[loadBitacoraData] ✅ Respuesta recibida');
+                        console.error('[loadBitacoraData] ❌ Error:', result ? result.error : 'null');
+                        showError('bitacoraTableBody', '❌ Error al cargar: ' + (result ? result.error : 'Sin respuesta'));
                     }
+                    return;
+                }
 
-                    if (!result || !result.ok) {
-                        if (!silent) {
-                            console.error('[loadBitacoraData] ❌ Error:', result ? result.error : 'null');
-                            showError('bitacoraTableBody', '❌ Error al cargar: ' + (result ? result.error : 'Sin respuesta'));
-                        }
-                        return;
-                    }
+                // Guardar en caché
+                setCachedBitacoraData(result.data);
 
-                    // Guardar en caché
-                    setCachedBitacoraData(result.data);
-
-                    // Actualizar UI solo si no es silencioso
-                    if (!silent) {
-                        _log('[loadBitacoraData] ✅ ' + result.data.length + ' asegurados únicos (ciclo más reciente de cada uno)');
-                        _log('[loadBitacoraData] 📊 Datos recibidos:', result.data);
-
-                        // Verificar asegurados únicos
-                        const aseguradosUnicos = [...new Set(result.data.map(c => c.asegurado))];
-                        _log('[loadBitacoraData] 🔍 Asegurados únicos:', aseguradosUnicos.length);
-                        _log('[loadBitacoraData] 🔍 Total de registros:', result.data.length);
-
-                        if (aseguradosUnicos.length !== result.data.length) {
-                            console.warn('[loadBitacoraData] ⚠️ ADVERTENCIA: Hay asegurados duplicados!');
-                            console.warn('[loadBitacoraData] Asegurados únicos:', aseguradosUnicos);
-                        }
-
-                        BITACORA_DATA = result.data;
-                        BITACORA_FILTERED = result.data;
-                        renderBitacoraTable();
-                        populateFiltros();
-                    } else {
-                        _log('[loadBitacoraData] 🔄 Caché actualizado en background (' + result.data.length + ' asegurados)');
-                    }
-                })
-                .withFailureHandler(function (error) {
-                    if (!silent) {
-                        console.error('[loadBitacoraData] ❌ Error de conexión:', error);
-                        showError('bitacoraTableBody', '❌ Error de conexión: ' + error.message);
-                    }
-                })
-                .bitacoraGetResumenCiclos(TOKEN);
+                // Actualizar UI solo si no es silencioso
+                if (!silent) {
+                    BITACORA_DATA = result.data;
+                    BITACORA_FILTERED = result.data;
+                    renderBitacoraTable();
+                    populateFiltros();
+                }
+            } catch (error) {
+                if (!silent) {
+                    console.error('[loadBitacoraData] ❌ Error:', error);
+                    showError('bitacoraTableBody', '❌ Error de conexión: ' + error.message);
+                }
+            }
         }
 
         function loadClientesConCiclos() {
@@ -8895,54 +9548,33 @@
                         _log('[registrarGestionManual] 🗑️ Cachés limpiados (timelines + notificaciones)');
 
                         // 2. Esperar para que el servidor escriba y commit los datos en Sheets
-                        // Aumentado a 1500ms para asegurar que Sheets tenga los datos frescos
-                        setTimeout(() => {
-                            _log('[registrarGestionManual] 🔄 Recargando Estado Actual con datos frescos...');
-                            _log('[registrarGestionManual] 📡 Llamando a bitacoraGetResumenCiclos para obtener solo última gestión por asegurado...');
-
+                        setTimeout(async () => {
                             // 3. Mostrar spinner mientras carga
                             const tbody = document.getElementById('bitacoraTableBody');
                             tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><br>⏳ Actualizando con tu nueva gestión...</td></tr>';
 
-                            // 4. Forzar recarga completa desde servidor (sin caché, solo resumen)
-                            google.script.run
-                                .withSuccessHandler(function (result) {
-                                    _log('[registrarGestionManual] ✅ Datos frescos recibidos:', result);
+                            try {
+                                // 4. Forzar recarga completa desde servidor (con timeout de 60s)
+                                const result = await runGas('bitacoraGetResumenCiclos', TOKEN);
 
-                                    if (result && result.ok && result.data) {
-                                        _log('[registrarGestionManual] 📊 ' + result.data.length + ' asegurados únicos recibidos');
+                                if (result && result.ok && result.data) {
+                                    BITACORA_DATA = result.data;
+                                    BITACORA_FILTERED = result.data;
+                                    setCachedBitacoraData(result.data);
+                                    renderBitacoraTable();
+                                    populateFiltros();
 
-                                        // Actualizar datos globales
-                                        BITACORA_DATA = result.data;
-                                        BITACORA_FILTERED = result.data;
-
-                                        // Guardar en caché
-                                        setCachedBitacoraData(result.data);
-
-                                        // Renderizar tabla
-                                        renderBitacoraTable();
-                                        populateFiltros();
-
-                                        _log('[registrarGestionManual] ✅ Tabla actualizada correctamente');
-
-                                        // Cambiar al tab "Estado Actual" DESPUÉS de actualizar los datos
-                                        setTimeout(() => {
-                                            switchBitacoraTab('estado');
-                                            _log('[registrarGestionManual] 📊 Vista cambiada a Estado Actual con datos actualizados');
-
-                                            // Actualizar notificaciones en background
-                                            _log('[registrarGestionManual] 🔔 Actualizando notificaciones...');
-                                            inicializarNotificaciones();
-                                        }, 200);
-                                    } else {
-                                        console.error('[registrarGestionManual] ❌ Respuesta inválida:', result);
-                                    }
-                                })
-                                .withFailureHandler(function (error) {
-                                    console.error('[registrarGestionManual] ❌ Error al recargar:', error);
-                                    showError('bitacoraTableBody', 'Error al actualizar: ' + error.message);
-                                })
-                                .bitacoraGetResumenCiclos(TOKEN);
+                                    setTimeout(() => {
+                                        switchBitacoraTab('estado');
+                                        inicializarNotificaciones();
+                                    }, 200);
+                                } else {
+                                    console.error('[registrarGestionManual] ❌ Respuesta inválida:', result);
+                                }
+                            } catch (error) {
+                                console.error('[registrarGestionManual] ❌ Error al recargar:', error);
+                                showError('bitacoraTableBody', 'Error al actualizar: ' + error.message);
+                            }
                         }, 1500);
 
                     } else {
@@ -9875,14 +10507,20 @@
                         .then(result => resolve(result))
                         .catch(error => {
                             const errorMsg = error && error.message ? error.message : String(error || 'Error desconocido');
-                            const isRetryable = !errorMsg ||
+
+                            // NO reintentar timeouts: relanzar la misma operación pesada
+                            // solo empeora las cosas (lock contention, procesos concurrentes)
+                            const isTimeout = errorMsg.toLowerCase().includes('timeout');
+
+                            const isRetryable = !isTimeout && (
+                                !errorMsg ||
                                 errorMsg === 'undefined' ||
                                 errorMsg.includes('502') ||
                                 errorMsg.includes('503') ||
-                                errorMsg.includes('timeout') ||
                                 errorMsg.includes('network') ||
                                 errorMsg.includes('Failed to fetch') ||
-                                errorMsg.includes('Script error');
+                                errorMsg.includes('Script error')
+                            );
 
                             if (isRetryable && attempt < maxRetries) {
                                 const delay = baseDelay * attempt; // 2s, 4s, 6s
@@ -9899,8 +10537,19 @@
             });
         }
 
-        // Reuse shared runGas wrapper (identical timeout+settled pattern)
-        const callServerAsync = runGas;
+        // Conciliación: 5 min timeout (GAS limit es 6 min, BD puede tener 70K+ registros)
+        function callServerAsync(fnName, ...args) {
+            const TIMEOUT_MS = 300000; // 5 minutos
+            return new Promise((resolve, reject) => {
+                let settled = false;
+                const timer = setTimeout(() => {
+                    if (!settled) { settled = true; reject(new Error('Timeout: ' + fnName + ' tardó más de 5 minutos')); }
+                }, TIMEOUT_MS);
+                google.script.run
+                    .withSuccessHandler(result => { if (!settled) { settled = true; clearTimeout(timer); resolve(result); } })
+                    .withFailureHandler(error => { if (!settled) { settled = true; clearTimeout(timer); reject(error); } })[fnName](...args);
+            });
+        }
 
         /**
          * Muestra estado en un contenedor
@@ -10078,16 +10727,31 @@
             }
 
             const file = fileInput.files[0];
+
+            // Validar tamaño (máximo 50MB)
+            const MAX_SIZE_MB = 50;
+            if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+                showConciliacionStatus('bdSisnetStatus', 'Archivo demasiado grande. Máximo: ' + MAX_SIZE_MB + ' MB', 'error');
+                return;
+            }
+
             const reader = new FileReader();
 
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:8px;"></span> Cargando...';
             showLoading(true, 'Cargando BD Sisnet...');
 
-            log('📤 Cargando BD Sisnet: ' + file.name, 'info');
+            log('Cargando BD Sisnet: ' + escapeHtml(file.name), 'info');
 
             reader.onload = e => {
                 const base64 = e.target.result.split(',')[1];
+                if (!base64) {
+                    showLoading(false);
+                    btn.disabled = false;
+                    btn.textContent = 'Cargar BD Sisnet';
+                    showConciliacionStatus('bdSisnetStatus', 'Error: no se pudo codificar el archivo', 'error');
+                    return;
+                }
                 const mimeType = file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
                 // V7: Usar retry automático para manejar errores 502 y similares
@@ -10160,6 +10824,14 @@
             const insurerKey = insurerSelect.value;
             const insurerName = insurerSelect.options[insurerSelect.selectedIndex].text;
             const file = fileInput.files[0];
+
+            // Validar tamaño (máximo 50MB)
+            const MAX_SIZE_MB = 50;
+            if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+                showConciliacionStatus('conciliacionStatus', 'Archivo demasiado grande. Máximo: ' + MAX_SIZE_MB + ' MB', 'error');
+                return;
+            }
+
             const reader = new FileReader();
 
             btn.disabled = true;
@@ -10168,12 +10840,19 @@
 
             clearConciliacionLog();
             conciliacionLog('Iniciando procesamiento de ' + insurerName + '...', 'info');
-            conciliacionLog('Archivo: ' + file.name + ' (' + (file.size / 1024).toFixed(2) + ' KB)', 'info');
+            conciliacionLog('Archivo: ' + escapeHtml(file.name) + ' (' + (file.size / 1024).toFixed(2) + ' KB)', 'info');
 
-            log('⚙️ Procesando EECC: ' + insurerName, 'info');
+            log('Procesando EECC: ' + insurerName, 'info');
 
             reader.onload = e => {
                 const base64 = e.target.result.split(',')[1];
+                if (!base64) {
+                    showLoading(false);
+                    btn.disabled = false;
+                    btn.textContent = 'Procesar Conciliación';
+                    conciliacionLog('Error: no se pudo codificar el archivo', 'error');
+                    return;
+                }
                 conciliacionLog('Archivo leído correctamente', 'success');
                 conciliacionLog('Enviando al servidor para procesamiento...', 'info');
 
@@ -10244,7 +10923,7 @@
                         btn.disabled = false;
                         btn.textContent = '⚙️ Procesar Conciliación';
                         const errorMsg = error && error.message ? error.message : 'Error de conexión con el servidor';
-                        conciliacionLog('❌ Error: ' + errorMsg + ' (después de 3 reintentos)', 'error');
+                        conciliacionLog('❌ Error: ' + errorMsg, 'error');
                         showConciliacionStatus('conciliacionStatus', errorMsg, 'error');
                         log('❌ Error EECC: ' + errorMsg, 'error');
                     });
