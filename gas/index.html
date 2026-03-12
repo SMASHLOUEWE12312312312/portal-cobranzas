@@ -487,8 +487,24 @@
                 <div id="view-reportes" class="view-section">
                     <h2 class="text-2xl font-bold mb-6">📋 Reportes</h2>
                     <p class="text-muted mb-4" style="font-size: 0.875rem;">
-                        Descarga reportes de la base de datos en formato Excel
+                        Descarga reportes con Dashboard profesional en formato Excel
                     </p>
+
+                    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--tp-primary);">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 1.5rem;">📊</span>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Dashboard Ejecutivo</h3>
+                                <p style="margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--tp-text-tertiary);">
+                                    KPIs, aging, distribución por CIA, top asegurados, alertas
+                                </p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="btnDashEjecutivo" onclick="descargarDashboardEjecutivo()" style="margin-top: 0.75rem;">
+                            📥 Descargar Dashboard
+                        </button>
+                        <div id="statusDashEjecutivo" style="margin-top: 0.5rem;"></div>
+                    </div>
 
                     <div class="card" style="margin-bottom: 1.5rem;">
                         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
@@ -496,7 +512,7 @@
                             <div>
                                 <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Saldos a Favor y Ajustes</h3>
                                 <p style="margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--tp-text-tertiary);">
-                                    Registros con importe negativo, cero o vacío
+                                    Dashboard + datos de registros con importe negativo, cero o vacío
                                 </p>
                             </div>
                         </div>
@@ -512,7 +528,7 @@
                             <div>
                                 <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Vencidos +60 Días sin Cobertura</h3>
                                 <p style="margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--tp-text-tertiary);">
-                                    Cupones con más de 60 días de vencimiento
+                                    Dashboard + datos de cupones con más de 60 días de vencimiento
                                 </p>
                             </div>
                         </div>
@@ -10956,20 +10972,52 @@
             });
         }
 
+        async function descargarDashboardEjecutivo() {
+            const btn = document.getElementById('btnDashEjecutivo');
+            const status = document.getElementById('statusDashEjecutivo');
+            btn.disabled = true;
+            btn.textContent = 'Generando Dashboard...';
+            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando dashboard ejecutivo, esto puede tomar hasta 2 minutos...</span>';
+
+            try {
+                const result = await runGasLong('generarDashboardEjecutivo');
+                if (result && result.ok) {
+                    downloadBase64File(result.data.base64, result.data.fileName,
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
+                        escapeHtml(result.data.filas + ' registros analizados') + '</span>';
+                } else {
+                    status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
+                        escapeHtml(result ? result.error : 'Error desconocido') + '</span>';
+                }
+            } catch (e) {
+                status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
+                    escapeHtml('Error: ' + e.message) + '</span>';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📥 Descargar Dashboard';
+            }
+        }
+
         async function descargarReporteSaldos() {
             const btn = document.getElementById('btnReporteSaldos');
             const status = document.getElementById('statusReporteSaldos');
             btn.disabled = true;
             btn.textContent = 'Generando...';
-            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte, esto puede tomar hasta 1 minuto...</span>';
+            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte con dashboard, esto puede tomar hasta 2 minutos...</span>';
 
             try {
-                const result = await runGasLong('generarReporteSaldos');
+                const result = await runGasLong('generarReporteSaldosConDashboard');
                 if (result && result.ok) {
+                    if (!result.data.base64) {
+                        status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">' +
+                            escapeHtml(result.data.message || 'Sin registros') + '</span>';
+                        return;
+                    }
                     downloadBase64File(result.data.base64, result.data.fileName,
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                     status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
-                        escapeHtml(result.data.filas + ' registros exportados') + '</span>';
+                        escapeHtml(result.data.filas + ' registros exportados con dashboard') + '</span>';
                 } else {
                     status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
                         escapeHtml(result ? result.error : 'Error desconocido') + '</span>';
@@ -10988,15 +11036,20 @@
             const status = document.getElementById('statusReporteVencidos');
             btn.disabled = true;
             btn.textContent = 'Generando...';
-            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte, esto puede tomar hasta 1 minuto...</span>';
+            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte con dashboard, esto puede tomar hasta 2 minutos...</span>';
 
             try {
-                const result = await runGasLong('generarReporteVencidos60');
+                const result = await runGasLong('generarReporteVencidos60ConDashboard');
                 if (result && result.ok) {
+                    if (!result.data.base64) {
+                        status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">' +
+                            escapeHtml(result.data.message || 'Sin registros') + '</span>';
+                        return;
+                    }
                     downloadBase64File(result.data.base64, result.data.fileName,
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                     status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
-                        escapeHtml(result.data.filas + ' registros exportados') + '</span>';
+                        escapeHtml(result.data.filas + ' registros exportados con dashboard') + '</span>';
                 } else {
                     status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
                         escapeHtml(result ? result.error : 'Error desconocido') + '</span>';

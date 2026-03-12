@@ -266,7 +266,9 @@ const CONFIG = {
     // ========== FASE 5: UX & OPTIMIZACIÓN (2026-01-16) ==========
     ENABLE_UX_HELPERS: true,           // Helpers de formateo y validación
     ENABLE_RESPONSE_FORMATTER: true,   // Formateo estandarizado de respuestas
-    ENABLE_PERFORMANCE_MONITOR: true   // Monitoreo de rendimiento
+    ENABLE_PERFORMANCE_MONITOR: true,   // Monitoreo de rendimiento
+    // ========== DASHBOARD REPORTS (2026-03-12) ==========
+    ENABLE_DASHBOARD_REPORTS: true     // Dashboard profesional en reportes Excel
   },
 
   // ========== LOCK ==========

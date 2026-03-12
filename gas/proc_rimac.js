@@ -40,15 +40,8 @@ const RimacProcessorV2 = {
      * @returns {Object} Processing result
      */
     processOptimized(convertResult, ss, dataContext) {
-        const context = 'RimacProcessorV2.processOptimized';
         const cfg = this.CONFIG;
-        const T = { start: Date.now() };
-        const perfLog = (label) => {
-            Logger.log('[PERF-V2] Rimac | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
-        };
-
-        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO');
-        perfLog('INIT');
+        const T = Date.now();
 
         // Get sheets (from cached spreadsheet)
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
@@ -62,24 +55,20 @@ const RimacProcessorV2 = {
         if (!wsBDCruce) {
             throw new Error('BD_Cruce no encontrada en contexto');
         }
-        perfLog('SHEETS_READY');
 
         // Clear destination sheets
         wsEECC.clear(); // Rimac requires full clear as it writes from row 1 usually? No, check original logic.
         // Original: wsEECC.clear(); ProcessorBase.clearFromRow(wsTrama, 2);
         ProcessorBase.clearFromRow(wsTrama, 2);
-        perfLog('SHEETS_CLEARED');
 
         // Get source data - use pre-parsed if available (SheetJS)
         let srcData;
         if (convertResult.data) {
             srcData = convertResult.data;
-            perfLog('DATA_FROM_SHEETJS');
         } else {
             const tempSS = SpreadsheetApp.openById(convertResult.fileId);
             const tempSheet = tempSS.getSheets()[0];
             srcData = tempSheet.getDataRange().getDisplayValues();
-            perfLog('DATA_FROM_DRIVE');
         }
 
         // Write to EECC sheet (preserve text format)
@@ -99,7 +88,6 @@ const RimacProcessorV2 = {
             wsEECC.setFrozenRows(1);
             wsEECC.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
         }
-        perfLog('EECC_WRITTEN');
 
         const filasCargadas = Math.max(0, srcData.length - 1);
 
@@ -136,24 +124,22 @@ const RimacProcessorV2 = {
                 tramaRows.push([numeroCupon, fechaPago, factura, '']);
             }
         }
-        perfLog('EECC_PROCESSED');
 
         // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
-        perfLog('TRAMA_WRITTEN');
 
         // Execute cross-reference with pre-loaded BD_Cruce data
         const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
             statusCol: 4,
             bdCruceCupones: dataContext.bdCruceCupones  // Use cached data
         });
-        perfLog('CRUCE_COMPLETE');
 
-        // V8 OPTIMIZATION: Build export data from memory instead of re-reading sheet
+        // V9: Build export data from memory (NO re-read from sheet)
         const tramaDataForExport = [cfg.TRAMA_HEADERS];
+        const statusFromCruce = cruceResult._statusValues || [];
         for (let i = 0; i < tramaRows.length; i++) {
             const row = tramaRows[i];
             const exportRow = row.map((cell) => {
@@ -162,15 +148,10 @@ const RimacProcessorV2 = {
                 }
                 return cell;
             });
+            // Use status from cruce result directly (no sheet read needed)
+            exportRow[3] = statusFromCruce[i] ? statusFromCruce[i][0] : '';
             tramaDataForExport.push(exportRow);
         }
-        if (tramaRows.length > 0) {
-            const statusValues = wsTrama.getRange(2, 4, tramaRows.length, 1).getDisplayValues();
-            for (let i = 0; i < statusValues.length; i++) {
-                tramaDataForExport[i + 1][3] = statusValues[i][0];
-            }
-        }
-        perfLog('EXPORT_DATA_BUILT');
         
         const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Rimac',
@@ -185,13 +166,11 @@ const RimacProcessorV2 = {
                 eeccData: srcData
             }
         );
-        perfLog('EXPORT_COMPLETE');
 
         // Cleanup STATUS column
         ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);
-        perfLog('CLEANUP');
 
-        Logger.log(context + ': Completado. Cargadas: ' + filasCargadas +
+        Logger.log('Rimac completado en ' + (Date.now() - T) + 'ms | Cargadas: ' + filasCargadas +
             ', Filtrados: ' + filtrados + ', Escritas: ' + tramaRows.length);
 
         return {
