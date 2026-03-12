@@ -1609,13 +1609,14 @@ function generarReporteBitacoraConDashboard() {
           if (aDias >= aSh.min && aDias <= aSh.max) {
             agingFiltered.push(aRow);
             var aAseg = String(aRow[bd.aseguradoIdx] || 'Sin Asegurado').trim();
+            var aMon = _monKey(aRow[bd.monIdx]);
             var aGrupo = _getGrupoEconomico(aAseg);
-            if (!agingGrupos[aGrupo]) agingGrupos[aGrupo] = { monto: 0, estado: '', resp: '' };
-            agingGrupos[aGrupo].monto += aImp;
-            // Try to get estado/resp from bitacora (check grupo first, then individual)
+            if (!agingGrupos[aGrupo]) agingGrupos[aGrupo] = { pen: 0, usd: 0, estado: '', resp: '' };
+            if (aMon === 'PEN') agingGrupos[aGrupo].pen += aImp;
+            else agingGrupos[aGrupo].usd += aImp;
+            // Get estado/resp from bitacora (check grupo first, then individual)
             var gKey = aGrupo.toUpperCase();
             if (grupoMap[gKey]) {
-              // Use dominant estado from grupo
               var bestEst = '';
               var bestEstCount = 0;
               var eKeys = Object.keys(grupoMap[gKey].estados);
@@ -1642,18 +1643,20 @@ function generarReporteBitacoraConDashboard() {
         DE.prepareCanvas(agSheet);
         var ar = DE.writeHeaderSection(agSheet, aSh.name.toUpperCase() + ' DÍAS', agingFiltered.length + ' cupones encontrados', 1);
 
-        var agKeys = Object.keys(agingGrupos).sort(function(a, b) { return agingGrupos[b].monto - agingGrupos[a].monto; });
+        var agKeys = Object.keys(agingGrupos).sort(function(a, b) {
+          return (agingGrupos[b].pen + agingGrupos[b].usd) - (agingGrupos[a].pen + agingGrupos[a].usd);
+        });
         var agRows = [];
         for (var ag = 0; ag < agKeys.length; ag++) {
           var agd = agingGrupos[agKeys[ag]];
           var agEst = agd.estado || 'N/A';
           var agResp = agd.resp || 'N/A';
-          agRows.push([agKeys[ag], agd.monto, agEst, agResp]);
+          agRows.push([agKeys[ag], agd.pen, agd.usd, agEst, agResp]);
         }
         DE.writeTable(agSheet, {
-          headers: ['GRUPO_ECONOMICO', 'MONTO S/', 'STATUS', 'RESPONSABLE'],
+          headers: ['GRUPO_ECONOMICO', 'MONTO PEN S/', 'MONTO USD US$', 'STATUS', 'RESPONSABLE'],
           rows: agRows
-        }, ar, { currencyCols: [1] });
+        }, ar, { currencyCols: [1, 2] });
       }
 
       SpreadsheetApp.flush();
