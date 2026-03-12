@@ -55,6 +55,105 @@ function _getArea(ram) {
 }
 
 // ============================================================
+// GRUPO ECONÓMICO → ASEGURADO MAPPING
+// ============================================================
+
+var GRUPO_ECONOMICO_MAP = {
+  'UNIVERSIDAD ALAS PERUANAS S.A.': 'GRUPO ALAS PERUANAS',
+  'UNIVERSIDAD POLITÉCNICA DEL PERÚ S.A': 'GRUPO ALAS PERUANAS',
+  'CORPORACION & TRANSPORTES SOLRAC S.A.C.': 'GRUPO CARLEY',
+  'CORPORACION DE TRANSPORTES CARLEY SOCIEDAD ANONIMA CERRADA': 'GRUPO CARLEY',
+  'CORPORATIVO EMPRESARIAL SEVEN SAC': 'GRUPO CARLEY',
+  'EMPRESA DE SERVICIOS GENERALES BEMCAR S.R.L.': 'GRUPO CARLEY',
+  'EMPRESA DE TRANSPORTE CRIS & MW Y SERVICIOS MULTIPLES S.A.C': 'GRUPO CARLEY',
+  'EMPRESA DE TRANSPORTES RB CAR S.R.L.': 'GRUPO CARLEY',
+  'GRUPO CRJ SERVICES S.A.C.': 'GRUPO CARLEY',
+  'GUEVARA ALMONACID JHON ROLY': 'GRUPO CARLEY',
+  'OLGA MARLENI GARCIA BASILIO': 'GRUPO CARLEY',
+  'OPERACIONES GENERALES GUEVAR SAC': 'GRUPO CARLEY',
+  'SOLUCIONES INTEGRALES CBC TRUCKS & PARTS S.A.C.': 'GRUPO CARLEY',
+  'TRANSPORTES CARLEY S.R.L.': 'GRUPO CARLEY',
+  'METAL MECANICA SOLRAC S.A.C.': 'GRUPO CARLEY',
+  'LAB INFINITE SOLUTIONS S.A.C.': 'GRUPO CARLEY',
+  'CCAMARZSE REFRIGERACION S.A.C.': 'GRUPO CARLEY',
+  'KFJ INMOBILIARIA SOCIEDAD COMERCIAL DE RESPONSABILIDAD LIMITADA': 'GRUPO ENERGY',
+  'LNG HOLDING S.A.C.': 'GRUPO ENERGY',
+  'SERVICIOS ENERGETICOS AMBIENTALES SRL': 'GRUPO ENERGY',
+  'UPLAND OIL AND GAS LLC SUCURSAL DEL PERU': 'GRUPO ENERGY',
+  'UPLAND OIL AND GAS LORETO SAC': 'GRUPO ENERGY',
+  'SERVICIOS ENERGETICOS LOGISTICOS SELVA S.A.C.': 'GRUPO ENERGY',
+  'ASEO Y MANTENIMIENTO SOCIEDAD ANONIMA CERRADA': 'GRUPO ASEO, VIGILANCIA Y SALUD',
+  'PREVENCION Y VIGILANCIA SOCIEDAD ANONIMA CERRADA': 'GRUPO ASEO, VIGILANCIA Y SALUD',
+  'HIGIENE & SALUD SOCIEDAD ANONIMA CERRADA': 'GRUPO ASEO, VIGILANCIA Y SALUD',
+  'CONSTRUCTORA JAS SAC': 'GRUPO LOMAS DORADAS',
+  'CORPORACION MLD SOCIEDAD ANONIMA CERRADA - CORPORACION MLD S.A.C.': 'GRUPO LOMAS DORADAS',
+  'INVERSIONES NOGAL DEL NORTE S.A.C.': 'GRUPO LOMAS DORADAS',
+  'LOMERSA EMPRESARIAL SRL': 'GRUPO LOMAS DORADAS',
+  'Q R L INVERSIONES SOCIEDAD ANONIMA CERRADA': 'GRUPO LOMAS DORADAS',
+  'SERVICIOS EMPRESARIALES LOMER S.A.': 'GRUPO LOMAS DORADAS',
+  'FINANCIERA COMERCIAL PESQUERA S.A.': 'GRUPO CAVENAGO',
+  'J.C. ASTILLEROS S.A.': 'GRUPO CAVENAGO',
+  'JACOBO E. CAVENAGO REBAZA': 'GRUPO CAVENAGO',
+  'JACOBO ESTUARDO CAVENAGO REBAZA': 'GRUPO CAVENAGO',
+  'JACZOL TRADING S.A.C.': 'GRUPO CAVENAGO',
+  'LEAL REYES ROSA HERMINIA': 'GRUPO CAVENAGO',
+  'PESQUERA JAAL S.R.L.': 'GRUPO CAVENAGO',
+  'PESQUERA JADA S.A.': 'GRUPO CAVENAGO',
+  'AGN INGENIEROS S.A.C.': 'GRUPO GLP Y GNV',
+  'AUTOCARH PERCY SAC': 'GRUPO GLP Y GNV',
+  'AUTOGAS ENERGY S.A.C.': 'GRUPO GLP Y GNV',
+  'AUTOMOTRIZ MULTIMARCA KOREAN MOTORS E.I.R.L.': 'GRUPO GLP Y GNV',
+  'BGNGAS S.A.C.': 'GRUPO GLP Y GNV',
+  'CONSORCIO MEGATEX SAC': 'GRUPO GLP Y GNV',
+  'CORPORACION HUVI GAS SAC': 'GRUPO GLP Y GNV',
+  'CORPORACION MOTORS EIRL': 'GRUPO GLP Y GNV',
+  'DALLAS AUTOGAS PERU SAC': 'GRUPO GLP Y GNV',
+  'DIONE INGENIEROS GLP GNV SAC': 'GRUPO GLP Y GNV',
+  'GM CONVERSIONES SOCIEDAD ANONIMA CERRADA': 'GRUPO GLP Y GNV',
+  'GM CYLINDERS PERU SOCIEDAD ANONIMA CERRADA': 'GRUPO GLP Y GNV',
+  'NEWGAS IMPORT S.A.C.': 'GRUPO GLP Y GNV',
+  'S.A. LUIS GNV E.I.R.L.': 'GRUPO GLP Y GNV',
+  'SISTEMI ECOGAS ROMANO DE PERU SA': 'GRUPO GLP Y GNV',
+  'TALLER AUTOMOTRIZ MULTIMARCAS FULL INYECCION VARGAS SAC': 'GRUPO GLP Y GNV',
+  'TALLERES PERUANOS DE GAS NATURAL DEL NORTE SAC': 'GRUPO GLP Y GNV',
+  'TECNIGAS PERU SAC': 'GRUPO GLP Y GNV',
+  'VCO GROUP EIRL': 'GRUPO GLP Y GNV',
+  'YHK CORPORATION SAC': 'GRUPO GLP Y GNV',
+  'MEGA FLASH GNV S.A.C.': 'GRUPO GLP Y GNV',
+  'MARIA ELENA ESTRADA HERAZO': 'GRUPO FEPAD',
+  'RAYMA E HIJOS S.A.C.': 'GRUPO FEPAD',
+  'SP SERVICES HOLDING S.A.C.': 'GRUPO SP',
+  'SP SERVICIOS PUBLICITARIOS S.A.C.': 'GRUPO SP',
+  'CORPORACION SUPERNOVA SAC': 'GRUPO SP',
+  'INFINITY GAMING PERU S.A.C.': 'GRUPO SP',
+  'PUBLIC PARTNERS S.A.C.': 'GRUPO SP',
+  'INSUMOS NO METALICOS Y QUIMICOS DE EXPORTACION E IMPORTACION S.A.': 'GRUPO INSUMEX',
+  'ORE GOLD PLC S.A.C.': 'GRUPO INSUMEX',
+  'PRODUCTORA SAN GABRIEL S.A.C.': 'GRUPO INSUMEX',
+  'CORPORACION INSUMEX S.A.C.': 'GRUPO INSUMEX',
+  'PANACA UNIDA S.A.C.': 'GRUPO TACAMA',
+  'VIÑA TACAMA S.A.': 'GRUPO TACAMA',
+  'CORPORACIÓN UEZU SOCIEDAD ANÓNIMA CERRADA-CORPORACIÓN UEZU S.A.C.': 'GRUPO UEZU',
+  'UEZU GROUP S.A.C.': 'GRUPO UEZU',
+  'APOYO CARDIOVASCULAR SRLTDA': 'GRUPO CARDIOVASCULAR',
+  'TALLEDO CIRUJANOS CARDIOVASCULARES S.A.': 'GRUPO CARDIOVASCULAR'
+};
+
+// Build uppercase lookup for case-insensitive matching
+var _GRUPO_LOOKUP = {};
+(function() {
+  var keys = Object.keys(GRUPO_ECONOMICO_MAP);
+  for (var i = 0; i < keys.length; i++) {
+    _GRUPO_LOOKUP[keys[i].toUpperCase()] = GRUPO_ECONOMICO_MAP[keys[i]];
+  }
+})();
+
+function _getGrupoEconomico(asegurado) {
+  var key = String(asegurado || '').trim().toUpperCase();
+  return _GRUPO_LOOKUP[key] || String(asegurado || '').trim();
+}
+
+// ============================================================
 // HELPERS
 // ============================================================
 
@@ -1100,7 +1199,7 @@ function generarReporteBitacoraConDashboard() {
     var iVencUSD = bCol['SNAPSHOT_VENCIDO_USD'] != null ? bCol['SNAPSHOT_VENCIDO_USD'] : 15;
     var iIdCiclo = bCol['ID_CICLO'] != null ? bCol['ID_CICLO'] : 0;
 
-    // --- Build per-asegurado summary (latest gesture per client) ---
+    // --- Build per-asegurado summary (latest gesture per individual client) ---
     var asegMap = {};
     for (var i = 1; i < bitData.length; i++) {
       var row = bitData[i];
@@ -1119,13 +1218,11 @@ function generarReporteBitacoraConDashboard() {
       }
     }
 
-    // --- Build client records from latest gesture ---
-    var clientes = [];
-    var totalVencPEN = 0, totalVencUSD = 0;
-    var estadoCount = {};
-    var respData = {};
-
+    // --- Aggregate by GRUPO ECONÓMICO ---
+    // First build individual client records, then group them
+    var grupoMap = {};
     var asegKeys = Object.keys(asegMap);
+
     for (var a = 0; a < asegKeys.length; a++) {
       var am = asegMap[asegKeys[a]];
       var latest = am.latest;
@@ -1156,31 +1253,109 @@ function generarReporteBitacoraConDashboard() {
       var isActive = estado !== 'CERRADO_PAGADO' && estado !== 'NO_COBRABLE' && estado !== 'NO_CONTACTABLE'
         && estado.indexOf('DERIVADO') === -1;
 
-      var cliente = {
+      // Resolve grupo económico
+      var grupoNombre = _getGrupoEconomico(am.nombre);
+      var grupoKey = grupoNombre.toUpperCase();
+
+      if (!grupoMap[grupoKey]) {
+        grupoMap[grupoKey] = {
+          nombre: grupoNombre, vPEN: 0, vUSD: 0, deltaPEN: 0,
+          dias: 0, maxDias: 0, numGestiones: 0,
+          estados: {}, resp: resp, fecComp: null, obs: '',
+          miembros: [], isActive: false, tendenciaPEN: 'SIN_CAMBIO'
+        };
+      }
+      var gm = grupoMap[grupoKey];
+      gm.vPEN += vPEN;
+      gm.vUSD += vUSD;
+      gm.deltaPEN += deltaPEN;
+      gm.numGestiones += am.gestiones.length;
+      if (dias > gm.maxDias) { gm.maxDias = dias; gm.dias = dias; }
+      if (!gm.estados[estado]) gm.estados[estado] = 0;
+      gm.estados[estado]++;
+      if (isActive) gm.isActive = true;
+      if (fecComp && (!gm.fecComp || fecComp < gm.fecComp)) gm.fecComp = fecComp;
+      if (obs && !gm.obs) gm.obs = obs;
+      gm.miembros.push({
         nombre: am.nombre, estado: estado, resp: resp,
-        vPEN: vPEN, vUSD: vUSD, dias: dias,
-        fecComp: fecComp, obs: obs,
-        tendenciaPEN: tendenciaPEN, deltaPEN: deltaPEN,
-        numGestiones: am.gestiones.length, isActive: isActive
+        vPEN: vPEN, vUSD: vUSD, dias: dias, isActive: isActive,
+        tendenciaPEN: tendenciaPEN, deltaPEN: deltaPEN
+      });
+    }
+
+    // --- Determine dominant estado and tendencia per grupo ---
+    var clientes = [];
+    var totalVencPEN = 0, totalVencUSD = 0;
+    var estadoCount = {};
+    var respData = {};
+    var grupoKeys = Object.keys(grupoMap);
+
+    for (var g = 0; g < grupoKeys.length; g++) {
+      var gd = grupoMap[grupoKeys[g]];
+      // Dominant estado: most frequent among members (priority: active states first)
+      var estadoPrio = ['SIN_RESPUESTA', 'EN_SEGUIMIENTO', 'COMPROMISO_PAGO', 'REPROGRAMADO',
+        'DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES',
+        'NO_COBRABLE', 'NO_CONTACTABLE', 'CERRADO_PAGADO'];
+      var dominantEstado = 'EN_SEGUIMIENTO';
+      var maxCount = 0;
+      for (var ep = 0; ep < estadoPrio.length; ep++) {
+        var ec = gd.estados[estadoPrio[ep]] || 0;
+        if (ec > maxCount) { maxCount = ec; dominantEstado = estadoPrio[ep]; }
+      }
+      // If any member is active, keep group active
+      if (gd.isActive) {
+        if (dominantEstado === 'CERRADO_PAGADO' || dominantEstado === 'NO_COBRABLE') {
+          dominantEstado = 'EN_SEGUIMIENTO';
+        }
+      }
+
+      // Tendencia: based on aggregate delta
+      var tendencia = 'SIN_CAMBIO';
+      if (gd.deltaPEN > 0) tendencia = 'AUMENTO';
+      else if (gd.deltaPEN < 0) tendencia = 'DISMINUCION';
+      if (gd.numGestiones <= gd.miembros.length) tendencia = 'PRIMERA_VEZ_FLAG';
+      gd.tendenciaPEN = tendencia === 'PRIMERA_VEZ_FLAG' ? 'SIN_CAMBIO' : tendencia;
+
+      // Dominant responsable
+      var respCount = {};
+      for (var mi = 0; mi < gd.miembros.length; mi++) {
+        var mr = gd.miembros[mi].resp;
+        respCount[mr] = (respCount[mr] || 0) + 1;
+      }
+      var dominantResp = gd.resp;
+      var maxR = 0;
+      var rks = Object.keys(respCount);
+      for (var ri = 0; ri < rks.length; ri++) {
+        if (respCount[rks[ri]] > maxR) { maxR = respCount[rks[ri]]; dominantResp = rks[ri]; }
+      }
+
+      var cliente = {
+        nombre: gd.nombre, estado: dominantEstado, resp: dominantResp,
+        vPEN: gd.vPEN, vUSD: gd.vUSD, dias: gd.maxDias,
+        fecComp: gd.fecComp, obs: gd.obs,
+        tendenciaPEN: gd.tendenciaPEN, deltaPEN: gd.deltaPEN,
+        numGestiones: gd.numGestiones, isActive: gd.isActive,
+        miembros: gd.miembros,
+        isPrimeraVez: tendencia === 'PRIMERA_VEZ_FLAG'
       };
       clientes.push(cliente);
 
-      totalVencPEN += vPEN;
-      totalVencUSD += vUSD;
+      totalVencPEN += gd.vPEN;
+      totalVencUSD += gd.vUSD;
 
-      if (!estadoCount[estado]) estadoCount[estado] = { count: 0, pen: 0, usd: 0 };
-      estadoCount[estado].count++;
-      estadoCount[estado].pen += vPEN;
-      estadoCount[estado].usd += vUSD;
+      if (!estadoCount[dominantEstado]) estadoCount[dominantEstado] = { count: 0, pen: 0, usd: 0 };
+      estadoCount[dominantEstado].count++;
+      estadoCount[dominantEstado].pen += gd.vPEN;
+      estadoCount[dominantEstado].usd += gd.vUSD;
 
-      if (!respData[resp]) respData[resp] = { total: 0, pen: 0, usd: 0, enSeg: 0, sinResp: 0, cerrados: 0, activos: 0 };
-      respData[resp].total++;
-      respData[resp].pen += vPEN;
-      respData[resp].usd += vUSD;
-      if (estado === 'EN_SEGUIMIENTO') respData[resp].enSeg++;
-      if (estado === 'SIN_RESPUESTA') respData[resp].sinResp++;
-      if (estado === 'CERRADO_PAGADO') respData[resp].cerrados++;
-      if (isActive) respData[resp].activos++;
+      if (!respData[dominantResp]) respData[dominantResp] = { total: 0, pen: 0, usd: 0, enSeg: 0, sinResp: 0, cerrados: 0, activos: 0 };
+      respData[dominantResp].total++;
+      respData[dominantResp].pen += gd.vPEN;
+      respData[dominantResp].usd += gd.vUSD;
+      if (dominantEstado === 'EN_SEGUIMIENTO') respData[dominantResp].enSeg++;
+      if (dominantEstado === 'SIN_RESPUESTA') respData[dominantResp].sinResp++;
+      if (dominantEstado === 'CERRADO_PAGADO') respData[dominantResp].cerrados++;
+      if (gd.isActive) respData[dominantResp].activos++;
     }
 
     var totalClientes = clientes.length;
@@ -1211,7 +1386,7 @@ function generarReporteBitacoraConDashboard() {
     var tendBuckets = { AUMENTO: { count: 0, pen: 0 }, SIN_CAMBIO: { count: 0, pen: 0 }, DISMINUCION: { count: 0, pen: 0 }, PRIMERA_VEZ: { count: 0, pen: 0 } };
     for (var ct = 0; ct < clientesActivos.length; ct++) {
       var clt = clientesActivos[ct];
-      if (clt.numGestiones <= 1) {
+      if (clt.isPrimeraVez) {
         tendBuckets.PRIMERA_VEZ.count++;
         tendBuckets.PRIMERA_VEZ.pen += clt.vPEN;
       } else {
@@ -1309,8 +1484,8 @@ function generarReporteBitacoraConDashboard() {
         rows: tendRows
       }, r, { currencyCols: [2], severityCol: 3 });
 
-      // ⑤ MATRIZ DE RIESGO - TOP 30 CLIENTES ACTIVOS
-      r = DE.writeSectionTitle(dashSheet, 'MATRIZ DE RIESGO — TOP 30 CLIENTES ACTIVOS', r);
+      // ⑤ MATRIZ DE RIESGO - TOP 30 GRUPOS/CLIENTES ACTIVOS
+      r = DE.writeSectionTitle(dashSheet, 'MATRIZ DE RIESGO — TOP 30 GRUPOS / CLIENTES ACTIVOS', r);
       var scored = clientesActivos.map(function(c) {
         var score = 0;
         var montoTotal = c.vPEN + c.vUSD;
@@ -1333,7 +1508,7 @@ function generarReporteBitacoraConDashboard() {
         riskRows.push([(tr + 1) + '. ' + tc.nombre, tc.resp, tc.dias, tc.vPEN, tc.vUSD, tc.score + '/100  ' + tc.nivel]);
       }
       r = DE.writeTable(dashSheet, {
-        headers: ['Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Vencido USD', 'Score / Nivel'],
+        headers: ['Grupo / Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Vencido USD', 'Score / Nivel'],
         rows: riskRows
       }, r, { currencyCols: [3, 4], severityCol: 5 });
 
@@ -1342,7 +1517,7 @@ function generarReporteBitacoraConDashboard() {
         .sort(function(a, b) { return (b.vPEN + b.vUSD) - (a.vPEN + a.vUSD); });
 
       if (sinRespClientes.length > 0) {
-        r = DE.writeSectionTitle(dashSheet, 'SIN RESPUESTA — GESTIÓN URGENTE (' + sinRespClientes.length + ' clientes)', r);
+        r = DE.writeSectionTitle(dashSheet, 'SIN RESPUESTA — GESTIÓN URGENTE (' + sinRespClientes.length + ')', r);
         var srRows = [];
         for (var sr = 0; sr < sinRespClientes.length; sr++) {
           var sc = sinRespClientes[sr];
@@ -1350,7 +1525,7 @@ function generarReporteBitacoraConDashboard() {
           srRows.push([sc.nombre, sc.resp, sc.dias, sc.vPEN, sc.vUSD, srNivel]);
         }
         r = DE.writeTable(dashSheet, {
-          headers: ['Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Vencido USD', 'Nivel Riesgo'],
+          headers: ['Grupo / Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Vencido USD', 'Nivel Riesgo'],
           rows: srRows
         }, r, { currencyCols: [3, 4], severityCol: 5 });
       }
@@ -1370,7 +1545,7 @@ function generarReporteBitacoraConDashboard() {
           compRows.push([cc.nombre, cc.resp, fecStr, diasRest, cc.vPEN, compSev]);
         }
         r = DE.writeTable(dashSheet, {
-          headers: ['Asegurado', 'Resp.', 'Fec. Compromiso', 'Días Rest.', 'Vencido PEN', 'Alerta'],
+          headers: ['Grupo / Asegurado', 'Resp.', 'Fec. Compromiso', 'Días Rest.', 'Vencido PEN', 'Alerta'],
           rows: compRows
         }, r, { currencyCols: [4], severityCol: 5 });
       }
@@ -1389,7 +1564,7 @@ function generarReporteBitacoraConDashboard() {
           aumRows.push([ec.nombre, ec.resp, ec.dias, ec.vPEN, ec.deltaPEN, 'ROJO']);
         }
         r = DE.writeTable(dashSheet, {
-          headers: ['Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Delta PEN', 'Tendencia'],
+          headers: ['Grupo / Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Delta PEN', 'Tendencia'],
           rows: aumRows
         }, r, { currencyCols: [3, 4], severityCol: 5 });
       }
@@ -1411,7 +1586,7 @@ function generarReporteBitacoraConDashboard() {
         r = DE.writeAlertTable(dashSheet, alerts, r);
       }
 
-      // --- Hojas de detalle por aging (desde BD) ---
+      // --- Hojas de detalle por aging (desde BD, agrupado por grupo económico) ---
       var bd = _loadBDForDashboard();
       var agingSheets = [
         { name: 'Mas de 90', min: 91, max: 99999 },
@@ -1422,7 +1597,7 @@ function generarReporteBitacoraConDashboard() {
       for (var as = 0; as < agingSheets.length; as++) {
         var aSh = agingSheets[as];
         var agingFiltered = [];
-        var agingGroups = {};
+        var agingGrupos = {};
 
         for (var ai = 0; ai < bd.rows.length; ai++) {
           var aRow = bd.rows[ai];
@@ -1434,13 +1609,30 @@ function generarReporteBitacoraConDashboard() {
           if (aDias >= aSh.min && aDias <= aSh.max) {
             agingFiltered.push(aRow);
             var aAseg = String(aRow[bd.aseguradoIdx] || 'Sin Asegurado').trim();
-            if (!agingGroups[aAseg]) agingGroups[aAseg] = { monto: 0, estado: '', resp: '' };
-            agingGroups[aAseg].monto += aImp;
-            // Try to get estado/resp from bitacora
-            var bKey = aAseg.toUpperCase();
-            if (asegMap[bKey] && asegMap[bKey].latest) {
-              agingGroups[aAseg].estado = String(asegMap[bKey].latest[iEstado] || '');
-              agingGroups[aAseg].resp = String(asegMap[bKey].latest[iResp] || '');
+            var aGrupo = _getGrupoEconomico(aAseg);
+            if (!agingGrupos[aGrupo]) agingGrupos[aGrupo] = { monto: 0, estado: '', resp: '' };
+            agingGrupos[aGrupo].monto += aImp;
+            // Try to get estado/resp from bitacora (check grupo first, then individual)
+            var gKey = aGrupo.toUpperCase();
+            if (grupoMap[gKey]) {
+              // Use dominant estado from grupo
+              var bestEst = '';
+              var bestEstCount = 0;
+              var eKeys = Object.keys(grupoMap[gKey].estados);
+              for (var ek = 0; ek < eKeys.length; ek++) {
+                if (grupoMap[gKey].estados[eKeys[ek]] > bestEstCount) {
+                  bestEstCount = grupoMap[gKey].estados[eKeys[ek]];
+                  bestEst = eKeys[ek];
+                }
+              }
+              agingGrupos[aGrupo].estado = bestEst;
+              agingGrupos[aGrupo].resp = grupoMap[gKey].resp;
+            } else {
+              var bKey = aAseg.toUpperCase();
+              if (asegMap[bKey] && asegMap[bKey].latest) {
+                agingGrupos[aGrupo].estado = String(asegMap[bKey].latest[iEstado] || '');
+                agingGrupos[aGrupo].resp = String(asegMap[bKey].latest[iResp] || '');
+              }
             }
           }
         }
@@ -1450,10 +1642,10 @@ function generarReporteBitacoraConDashboard() {
         DE.prepareCanvas(agSheet);
         var ar = DE.writeHeaderSection(agSheet, aSh.name.toUpperCase() + ' DÍAS', agingFiltered.length + ' cupones encontrados', 1);
 
-        var agKeys = Object.keys(agingGroups).sort(function(a, b) { return agingGroups[b].monto - agingGroups[a].monto; });
+        var agKeys = Object.keys(agingGrupos).sort(function(a, b) { return agingGrupos[b].monto - agingGrupos[a].monto; });
         var agRows = [];
         for (var ag = 0; ag < agKeys.length; ag++) {
-          var agd = agingGroups[agKeys[ag]];
+          var agd = agingGrupos[agKeys[ag]];
           var agEst = agd.estado || 'N/A';
           var agResp = agd.resp || 'N/A';
           agRows.push([agKeys[ag], agd.monto, agEst, agResp]);
