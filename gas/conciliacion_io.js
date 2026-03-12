@@ -65,43 +65,17 @@ const ConciliacionIOV2 = {
      * @returns {Object} { ok: boolean, rowsLoaded?: number, data?: Array, error?: string }
      */
     subirBDSisnet(base64Data, fileName, mimeType) {
-        const context = 'ConciliacionIOV2.subirBDSisnet';
-        const runId = 'BD_' + Date.now();
-        const T = { start: Date.now() };
-        const perfLog = (label, extra) => {
-            const msg = '[PERF-V2][' + runId + '] subirBDSisnet | ' + label + ' | ' + (Date.now() - T.start) + 'ms';
-            Logger.log(extra ? msg + ' | ' + JSON.stringify(extra) : msg);
-        };
-        perfLog('INIT', { fileName: fileName, base64Len: base64Data ? base64Data.length : 0 });
+        const T = Date.now();
 
-        // V7 FIX: Use Document lock with retry logic
-        // Document lock allows insurer processing to run while BD is uploading
+        // V10: Single lock attempt with 60s timeout
         const lock = LockService.getDocumentLock();
-        
-        // Retry logic with exponential backoff
-        const maxRetries = 3;
-        const baseTimeout = 60000; // 60 seconds base (BD upload is slow)
-        let lockAcquired = false;
-        
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            const timeout = baseTimeout * attempt; // 60s, 120s, 180s
-            lockAcquired = lock.tryLock(timeout);
-            if (lockAcquired) {
-                Logger.log('[LOCK][' + runId + '] Acquired on attempt ' + attempt);
-                break;
-            }
-            Logger.log('[LOCK][' + runId + '] Attempt ' + attempt + ' failed');
-            if (attempt < maxRetries) {
-                Utilities.sleep(2000 * attempt); // 2s, 4s wait between retries
-            }
-        }
-        
+        const lockAcquired = lock.tryLock(60000);
+
         if (!lockAcquired) {
-            Logger.log('[ERR][' + runId + '] Lock timeout after ' + maxRetries + ' attempts');
-            return { 
-                ok: false, 
-                error: 'El sistema está ocupado. Por favor, espera unos segundos e intenta nuevamente.', 
-                errorCode: 'LOCK_TIMEOUT' 
+            return {
+                ok: false,
+                error: 'El sistema está ocupado. Por favor, espera unos segundos e intenta nuevamente.',
+                errorCode: 'LOCK_TIMEOUT'
             };
         }
 
@@ -120,85 +94,50 @@ const ConciliacionIOV2 = {
             if (!ss) {
                 return { ok: false, error: 'Spreadsheet de conciliación no configurado (CONCILIACION.SS_ID)', errorCode: 'NO_SS_CONFIG' };
             }
-            perfLog('OPEN_SS_CACHED');
 
-            // V5 FIX: Use Drive API + direct sheet copy (fastest method)
-            // Instead of read/write chunks, copy the sheet directly
-            
-            // Calculate file size for logging
-            const estimatedFileSizeMB = (base64Data.length * 0.75) / (1024 * 1024);
-            Logger.log('[FLOW][' + runId + '] File size estimate: ' + estimatedFileSizeMB.toFixed(2) + ' MB');
-            
-            // Use Drive API for conversion (reliable for all file sizes)
             try {
                 const bytes = this._safeBase64Decode(base64Data);
-                perfLog('BASE64_DECODED', { byteLength: bytes.length });
-                
-                const effectiveMime = mimeType || 
+
+                const effectiveMime = mimeType ||
                     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
                 const blob = Utilities.newBlob(bytes, effectiveMime, fileName);
-                perfLog('BLOB_CREATED');
 
                 const resource = {
-                    title: 'TMP_BD_SISNET_' + runId,
+                    title: 'TMP_BD_SISNET_' + Date.now(),
                     mimeType: 'application/vnd.google-apps.spreadsheet'
                 };
 
-                // Drive conversion - this is the slow step but reliable
-                perfLog('DRIVE_INSERT_START');
                 const tempFile = Drive.Files.insert(resource, blob, { convert: true });
                 tempFileId = tempFile.id;
-                perfLog('DRIVE_INSERT_COMPLETE', { tempFileId: tempFileId });
 
                 const tempSS = SpreadsheetApp.openById(tempFileId);
                 const tempSheet = tempSS.getSheets()[0];
-                perfLog('TEMP_SS_OPENED');
-                
-                // V5 OPTIMIZATION: Copy sheet directly instead of read/write
-                // This is MUCH faster than reading 61k rows and writing by chunks
-                
-                // Get data info for validation and reporting
+
                 const lastRow = tempSheet.getLastRow();
                 const lastCol = tempSheet.getLastColumn();
-                perfLog('DATA_INFO', { rows: lastRow, cols: lastCol });
                 
                 if (lastRow < 2) {
                     return { ok: false, error: 'El archivo no contiene datos válidos (mínimo 2 filas)', errorCode: 'INVALID_DATA' };
                 }
                 
-                // Delete existing BD_Cruce if exists
                 const existingBDCruce = ss.getSheetByName('BD_Cruce');
                 if (existingBDCruce) {
                     ss.deleteSheet(existingBDCruce);
-                    perfLog('OLD_SHEET_DELETED');
                 }
-                
-                // Copy the temp sheet to destination spreadsheet
+
                 const copiedSheet = tempSheet.copyTo(ss);
-                perfLog('SHEET_COPIED');
-                
-                // Rename to BD_Cruce
                 copiedSheet.setName('BD_Cruce');
-                perfLog('SHEET_RENAMED');
-                
-                // Apply minimal formatting (fast operations only)
                 copiedSheet.setTabColor('#00B0F0');
                 copiedSheet.setFrozenRows(1);
-                
-                // Format header row (only 1 row, fast)
+
                 if (lastCol > 0) {
                     copiedSheet.getRange(1, 1, 1, lastCol).setFontWeight('bold').setBackground('#D9D9D9');
                 }
-                perfLog('FORMAT_COMPLETE');
-                
-                // Flush to ensure all changes are committed
+
                 SpreadsheetApp.flush();
-                perfLog('FLUSH_COMPLETE');
-                
+
                 const rowsLoaded = lastRow - 1;
-                const totalTime = Date.now() - T.start;
-                
-                Logger.log('[SUCCESS][' + runId + '] BD Sisnet cargada. Registros: ' + rowsLoaded + ' | Tiempo: ' + totalTime + 'ms');
+                const totalTime = Date.now() - T;
 
                 return {
                     ok: true,
@@ -208,36 +147,27 @@ const ConciliacionIOV2 = {
                 };
                 
             } catch (driveError) {
-                Logger.log('[ERR][' + runId + '] Drive/Copy failed: ' + driveError.message);
-                return { 
-                    ok: false, 
-                    error: 'Error al procesar archivo Excel: ' + driveError.message, 
-                    errorCode: 'PROCESS_FAILED' 
+                Logger.log('subirBDSisnet Drive error: ' + driveError.message);
+                return {
+                    ok: false,
+                    error: 'Error al procesar archivo Excel: ' + driveError.message,
+                    errorCode: 'PROCESS_FAILED'
                 };
             }
 
         } catch (error) {
-            const errMsg = error.message || String(error);
-            Logger.log('[ERR][' + runId + '] subirBDSisnet EXCEPTION: ' + errMsg);
-            Logger.log('[ERR][' + runId + '] Stack: ' + (error.stack || 'no stack'));
-            return { 
-                ok: false, 
-                error: 'Error al cargar BD Sisnet: ' + errMsg, 
-                errorCode: 'EXCEPTION' 
+            Logger.log('subirBDSisnet ERROR: ' + (error.message || String(error)));
+            return {
+                ok: false,
+                error: 'Error al cargar BD Sisnet: ' + (error.message || String(error)),
+                errorCode: 'EXCEPTION'
             };
 
         } finally {
-            // Cleanup temp file
             if (tempFileId) {
-                try {
-                    Drive.Files.remove(tempFileId);
-                    perfLog('CLEANUP_TEMP_FILE');
-                } catch (e) {
-                    Logger.log('[WARN][' + runId + '] Cleanup warning: ' + e.message);
-                }
+                try { Drive.Files.remove(tempFileId); } catch (e) { /* ignore */ }
             }
             lock.releaseLock();
-            perfLog('LOCK_RELEASED');
         }
     },
 
@@ -296,39 +226,32 @@ const ConciliacionIOV2 = {
      * @returns {Object} { ok, fileId?, data?, error?, useSheetJS? }
      */
     convertirXLSXaSheet(base64Data, fileName, mimeType) {
-        const context = 'ConciliacionIOV2.convertirXLSXaSheet';
-        const runId = 'CONV_' + Date.now();
-        const T = { start: Date.now() };
-
         try {
             const bytes = this._safeBase64Decode(base64Data);
-            
+
             const effectiveMime = mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
             const blob = Utilities.newBlob(bytes, effectiveMime, fileName);
 
             const resource = {
-                title: 'TMP_EECC_' + runId,
+                title: 'TMP_EECC_' + Date.now(),
                 mimeType: 'application/vnd.google-apps.spreadsheet'
             };
 
             const file = Drive.Files.insert(resource, blob, { convert: true });
 
-            // Read the data so processor doesn't have to re-open
             const tempSS = SpreadsheetApp.openById(file.id);
             const tempSheet = tempSS.getSheets()[0];
             const data = tempSheet.getDataRange().getDisplayValues();
-            Logger.log('[convertirXLSX] ' + fileName + ' | rows: ' + data.length + ' | ' + (Date.now() - T.start) + 'ms');
-            
-            return { 
-                ok: true, 
-                fileId: file.id, 
+
+            return {
+                ok: true,
+                fileId: file.id,
                 data: data,
-                useSheetJS: false 
+                useSheetJS: false
             };
 
         } catch (error) {
-            Logger.log('[ERR][' + runId + '] convertirXLSXaSheet FAILED: ' + error.message);
-            Logger.log('[ERR][' + runId + '] Stack: ' + (error.stack || 'no stack'));
+            Logger.log('convertirXLSXaSheet FAILED: ' + error.message);
             return { ok: false, error: error.message, errorCode: 'CONVERT_FAILED' };
         }
     },

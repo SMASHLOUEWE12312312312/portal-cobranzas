@@ -73,16 +73,7 @@ const ConciliacionCruceV2 = {
      * @returns {Object} { registrado, validar, noRegistrado, tramaData, perfMetrics }
      */
     ejecutarCruce(wsTrama, wsBDCruce, options = {}) {
-        const context = 'ConciliacionCruceV2.ejecutarCruce';
-        const runId = 'CRUCE_' + Date.now();
-        const T = { start: Date.now() };
-        const perfMetrics = {};
-        const perfLog = (label) => {
-            const elapsed = Date.now() - T.start;
-            perfMetrics[label] = elapsed;
-            Logger.log('[PERF-V2][' + runId + '] cruce | ' + label + ' | ' + elapsed + 'ms');
-        };
-        perfLog('INIT');
+        const T = Date.now();
 
         const statusColTrama = options.statusCol || 4;
         const cuponColBD = getConfig('CONCILIACION.BD_CRUCE_CUPON_COL', 8);
@@ -97,18 +88,15 @@ const ConciliacionCruceV2 = {
             // Use optimized pre-loaded cupones (just column H)
             bdCuponesArray = options.bdCruceCupones;
             lastColBD = wsBDCruce.getLastColumn();
-            perfLog('BD_CUPONES_FROM_CACHE | count: ' + bdCuponesArray.length);
         } else if (options.bdCruceData) {
             // Fallback to full data if provided
             bdCuponesArray = options.bdCruceData.map(row => row[cuponColBD - 1]);
             lastColBD = options.bdCruceData[0] ? options.bdCruceData[0].length : cuponColBD;
-            perfLog('BD_DATA_FROM_OPTIONS');
         } else {
             // Last resort: read from sheet (slowest)
             const bdData = wsBDCruce.getDataRange().getDisplayValues();
             bdCuponesArray = bdData.map(row => row[cuponColBD - 1]);
             lastColBD = bdData[0] ? bdData[0].length : cuponColBD;
-            perfLog('BD_DATA_FROM_SHEET');
         }
         
         const colStatusBD = lastColBD + 1;
@@ -133,11 +121,9 @@ const ConciliacionCruceV2 = {
                 }
             }
         }
-        perfLog('BD_MAPS_BUILT | entries: ' + bdCupones.length);
 
         // Trama data - use pre-loaded if available
         const tramaData = options.tramaData || wsTrama.getDataRange().getDisplayValues();
-        perfLog('TRAMA_DATA_READY');
 
         // ========== FASE 2: PROCESO EN MEMORIA ==========
 
@@ -191,7 +177,6 @@ const ConciliacionCruceV2 = {
                 contNoRegistrado++;
             }
         }
-        perfLog('PROCESS_LOOP');
 
         // ========== FASE 3: ESCRITURA BATCH OPTIMIZADA ==========
 
@@ -204,30 +189,21 @@ const ConciliacionCruceV2 = {
             tramaRange.setValues(tramaStatusValues);
             tramaRange.setBackgrounds(tramaBackgrounds);
         }
-        perfLog('TRAMA_WRITTEN');
 
         // Write BD_Cruce STATUS in batch (single setValues call is faster than multiple setValue)
         if (bdCupones.length > 0) {
             const bdStatusValues = bdCupones.map(c => [c.status || '']);
             wsBDCruce.getRange(2, colStatusBD, bdStatusValues.length, 1).setValues(bdStatusValues);
         }
-        perfLog('BD_WRITTEN');
 
         // Single flush at the end
         SpreadsheetApp.flush();
-        perfLog('FLUSH');
 
         // Clear normalization cache to free memory
         this.clearCache();
 
-        const totalTime = Date.now() - T.start;
-        perfMetrics.TOTAL = totalTime;
-        
-        Logger.log('[SUCCESS][' + runId + '] Cruce completado. Reg: ' + contRegistrado +
-            ', Val: ' + contValidar + ', No: ' + contNoRegistrado + ' | ' + totalTime + 'ms');
+        const totalTime = Date.now() - T;
 
-        // V3 FIX: DO NOT return tramaData - it's too large for google.script.run response
-        // The export function reads data directly from the sheet, not from this result
         return {
             registrado: contRegistrado,
             validar: contValidar,

@@ -45,15 +45,8 @@ const PacificoProcessorV2 = {
     },
 
     processOptimized(convertResult, ss, dataContext) {
-        const context = 'PacificoProcessorV2.processOptimized';
         const cfg = this.CONFIG;
-        const T = { start: Date.now() };
-        const perfLog = (label) => {
-            Logger.log('[PERF-V2] Pacifico | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
-        };
-
-        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO');
-        perfLog('INIT');
+        const T = Date.now();
 
         // Get sheets
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
@@ -78,23 +71,19 @@ const PacificoProcessorV2 = {
                 cuponesBDNorm.add(ProcessorBase.normalizarCupon(cupon));
             }
         }
-        perfLog('BD_LOOKUP_BUILT | cupones: ' + cuponesBD.size);
 
         // Clear sheets
         wsEECC.clear();
         ProcessorBase.clearFromRow(wsTrama, 2);
-        perfLog('SHEETS_CLEARED');
 
         // Get source data
         let srcData;
         if (convertResult.data) {
             srcData = convertResult.data;
-            perfLog('DATA_FROM_SHEETJS');
         } else {
             const tempSS = SpreadsheetApp.openById(convertResult.fileId);
             const tempSheet = tempSS.getSheets()[0];
             srcData = tempSheet.getDataRange().getDisplayValues();
-            perfLog('DATA_FROM_DRIVE');
         }
 
         // Write to EECC
@@ -110,7 +99,6 @@ const PacificoProcessorV2 = {
             wsEECC.setFrozenRows(1);
             wsEECC.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
         }
-        perfLog('EECC_WRITTEN');
 
         const filasCargadas = Math.max(0, srcData.length - 1);
 
@@ -163,24 +151,22 @@ const PacificoProcessorV2 = {
                 tramaRows.push([numeroCupon, fechaPago, factura, '', origen]);
             }
         }
-        perfLog('EECC_PROCESSED');
 
         // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
-        perfLog('TRAMA_WRITTEN');
 
         // Execute cross-reference
         const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
             statusCol: 4,
             bdCruceCupones: dataContext.bdCruceCupones
         });
-        perfLog('CRUCE_COMPLETE');
 
-        // V8 OPTIMIZATION: Build export data from memory (Pacifico has 5 cols with ORIGEN_CUPON)
+        // V10: Build export data from memory (NO re-read from sheet)
         const tramaDataForExport = [cfg.TRAMA_HEADERS];
+        const statusFromCruce = cruceResult._statusValues || [];
         for (let i = 0; i < tramaRows.length; i++) {
             const row = tramaRows[i];
             const exportRow = row.map((cell) => {
@@ -189,15 +175,9 @@ const PacificoProcessorV2 = {
                 }
                 return cell;
             });
+            exportRow[3] = statusFromCruce[i] ? statusFromCruce[i][0] : '';
             tramaDataForExport.push(exportRow);
         }
-        if (tramaRows.length > 0) {
-            const statusValues = wsTrama.getRange(2, 4, tramaRows.length, 1).getDisplayValues();
-            for (let i = 0; i < statusValues.length; i++) {
-                tramaDataForExport[i + 1][3] = statusValues[i][0];
-            }
-        }
-        perfLog('EXPORT_DATA_BUILT');
         
         const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Pacifico',
@@ -214,13 +194,6 @@ const PacificoProcessorV2 = {
             }
         );
 
-        // Log mismatch check
-        const pendientesCruce = (cruceResult.noRegistrado || 0) + (cruceResult.validar || 0);
-        const pendientesXlsx = (exportResult.estadoCuentaPendientes && exportResult.estadoCuentaPendientes.count) || 0;
-        if (pendientesCruce !== pendientesXlsx) {
-            Logger.log('[WARN] Pendientes mismatch: UI(cruce)=' + pendientesCruce + ' vs XLSX=' + pendientesXlsx + ' | insurer=Pacifico');
-        }
-        perfLog('EXPORT_COMPLETE');
 
         // Cleanup
         ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);

@@ -31,15 +31,8 @@ const CrecerProtectaProcessorV2 = {
     },
 
     processOptimized(convertResult, ss, dataContext) {
-        const context = 'CrecerProtectaProcessorV2.processOptimized';
         const cfg = this.CONFIG;
-        const T = { start: Date.now() };
-        const perfLog = (label) => {
-            Logger.log('[PERF-V2] CrecerProtecta | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
-        };
-
-        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO');
-        perfLog('INIT');
+        const T = Date.now();
 
         // Get sheets
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
@@ -50,12 +43,9 @@ const CrecerProtectaProcessorV2 = {
 
         const wsBDCruce = dataContext.bdCruceSheet;
         if (!wsBDCruce) throw new Error('BD_Cruce no encontrada en contexto');
-        perfLog('SHEETS_READY');
-
         // Clear sheets
         ProcessorBase.clearFromRow(wsEECC, cfg.START_ROW);
         ProcessorBase.clearFromRow(wsTrama, 2);
-        perfLog('SHEETS_CLEARED');
 
         // Get source data
         let srcData;
@@ -81,10 +71,8 @@ const CrecerProtectaProcessorV2 = {
                 // Remove column E (index 4) from all rows
                 srcData.forEach(row => row.splice(4, 1));
                 colOffset = -1; // Columns after E shift left
-                Logger.log(context + ': Columna E (Estado) eliminada');
             }
         }
-        perfLog('DATA_NORMALIZED');
 
         // Write to EECC
         if (srcData.length >= cfg.START_ROW) {
@@ -98,7 +86,6 @@ const CrecerProtectaProcessorV2 = {
                 targetRange.setValues(dataRows);
             }
         }
-        perfLog('EECC_WRITTEN');
 
         const filasCargadas = Math.max(0, srcData.length - cfg.START_ROW + 1);
 
@@ -141,24 +128,22 @@ const CrecerProtectaProcessorV2 = {
 
             tramaRows.push([numeroCupon, fechaPago, comprobante, '']);
         }
-        perfLog('EECC_PROCESSED');
 
         // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
-        perfLog('TRAMA_WRITTEN');
 
         // Execute cross-reference
         const cruceResult = ConciliacionCruceV2.ejecutarCruce(wsTrama, wsBDCruce, {
             statusCol: 4,
             bdCruceCupones: dataContext.bdCruceCupones
         });
-        perfLog('CRUCE_COMPLETE');
 
-        // V8 OPTIMIZATION: Build export data from memory
+        // V10: Build export data from memory (NO re-read from sheet)
         const tramaDataForExport = [cfg.TRAMA_HEADERS];
+        const statusFromCruce = cruceResult._statusValues || [];
         for (let i = 0; i < tramaRows.length; i++) {
             const row = tramaRows[i];
             const exportRow = row.map((cell) => {
@@ -167,15 +152,9 @@ const CrecerProtectaProcessorV2 = {
                 }
                 return cell;
             });
+            exportRow[3] = statusFromCruce[i] ? statusFromCruce[i][0] : '';
             tramaDataForExport.push(exportRow);
         }
-        if (tramaRows.length > 0) {
-            const statusValues = wsTrama.getRange(2, 4, tramaRows.length, 1).getDisplayValues();
-            for (let i = 0; i < statusValues.length; i++) {
-                tramaDataForExport[i + 1][3] = statusValues[i][0];
-            }
-        }
-        perfLog('EXPORT_DATA_BUILT');
         
         const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'Crecer_Protecta',
@@ -190,7 +169,6 @@ const CrecerProtectaProcessorV2 = {
                 eeccData: srcData // Export modified data with column deleted
             }
         );
-        perfLog('EXPORT_COMPLETE');
 
         // Cleanup
         ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);

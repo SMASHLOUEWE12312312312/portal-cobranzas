@@ -31,13 +31,6 @@ const ConciliacionExportV2 = {
      * @returns {Object} Base64 content for direct download
      */
     exportarResultados(wsTrama, wsEECC, wsBDCruce, insurerKey, options = {}, cachedData = {}) {
-        const context = 'ConciliacionExportV2.exportarResultados';
-        const runId = 'EXP_' + Date.now();
-        const T = { start: Date.now() };
-        const perfLog = (label) => Logger.log('[PERF-V2][' + runId + '] export | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
-
-        Logger.log('[FLOW][' + runId + '] exportarResultados START | insurer: ' + insurerKey);
-        
         const columnasTrama = options.columnasTrama || 3;
         const timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
 
@@ -57,21 +50,16 @@ const ConciliacionExportV2 = {
                 tramaData = cachedData.tramaData || (wsTrama ? wsTrama.getDataRange().getDisplayValues() : []);
                 eeccData = cachedData.eeccData || (wsEECC ? wsEECC.getDataRange().getDisplayValues() : []);
             } catch (readErr) {
-                Logger.log('[WARN][' + runId + '] Error reading sheet data: ' + readErr.message);
                 tramaData = tramaData || [];
                 eeccData = eeccData || [];
             }
-            
-            perfLog('DATA_READY | trama:' + tramaData.length + ' | eecc:' + eeccData.length);
 
             // 1. Export Trama_Registrados (SHEETJS DIRECT)
             try {
                 results.tramaRegistrados = this._exportarTramaSheetJS(
                     tramaData, insurerKey, timestamp, columnasTrama, options
                 );
-                perfLog('TRAMA_EXPORTED');
             } catch (tramaErr) {
-                Logger.log('[WARN][' + runId + '] Trama export failed: ' + tramaErr.message);
                 results.tramaRegistrados = { ok: false, error: tramaErr.message, count: 0 };
             }
 
@@ -80,18 +68,14 @@ const ConciliacionExportV2 = {
                 results.estadoCuentaPendientes = this._exportarPendientesSheetJS(
                     tramaData, eeccData, insurerKey, timestamp, options
                 );
-                perfLog('PENDIENTES_EXPORTED');
             } catch (pendErr) {
-                Logger.log('[WARN][' + runId + '] Pendientes export failed: ' + pendErr.message);
                 results.estadoCuentaPendientes = { ok: false, error: pendErr.message, count: 0 };
             }
 
-            Logger.log('[FLOW][' + runId + '] exportarResultados SUCCESS | ' + (Date.now() - T.start) + 'ms');
             return { ok: true, ...results };
 
         } catch (error) {
-            Logger.log('[ERR][' + runId + '] exportarResultados FAILED: ' + error.message);
-            Logger.log('[ERR][' + runId + '] Stack: ' + (error.stack || 'no stack'));
+            Logger.log('exportarResultados ERROR: ' + error.message);
             return { ok: false, error: error.message, ...results };
         }
     },
@@ -105,7 +89,6 @@ const ConciliacionExportV2 = {
      * @private
      */
     _exportarTramaSheetJS(tramaData, insurerKey, timestamp, columnasTrama, options) {
-        const context = 'ConciliacionExportV2._exportarTramaSheetJS';
         const statusCol = options.statusColTrama || (columnasTrama + 1);
         const dateCol = 2; // Column B is date (1-indexed)
 
@@ -135,10 +118,6 @@ const ConciliacionExportV2 = {
         }
 
         if (rows.length <= 1) {
-            Logger.log(context + ': WARNING - No se encontraron registros. StatusCol: ' + statusCol +
-                ', TotalRows: ' + tramaData.length +
-                ', SampleStatus: ' + (tramaData[1] ? tramaData[1][statusCol - 1] : 'N/A'));
-
             return {
                 ok: true,
                 message: 'Sin cupones registrados para exportar',
@@ -154,7 +133,6 @@ const ConciliacionExportV2 = {
         });
 
         const fileName = 'Trama_Registrados_' + insurerKey + '_' + timestamp + '.xlsx';
-        Logger.log(context + ': Exportado ' + (rows.length - 1) + ' registros (SHEETJS DIRECTO)');
 
         return {
             ok: true,
@@ -172,7 +150,6 @@ const ConciliacionExportV2 = {
      * @private
      */
     _exportarPendientesSheetJS(tramaData, eeccData, insurerKey, timestamp, options) {
-        const context = 'ConciliacionExportV2._exportarPendientesSheetJS';
         const startRowEECC = options.startRowEECC || 2;
 
         // Multi-column support for EECC coupon matching
@@ -297,7 +274,6 @@ const ConciliacionExportV2 = {
         });
 
         const fileName = 'Estado_Cuenta_Pendientes_' + insurerKey + '_' + timestamp + '.xlsx';
-        Logger.log(context + ': Exportados ' + outputRows.length + ' registros (SHEETJS DIRECTO)');
 
         return {
             ok: true,
@@ -322,17 +298,12 @@ const ConciliacionExportV2 = {
      * @returns {Object} { base64, size }
      */
     _generateXLSXWithSheetJS(data, sheetName, options = {}) {
-        const context = '_generateXLSXWithSheetJS';
-        const T = { start: Date.now() };
-        
         // If SheetJS is not available, fall back to legacy method
         if (typeof XLSX === 'undefined') {
-            Logger.log('[PERF-V2][EXPORT] SheetJS not available - using legacy export');
             return this._generateXLSXLegacy(data, sheetName, options);
         }
 
         try {
-            Logger.log('[PERF-V2][EXPORT] Starting SheetJS export | rows: ' + data.length);
             
             // Create workbook
             const wb = XLSX.utils.book_new();
@@ -362,10 +333,8 @@ const ConciliacionExportV2 = {
                 for (let r = 1; r < data.length; r++) {
                     const cellRef = XLSX.utils.encode_cell({ r: r, c: col });
                     if (ws[cellRef]) {
-                        // Ensure cell is marked as date type with format
-                        ws[cellRef].t = 'd';  // Date type
-                        ws[cellRef].z = 'dd/mm/yyyy';  // Date format
-                        Logger.log('[EXPORT] Cell ' + cellRef + ' type: ' + ws[cellRef].t + ' value: ' + ws[cellRef].v);
+                        ws[cellRef].t = 'd';
+                        ws[cellRef].z = 'dd/mm/yyyy';
                     }
                 }
             }
@@ -382,8 +351,6 @@ const ConciliacionExportV2 = {
 
             // Convert to base64
             const base64 = Utilities.base64Encode(xlsxArray);
-            
-            Logger.log('[PERF-V2][EXPORT] SheetJS export SUCCESS | ' + (Date.now() - T.start) + 'ms | size: ' + xlsxArray.length);
 
             return {
                 base64: base64,
@@ -391,8 +358,6 @@ const ConciliacionExportV2 = {
             };
             
         } catch (sheetJSError) {
-            // V3 FIX: Catch any SheetJS error and fallback to legacy
-            Logger.log('[WARN][EXPORT] SheetJS export failed: ' + sheetJSError.message + ' - using legacy');
             return this._generateXLSXLegacy(data, sheetName, options);
         }
     },
@@ -408,19 +373,14 @@ const ConciliacionExportV2 = {
      * @private
      */
     _generateXLSXLegacy(data, sheetName, options = {}) {
-        const context = '_generateXLSXLegacy';
-        const T = { start: Date.now() };
         let tempSSId = null;
-        const dateColumn = options.dateColumn || 2; // Default column B
-        
+        const dateColumn = options.dateColumn || 2;
+
         try {
-            Logger.log('[PERF-V2][EXPORT] Starting legacy export | rows: ' + data.length + ' | dateCol: ' + dateColumn);
-            
             const tempSS = SpreadsheetApp.create('TMP_' + sheetName + '_' + Date.now());
             tempSSId = tempSS.getId();
             const sheet = tempSS.getSheets()[0];
             sheet.setName(sheetName);
-            Logger.log('[PERF-V2][EXPORT] Temp SS created | ' + (Date.now() - T.start) + 'ms');
 
             // Write data
             if (data.length > 0) {
@@ -440,38 +400,28 @@ const ConciliacionExportV2 = {
                 // Write all values
                 sheet.getRange(1, 1, numRows, numCols).setValues(data);
                 
-                // FIX v6: Apply date format to date column AFTER writing
                 if (numRows > 1 && dateColumn <= numCols) {
                     sheet.getRange(2, dateColumn, numRows - 1, 1).setNumberFormat('dd/mm/yyyy');
-                    Logger.log('[PERF-V2][EXPORT] Applied date format to column ' + dateColumn);
                 }
 
                 sheet.setFrozenRows(1);
                 sheet.getRange(1, 1, 1, numCols).setFontWeight('bold').setBackground('#D9D9D9');
             }
-            Logger.log('[PERF-V2][EXPORT] Data written | ' + (Date.now() - T.start) + 'ms');
 
             SpreadsheetApp.flush();
 
-            // Export via URL fetch
             const exportUrl = 'https://docs.google.com/spreadsheets/d/' + tempSS.getId() + '/export?format=xlsx';
             const blob = UrlFetchApp.fetch(exportUrl, {
                 headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
                 muteHttpExceptions: true
             }).getBlob();
-            Logger.log('[PERF-V2][EXPORT] XLSX exported | ' + (Date.now() - T.start) + 'ms');
 
             const bytes = blob.getBytes();
             const base64 = Utilities.base64Encode(bytes);
 
-            // Cleanup temp file
             try {
                 DriveApp.getFileById(tempSSId).setTrashed(true);
-            } catch (cleanupErr) {
-                Logger.log('[WARN][EXPORT] Cleanup failed: ' + cleanupErr.message);
-            }
-            
-            Logger.log('[PERF-V2][EXPORT] Legacy export SUCCESS | ' + (Date.now() - T.start) + 'ms | size: ' + bytes.length);
+            } catch (cleanupErr) { /* ignore */ }
 
             return {
                 base64: base64,
@@ -479,8 +429,6 @@ const ConciliacionExportV2 = {
             };
             
         } catch (error) {
-            Logger.log('[ERR][EXPORT] Legacy export failed: ' + error.message);
-            
             // Try cleanup even on error
             if (tempSSId) {
                 try {

@@ -103,12 +103,7 @@ const ConciliacionServiceV2 = {
      * @returns {Object} Processing result
      */
     procesarAseguradora(insurerKey, base64Data, fileName, mimeType, token) {
-        const context = 'ConciliacionServiceV2.procesarAseguradora';
-        const T = { start: Date.now() };
-        const perfLog = (label) => {
-            Logger.log('[PERF-V2] service | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
-        };
-        perfLog('INIT');
+        const T = Date.now();
 
         // Validate session
         if (token) {
@@ -121,50 +116,24 @@ const ConciliacionServiceV2 = {
             }
         }
 
-        // Validate parameters
         if (!insurerKey || !base64Data || !fileName) {
             return { ok: false, error: 'Parámetros inválidos' };
         }
 
-        // Validate file type
         if (!_conciliacionIsExcelFile_(fileName)) {
             return { ok: false, error: 'Archivo no válido. Solo se permiten archivos Excel.' };
         }
 
-        // Normalize MIME
         const normalizedMime = _conciliacionInferExcelMimeType_(fileName) || mimeType ||
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-        // V4 FIX: Always use Drive API for file conversion
-        // SheetJS was causing hangs on large files in Apps Script environment
-        Logger.log('[PERF-V2][DRIVE_API] Using Drive API for reliable file conversion');
-
-        // V7 FIX: Use Document lock (per-spreadsheet) instead of Script lock (global)
-        // This allows BD upload and insurer processing to run concurrently
-        const ssId = getConfig('CONCILIACION.SS_ID', '');
+        // V10: Single lock attempt with 30s timeout (no retry loop)
         const lock = LockService.getDocumentLock();
-        
-        // V7: Retry logic with exponential backoff for lock acquisition
-        const maxRetries = 3;
-        const baseTimeout = 30000; // 30 seconds
-        let lockAcquired = false;
-        
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            const timeout = baseTimeout * attempt; // 30s, 60s, 90s
-            lockAcquired = lock.tryLock(timeout);
-            if (lockAcquired) {
-                Logger.log('[LOCK] Acquired on attempt ' + attempt + ' (timeout: ' + timeout + 'ms)');
-                break;
-            }
-            Logger.log('[LOCK] Attempt ' + attempt + ' failed, retrying...');
-            if (attempt < maxRetries) {
-                Utilities.sleep(1000 * attempt); // 1s, 2s wait between retries
-            }
-        }
-        
+        const lockAcquired = lock.tryLock(30000);
+
         if (!lockAcquired) {
-            return { 
-                ok: false, 
+            return {
+                ok: false,
                 error: 'El sistema está ocupado procesando otra solicitud. Por favor, espera unos segundos e intenta nuevamente.',
                 errorCode: 'LOCK_BUSY'
             };
@@ -174,59 +143,47 @@ const ConciliacionServiceV2 = {
         let convertResult = null;
 
         try {
-            Logger.log(context + ': Procesando ' + insurerKey);
             this._initDataContext();
-            perfLog('CONTEXT_INIT');
 
-            // Convert XLSX - now returns data directly if SheetJS available
-            // V3 FIX: Better error handling and logging
+            // Convert XLSX via Drive API
             try {
                 convertResult = ConciliacionIOV2.convertirXLSXaSheet(base64Data, fileName, normalizedMime);
             } catch (convertError) {
-                Logger.log(context + ': Convert exception - ' + convertError.message);
                 return { ok: false, error: 'Error al convertir archivo: ' + convertError.message, errorCode: 'CONVERT_EXCEPTION' };
             }
-            
+
             if (!convertResult.ok) {
                 return { ok: false, error: 'Error al convertir archivo: ' + (convertResult.error || 'Error desconocido'), errorCode: convertResult.errorCode || 'CONVERT_FAILED' };
             }
-            
-            tempFileId = convertResult.fileId;
-            perfLog('CONVERT_COMPLETE');
 
-            // Get spreadsheet (cached)
+            tempFileId = convertResult.fileId;
+
             const ss = ConciliacionIOV2.getConciliacionSpreadsheet();
             if (!ss) {
                 return { ok: false, error: 'Spreadsheet de conciliación no configurado' };
             }
             this._dataContext.ssRef = ss;
-            perfLog('SS_READY');
 
-            // Pre-load BD_Cruce data (used by all processors)
             const wsBDCruce = ss.getSheetByName('BD_Cruce');
             if (!wsBDCruce) {
                 return { ok: false, error: 'Hoja BD_Cruce no encontrada. Primero sube la BD Sisnet.' };
             }
             this._dataContext.bdCruceSheet = wsBDCruce;
-            
-            // V6 OPTIMIZATION: Read only the CUPON column (H) instead of all 23 columns
-            // This reduces data transfer from ~1.4M cells to ~61k cells (95% reduction)
+
+            // V10: Read cupones with getValues() instead of getDisplayValues() (faster)
             const bdLastRow = wsBDCruce.getLastRow();
-            const cuponCol = getConfig('CONCILIACION.BD_CRUCE_CUPON_COL', 8); // Column H
-            
+            const cuponCol = getConfig('CONCILIACION.BD_CRUCE_CUPON_COL', 8);
+
             if (bdLastRow > 1) {
-                // Read only column H (cupones) - MUCH faster than reading all columns
-                const cuponData = wsBDCruce.getRange(1, cuponCol, bdLastRow, 1).getDisplayValues();
-                this._dataContext.bdCruceCupones = cuponData.map(row => row[0]);
+                const cuponData = wsBDCruce.getRange(1, cuponCol, bdLastRow, 1).getValues();
+                this._dataContext.bdCruceCupones = cuponData.map(row => String(row[0] || ''));
                 this._dataContext.bdCruceRowCount = bdLastRow;
             } else {
                 this._dataContext.bdCruceCupones = [];
                 this._dataContext.bdCruceRowCount = 0;
             }
-            
-            // Full data only loaded on demand by processors that need it
+
             this._dataContext.bdCruceData = null;
-            perfLog('BD_CRUCE_LOADED | rows: ' + bdLastRow);
 
             // Get processor
             const processor = this._getProcessor(insurerKey);
@@ -234,49 +191,36 @@ const ConciliacionServiceV2 = {
                 return { ok: false, error: 'Aseguradora no válida: ' + insurerKey };
             }
 
-            // === LEGACY FALLBACK ===
-            // If processor is V1 (no processOptimized) AND we used SheetJS (no tempFileId),
-            // we MUST create a physical file now because V1 processors expect it.
+            // Legacy fallback for V1 processors
             if (!processor.processOptimized && !tempFileId) {
-                Logger.log(context + ': Legacy processor detected. Force-creating temp file...');
                 try {
                     const legacyResult = ConciliacionIOV2.forceCreateTempFile(base64Data, fileName, normalizedMime);
                     if (!legacyResult.ok) {
                         return { ok: false, error: 'Error creating legacy temp file: ' + legacyResult.error, errorCode: 'LEGACY_FILE_FAILED' };
                     }
                     tempFileId = legacyResult.fileId;
-                    Logger.log(context + ': Created temp file ' + tempFileId);
                 } catch (legacyErr) {
                     return { ok: false, error: 'Exception creating legacy temp file: ' + legacyErr.message, errorCode: 'LEGACY_FILE_EXCEPTION' };
                 }
             }
 
-            // Execute processing with optimized interface
-            // V3 FIX: Wrap in try-catch for better error reporting
             let result;
             try {
                 if (processor.processOptimized) {
-                    Logger.log(context + ': Using processOptimized for ' + insurerKey);
                     result = processor.processOptimized(convertResult, ss, this._dataContext);
                 } else {
-                    Logger.log(context + ': Using legacy process() for ' + insurerKey);
                     result = processor.process(tempFileId, ss);
                 }
             } catch (processError) {
-                Logger.log(context + ': Processor exception for ' + insurerKey + ': ' + processError.message);
-                Logger.log(context + ': Stack: ' + (processError.stack || 'no stack'));
-                return { 
-                    ok: false, 
-                    error: 'Error procesando ' + insurerKey + ': ' + processError.message, 
+                Logger.log('Processor exception ' + insurerKey + ': ' + processError.message);
+                return {
+                    ok: false,
+                    error: 'Error procesando ' + insurerKey + ': ' + processError.message,
                     errorCode: 'PROCESSOR_EXCEPTION',
                     insurer: insurerKey
                 };
             }
 
-            perfLog('PROCESS_COMPLETE');
-            Logger.log(context + ': Procesamiento completado para ' + insurerKey);
-
-            // V3 FIX: Ensure result has insurer info
             if (result && result.ok) {
                 result.insurer = result.insurer || insurerKey;
             }
@@ -284,17 +228,16 @@ const ConciliacionServiceV2 = {
             return result;
 
         } catch (error) {
-            Logger.log(context + ': ERROR - ' + error.message);
+            Logger.log('procesarAseguradora ERROR: ' + error.message);
             return { ok: false, error: error.message };
 
         } finally {
-            // Cleanup
             if (tempFileId) {
                 ConciliacionIOV2.eliminarArchivoTemporal(tempFileId);
             }
             this._clearDataContext();
             lock.releaseLock();
-            perfLog('CLEANUP_DONE');
+            Logger.log('Conciliacion ' + insurerKey + ' completada en ' + (Date.now() - T) + 'ms');
         }
     },
 
