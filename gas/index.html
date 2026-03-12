@@ -537,6 +537,22 @@
                         </button>
                         <div id="statusReporteVencidos" style="margin-top: 0.5rem;"></div>
                     </div>
+
+                    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #6A1B9A;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 1.5rem;">📋</span>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Bitácora de Cobranzas</h3>
+                                <p style="margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--tp-text-tertiary);">
+                                    Dashboard + matriz de riesgo, performance, aging, tendencias, alertas
+                                </p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="btnReporteBitacora" onclick="descargarReporteBitacora()" style="margin-top: 0.75rem;">
+                            📥 Descargar Reporte
+                        </button>
+                        <div id="statusReporteBitacora" style="margin-top: 0.5rem;"></div>
+                    </div>
                 </div>
 
                 <!-- VIEW: ENVIAR (INLINE - NO POPUP) -->
@@ -11050,6 +11066,38 @@
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                     status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
                         escapeHtml(result.data.filas + ' registros exportados con dashboard') + '</span>';
+                } else {
+                    status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
+                        escapeHtml(result ? result.error : 'Error desconocido') + '</span>';
+                }
+            } catch (e) {
+                status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
+                    escapeHtml('Error: ' + e.message) + '</span>';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📥 Descargar Reporte';
+            }
+        }
+
+        async function descargarReporteBitacora() {
+            const btn = document.getElementById('btnReporteBitacora');
+            const status = document.getElementById('statusReporteBitacora');
+            btn.disabled = true;
+            btn.textContent = 'Generando...';
+            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte de bitácora, esto puede tomar hasta 2 minutos...</span>';
+
+            try {
+                const result = await runGasLong('generarReporteBitacoraConDashboard');
+                if (result && result.ok) {
+                    if (!result.data.base64) {
+                        status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">' +
+                            escapeHtml(result.data.message || 'Sin registros') + '</span>';
+                        return;
+                    }
+                    downloadBase64File(result.data.base64, result.data.fileName,
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
+                        escapeHtml(result.data.filas + ' clientes analizados con dashboard') + '</span>';
                 } else {
                     status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
                         escapeHtml(result ? result.error : 'Error desconocido') + '</span>';

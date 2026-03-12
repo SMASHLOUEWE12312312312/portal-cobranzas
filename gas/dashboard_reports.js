@@ -1065,3 +1065,424 @@ function generarReporteVencidos60ConDashboard() {
     return { ok: false, error: error.message };
   }
 }
+
+// ============================================================
+// 4. REPORTE BITÁCORA DE COBRANZAS
+// ============================================================
+
+function generarReporteBitacoraConDashboard() {
+  try {
+    var DE = DashboardEngine;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+
+    // --- Load Bitácora data ---
+    var bitSheet = SheetsIO._getSpreadsheet().getSheetByName(getConfig('SHEETS.BITACORA_GESTIONES', 'Bitacora_Gestiones_EECC'));
+    if (!bitSheet) throw new Error('Hoja Bitácora no encontrada');
+    var bitData = bitSheet.getDataRange().getValues();
+    if (bitData.length < 2) throw new Error('Sin datos en Bitácora');
+    var bitHeaders = bitData[0];
+
+    // Column index map
+    var bCol = {};
+    for (var h = 0; h < bitHeaders.length; h++) {
+      bCol[String(bitHeaders[h]).trim().toUpperCase()] = h;
+    }
+    var iAseg = bCol['ASEGURADO'] != null ? bCol['ASEGURADO'] : 5;
+    var iEstado = bCol['ESTADO_GESTION'] != null ? bCol['ESTADO_GESTION'] : 9;
+    var iTipo = bCol['TIPO_GESTION'] != null ? bCol['TIPO_GESTION'] : 8;
+    var iCanal = bCol['CANAL_CONTACTO'] != null ? bCol['CANAL_CONTACTO'] : 10;
+    var iResp = bCol['RESPONSABLE'] != null ? bCol['RESPONSABLE'] : 7;
+    var iFecReg = bCol['FECHA_REGISTRO'] != null ? bCol['FECHA_REGISTRO'] : 4;
+    var iFecComp = bCol['FECHA_COMPROMISO'] != null ? bCol['FECHA_COMPROMISO'] : 11;
+    var iProxAcc = bCol['PROXIMA_ACCION'] != null ? bCol['PROXIMA_ACCION'] : 12;
+    var iObs = bCol['OBSERVACIONES'] != null ? bCol['OBSERVACIONES'] : 13;
+    var iVencPEN = bCol['SNAPSHOT_VENCIDO_PEN'] != null ? bCol['SNAPSHOT_VENCIDO_PEN'] : 14;
+    var iVencUSD = bCol['SNAPSHOT_VENCIDO_USD'] != null ? bCol['SNAPSHOT_VENCIDO_USD'] : 15;
+    var iIdCiclo = bCol['ID_CICLO'] != null ? bCol['ID_CICLO'] : 0;
+
+    // --- Build per-asegurado summary (latest gesture per client) ---
+    var asegMap = {};
+    for (var i = 1; i < bitData.length; i++) {
+      var row = bitData[i];
+      var aseg = String(row[iAseg] || '').trim();
+      if (!aseg) continue;
+      var fecReg = _parseDateDash(row[iFecReg]);
+      var key = aseg.toUpperCase();
+
+      if (!asegMap[key]) {
+        asegMap[key] = { nombre: aseg, gestiones: [], latestDate: null, latest: null };
+      }
+      asegMap[key].gestiones.push(row);
+      if (!asegMap[key].latestDate || (fecReg && fecReg > asegMap[key].latestDate)) {
+        asegMap[key].latestDate = fecReg;
+        asegMap[key].latest = row;
+      }
+    }
+
+    // --- Build client records from latest gesture ---
+    var clientes = [];
+    var totalVencPEN = 0, totalVencUSD = 0;
+    var estadoCount = {};
+    var respData = {};
+
+    var asegKeys = Object.keys(asegMap);
+    for (var a = 0; a < asegKeys.length; a++) {
+      var am = asegMap[asegKeys[a]];
+      var latest = am.latest;
+      var estado = String(latest[iEstado] || 'SIN_RESPUESTA').trim();
+      var resp = String(latest[iResp] || 'Sin Asignar').trim().toUpperCase();
+      var vPEN = _parseNum(latest[iVencPEN]);
+      var vUSD = _parseNum(latest[iVencUSD]);
+      var fecReg2 = _parseDateDash(latest[iFecReg]);
+      var dias = fecReg2 ? Math.floor((today - fecReg2) / 86400000) : 0;
+      var fecComp = _parseDateDash(latest[iFecComp]);
+      var obs = String(latest[iObs] || '').trim();
+
+      // Calculate tendencia from previous gesture
+      var tendenciaPEN = 'SIN_CAMBIO';
+      var deltaPEN = 0;
+      if (am.gestiones.length >= 2) {
+        var sorted = am.gestiones.slice().sort(function(x, y) {
+          var dx = _parseDateDash(x[iFecReg]) || new Date(0);
+          var dy = _parseDateDash(y[iFecReg]) || new Date(0);
+          return dy - dx;
+        });
+        var prevPEN = _parseNum(sorted[1][iVencPEN]);
+        deltaPEN = vPEN - prevPEN;
+        if (deltaPEN > 0) tendenciaPEN = 'AUMENTO';
+        else if (deltaPEN < 0) tendenciaPEN = 'DISMINUCION';
+      }
+
+      var isActive = estado !== 'CERRADO_PAGADO' && estado !== 'NO_COBRABLE' && estado !== 'NO_CONTACTABLE'
+        && estado.indexOf('DERIVADO') === -1;
+
+      var cliente = {
+        nombre: am.nombre, estado: estado, resp: resp,
+        vPEN: vPEN, vUSD: vUSD, dias: dias,
+        fecComp: fecComp, obs: obs,
+        tendenciaPEN: tendenciaPEN, deltaPEN: deltaPEN,
+        numGestiones: am.gestiones.length, isActive: isActive
+      };
+      clientes.push(cliente);
+
+      totalVencPEN += vPEN;
+      totalVencUSD += vUSD;
+
+      if (!estadoCount[estado]) estadoCount[estado] = { count: 0, pen: 0, usd: 0 };
+      estadoCount[estado].count++;
+      estadoCount[estado].pen += vPEN;
+      estadoCount[estado].usd += vUSD;
+
+      if (!respData[resp]) respData[resp] = { total: 0, pen: 0, usd: 0, enSeg: 0, sinResp: 0, cerrados: 0, activos: 0 };
+      respData[resp].total++;
+      respData[resp].pen += vPEN;
+      respData[resp].usd += vUSD;
+      if (estado === 'EN_SEGUIMIENTO') respData[resp].enSeg++;
+      if (estado === 'SIN_RESPUESTA') respData[resp].sinResp++;
+      if (estado === 'CERRADO_PAGADO') respData[resp].cerrados++;
+      if (isActive) respData[resp].activos++;
+    }
+
+    var totalClientes = clientes.length;
+    var clientesActivos = clientes.filter(function(c) { return c.isActive; });
+    var cerrados = estadoCount['CERRADO_PAGADO'] ? estadoCount['CERRADO_PAGADO'].count : 0;
+    var tasaCierre = totalClientes > 0 ? (cerrados / totalClientes * 100).toFixed(0) : '0';
+
+    // --- Aging buckets from active clients ---
+    var agingBuckets = [
+      { label: '0-30 días', min: 0, max: 30, severity: 'VERDE', count: 0, montoPEN: 0, montoUSD: 0 },
+      { label: '31-60 días', min: 31, max: 60, severity: 'AMARILLO', count: 0, montoPEN: 0, montoUSD: 0 },
+      { label: '61-90 días', min: 61, max: 90, severity: 'NARANJA', count: 0, montoPEN: 0, montoUSD: 0 },
+      { label: '90+ días', min: 91, max: 99999, severity: 'ROJO', count: 0, montoPEN: 0, montoUSD: 0 }
+    ];
+    for (var ca = 0; ca < clientesActivos.length; ca++) {
+      var cl = clientesActivos[ca];
+      for (var ab = 0; ab < agingBuckets.length; ab++) {
+        if (cl.dias >= agingBuckets[ab].min && cl.dias <= agingBuckets[ab].max) {
+          agingBuckets[ab].count++;
+          agingBuckets[ab].montoPEN += cl.vPEN;
+          agingBuckets[ab].montoUSD += cl.vUSD;
+          break;
+        }
+      }
+    }
+
+    // --- Tendencia buckets ---
+    var tendBuckets = { AUMENTO: { count: 0, pen: 0 }, SIN_CAMBIO: { count: 0, pen: 0 }, DISMINUCION: { count: 0, pen: 0 }, PRIMERA_VEZ: { count: 0, pen: 0 } };
+    for (var ct = 0; ct < clientesActivos.length; ct++) {
+      var clt = clientesActivos[ct];
+      if (clt.numGestiones <= 1) {
+        tendBuckets.PRIMERA_VEZ.count++;
+        tendBuckets.PRIMERA_VEZ.pen += clt.vPEN;
+      } else {
+        var tb = tendBuckets[clt.tendenciaPEN] || tendBuckets.SIN_CAMBIO;
+        tb.count++;
+        tb.pen += clt.vPEN;
+      }
+    }
+
+    // ---- Build Dashboard ----
+    var tempSS = SpreadsheetApp.create('TMP_BITACORA_DASH_' + Date.now());
+    var ssId = tempSS.getId();
+
+    try {
+      var dashSheet = tempSS.getSheets()[0];
+      dashSheet.setName('Reporte');
+      DE.prepareCanvas(dashSheet);
+
+      var r = DE.writeHeaderSection(dashSheet, 'REPORTE BITÁCORA DE COBRANZAS',
+        'Gestión de Cartera Vencida   |   ' + totalClientes + ' registros   |   ' + clientesActivos.length + ' clientes activos   |   ' + tasaCierre + '% tasa de cierre', 1);
+
+      // ① KPI ROW 1
+      r = DE.writeKPIRow(dashSheet, [
+        { value: DE.formatCurrency(totalVencPEN, 'PEN'), label: 'CARTERA VENCIDA TOTAL PEN', color: DE.COLORS.RED },
+        { value: DE.formatCurrency(totalVencUSD, 'USD'), label: 'CARTERA VENCIDA TOTAL USD', color: DE.COLORS.RED },
+        { value: clientesActivos.length.toString(), label: 'CLIENTES ACTIVOS', color: DE.COLORS.BRAND_DARK }
+      ], r);
+
+      // KPI ROW 2 - estados clave
+      var enSeg = estadoCount['EN_SEGUIMIENTO'] ? estadoCount['EN_SEGUIMIENTO'].count : 0;
+      var sinResp = estadoCount['SIN_RESPUESTA'] ? estadoCount['SIN_RESPUESTA'].count : 0;
+      var compPago = estadoCount['COMPROMISO_PAGO'] ? estadoCount['COMPROMISO_PAGO'].count : 0;
+      r = DE.writeKPIRow(dashSheet, [
+        { value: enSeg.toString(), label: 'EN SEGUIMIENTO', color: DE.COLORS.ORANGE },
+        { value: sinResp.toString(), label: 'SIN RESPUESTA', color: DE.COLORS.RED },
+        { value: cerrados.toString(), label: 'CERRADOS / PAGADOS', color: DE.COLORS.GREEN }
+      ], r);
+
+      // ② CARTERA POR ESTADO
+      r = DE.writeSectionTitle(dashSheet, 'CARTERA POR ESTADO', r);
+      var estadoLabels = {
+        'EN_SEGUIMIENTO': 'En Seguimiento', 'SIN_RESPUESTA': 'Sin Respuesta',
+        'COMPROMISO_PAGO': 'Compromiso Pago', 'CERRADO_PAGADO': 'Cerrado Pagado',
+        'DERIVADO_COMERCIAL': 'Derivado Comercial', 'DERIVADO_RRHH': 'Derivado RRHH',
+        'DERIVADO_RIESGOS_GENERALES': 'Derivado Riesgos Gral.', 'NO_COBRABLE': 'No Cobrable',
+        'NO_CONTACTABLE': 'No Contactable', 'REPROGRAMADO': 'Reprogramado'
+      };
+      var estadoOrder = ['EN_SEGUIMIENTO', 'SIN_RESPUESTA', 'COMPROMISO_PAGO', 'CERRADO_PAGADO',
+        'DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES', 'NO_COBRABLE', 'NO_CONTACTABLE', 'REPROGRAMADO'];
+      var estadoRows = [];
+      for (var eo = 0; eo < estadoOrder.length; eo++) {
+        var est = estadoOrder[eo];
+        var ed = estadoCount[est];
+        if (!ed) continue;
+        var pctClientes = totalClientes > 0 ? (ed.count / totalClientes * 100).toFixed(1) : '0.0';
+        var pctPEN = totalVencPEN > 0 ? (ed.pen / totalVencPEN * 100).toFixed(1) : '0.0';
+        var sev = est === 'SIN_RESPUESTA' ? 'ALTO' : est === 'CERRADO_PAGADO' ? 'VERDE' :
+          (est === 'NO_COBRABLE' || est.indexOf('DERIVADO') !== -1) ? 'NARANJA' : 'NORMAL';
+        estadoRows.push([estadoLabels[est] || est, ed.count, ed.pen, ed.usd, pctClientes, sev]);
+      }
+      estadoRows.push(['TOTAL', totalClientes, totalVencPEN, totalVencUSD, '100.0', '']);
+      r = DE.writeTable(dashSheet, {
+        headers: ['Estado', '# Clientes', 'Vencido PEN', 'Vencido USD', '% Clientes', 'Criticidad'],
+        rows: estadoRows
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5, totalRow: true });
+
+      // ③ PERFORMANCE POR RESPONSABLE
+      r = DE.writeSectionTitle(dashSheet, 'PERFORMANCE POR RESPONSABLE', r);
+      var respKeys = Object.keys(respData).sort(function(a, b) { return respData[b].total - respData[a].total; });
+      var respRows = [];
+      for (var rk = 0; rk < respKeys.length; rk++) {
+        var rd = respData[respKeys[rk]];
+        var efectividad = rd.total > 0 ? (rd.cerrados / rd.total * 100).toFixed(0) : '0';
+        var efSev = parseInt(efectividad) >= 60 ? 'VERDE' : parseInt(efectividad) >= 30 ? 'AMARILLO' : 'NARANJA';
+        respRows.push([respKeys[rk], rd.total, rd.pen, rd.usd, efectividad, efSev]);
+      }
+      r = DE.writeTable(dashSheet, {
+        headers: ['Responsable', 'Total Casos', 'Vencido PEN', 'Vencido USD', '% Efectividad', 'Nivel'],
+        rows: respRows
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
+
+      // ④ ANTIGÜEDAD + TENDENCIA
+      r = DE.writeSectionTitle(dashSheet, 'ANTIGÜEDAD CARTERA ACTIVA', r);
+      r = DE.writeAgingTable(dashSheet, agingBuckets, r);
+
+      r = DE.writeSectionTitle(dashSheet, 'TENDENCIA DE CARTERA PEN', r);
+      var tendRows = [
+        ['AUMENTO', tendBuckets.AUMENTO.count, tendBuckets.AUMENTO.pen, 'ROJO'],
+        ['SIN CAMBIO', tendBuckets.SIN_CAMBIO.count, tendBuckets.SIN_CAMBIO.pen, 'AMARILLO'],
+        ['DISMINUCIÓN', tendBuckets.DISMINUCION.count, tendBuckets.DISMINUCION.pen, 'VERDE'],
+        ['PRIMERA VEZ', tendBuckets.PRIMERA_VEZ.count, tendBuckets.PRIMERA_VEZ.pen, 'NORMAL']
+      ];
+      r = DE.writeTable(dashSheet, {
+        headers: ['Tendencia', '# Clientes', 'Cartera PEN S/.', 'Señal'],
+        rows: tendRows
+      }, r, { currencyCols: [2], severityCol: 3 });
+
+      // ⑤ MATRIZ DE RIESGO - TOP 30 CLIENTES ACTIVOS
+      r = DE.writeSectionTitle(dashSheet, 'MATRIZ DE RIESGO — TOP 30 CLIENTES ACTIVOS', r);
+      var scored = clientesActivos.map(function(c) {
+        var score = 0;
+        var montoTotal = c.vPEN + c.vUSD;
+        if (montoTotal > 50000) score += 30; else if (montoTotal > 20000) score += 20; else if (montoTotal > 5000) score += 10;
+        if (c.dias > 60) score += 25; else if (c.dias > 30) score += 15; else if (c.dias > 14) score += 5;
+        if (c.estado === 'SIN_RESPUESTA') score += 20; else if (c.estado === 'COMPROMISO_PAGO') score += 10;
+        if (c.tendenciaPEN === 'AUMENTO') score += 25; else if (c.tendenciaPEN === 'SIN_CAMBIO') score += 5;
+        c.score = Math.min(score, 100);
+        c.nivel = score >= 70 ? 'CRITICO' : score >= 45 ? 'ALTO' : score >= 20 ? 'AMARILLO' : 'NORMAL';
+        return c;
+      }).sort(function(a, b) { return b.score - a.score; });
+
+      var top30 = scored.slice(0, 30);
+      var riskRows = [];
+      for (var tr = 0; tr < top30.length; tr++) {
+        var tc = top30[tr];
+        var estadoShort = tc.estado.replace('_', ' ');
+        if (estadoShort.length > 12) estadoShort = estadoShort.substring(0, 12);
+        var tendIcon = tc.tendenciaPEN === 'AUMENTO' ? 'SUBE' : tc.tendenciaPEN === 'DISMINUCION' ? 'BAJA' : 'IGUAL';
+        riskRows.push([(tr + 1) + '. ' + tc.nombre, tc.resp, tc.dias, tc.vPEN, tc.vUSD, tc.score + '/100  ' + tc.nivel]);
+      }
+      r = DE.writeTable(dashSheet, {
+        headers: ['Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Vencido USD', 'Score / Nivel'],
+        rows: riskRows
+      }, r, { currencyCols: [3, 4], severityCol: 5 });
+
+      // ⑥ SIN RESPUESTA - GESTIÓN URGENTE
+      var sinRespClientes = clientesActivos.filter(function(c) { return c.estado === 'SIN_RESPUESTA'; })
+        .sort(function(a, b) { return (b.vPEN + b.vUSD) - (a.vPEN + a.vUSD); });
+
+      if (sinRespClientes.length > 0) {
+        r = DE.writeSectionTitle(dashSheet, 'SIN RESPUESTA — GESTIÓN URGENTE (' + sinRespClientes.length + ' clientes)', r);
+        var srRows = [];
+        for (var sr = 0; sr < sinRespClientes.length; sr++) {
+          var sc = sinRespClientes[sr];
+          var srNivel = sc.score >= 70 ? 'CRITICO' : sc.score >= 45 ? 'ALTO' : 'AMARILLO';
+          srRows.push([sc.nombre, sc.resp, sc.dias, sc.vPEN, sc.vUSD, srNivel]);
+        }
+        r = DE.writeTable(dashSheet, {
+          headers: ['Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Vencido USD', 'Nivel Riesgo'],
+          rows: srRows
+        }, r, { currencyCols: [3, 4], severityCol: 5 });
+      }
+
+      // ⑦ COMPROMISOS DE PAGO
+      var compromisos = clientes.filter(function(c) { return c.estado === 'COMPROMISO_PAGO' && c.fecComp; })
+        .sort(function(a, b) { return a.fecComp - b.fecComp; });
+
+      if (compromisos.length > 0) {
+        r = DE.writeSectionTitle(dashSheet, 'COMPROMISOS DE PAGO (' + compromisos.length + ')', r);
+        var compRows = [];
+        for (var cp = 0; cp < compromisos.length; cp++) {
+          var cc = compromisos[cp];
+          var diasRest = Math.floor((cc.fecComp - today) / 86400000);
+          var compSev = diasRest < 0 ? 'CRITICO' : diasRest <= 3 ? 'ALTO' : diasRest <= 7 ? 'AMARILLO' : 'NORMAL';
+          var fecStr = Utilities.formatDate(cc.fecComp, 'America/Lima', 'dd/MM/yyyy');
+          compRows.push([cc.nombre, cc.resp, fecStr, diasRest, cc.vPEN, compSev]);
+        }
+        r = DE.writeTable(dashSheet, {
+          headers: ['Asegurado', 'Resp.', 'Fec. Compromiso', 'Días Rest.', 'Vencido PEN', 'Alerta'],
+          rows: compRows
+        }, r, { currencyCols: [4], severityCol: 5 });
+      }
+
+      // ⑧ CLIENTES CON DEUDA EN AUMENTO
+      var enAumento = clientesActivos.filter(function(c) { return c.tendenciaPEN === 'AUMENTO' && c.deltaPEN > 0; })
+        .sort(function(a, b) { return b.vPEN - a.vPEN; });
+
+      if (enAumento.length > 0) {
+        r = DE.writeSectionTitle(dashSheet, 'CLIENTES CON DEUDA EN AUMENTO (' + enAumento.length + ')', r);
+        var aumRows = [];
+        for (var ea = 0; ea < enAumento.length; ea++) {
+          var ec = enAumento[ea];
+          var estadoAbr = ec.estado.replace('_', ' ');
+          if (estadoAbr.length > 12) estadoAbr = estadoAbr.substring(0, 12);
+          aumRows.push([ec.nombre, ec.resp, ec.dias, ec.vPEN, ec.deltaPEN, 'ROJO']);
+        }
+        r = DE.writeTable(dashSheet, {
+          headers: ['Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Delta PEN', 'Tendencia'],
+          rows: aumRows
+        }, r, { currencyCols: [3, 4], severityCol: 5 });
+      }
+
+      // ALERTAS FINALES
+      var alerts = [];
+      if (sinRespClientes.length > 5) alerts.push({ indicator: 'Clientes Sin Respuesta', value: sinRespClientes.length + ' clientes', status: 'CRITICO' });
+      if (enAumento.length > 5) alerts.push({ indicator: 'Deuda en Aumento', value: enAumento.length + ' clientes', status: 'ROJO' });
+      if (totalVencPEN > 500000) alerts.push({ indicator: 'Cartera Vencida PEN', value: DE.formatCurrency(totalVencPEN, 'PEN'), status: 'CRITICO' });
+      var pctSinResp = totalClientes > 0 ? (sinResp / totalClientes * 100) : 0;
+      if (pctSinResp > 10) alerts.push({ indicator: '% Sin Respuesta', value: pctSinResp.toFixed(1) + '%', status: 'NARANJA' });
+      if (compromisos.length > 0) {
+        var vencidos = compromisos.filter(function(c2) { return c2.fecComp < today; });
+        if (vencidos.length > 0) alerts.push({ indicator: 'Compromisos Vencidos', value: vencidos.length + ' vencidos', status: 'CRITICO' });
+      }
+
+      if (alerts.length > 0) {
+        r = DE.writeSectionTitle(dashSheet, 'ALERTAS DE CONCENTRACIÓN Y RIESGO', r);
+        r = DE.writeAlertTable(dashSheet, alerts, r);
+      }
+
+      // --- Hojas de detalle por aging (desde BD) ---
+      var bd = _loadBDForDashboard();
+      var agingSheets = [
+        { name: 'Mas de 90', min: 91, max: 99999 },
+        { name: '61-90', min: 61, max: 90 },
+        { name: '31-60', min: 31, max: 60 }
+      ];
+
+      for (var as = 0; as < agingSheets.length; as++) {
+        var aSh = agingSheets[as];
+        var agingFiltered = [];
+        var agingGroups = {};
+
+        for (var ai = 0; ai < bd.rows.length; ai++) {
+          var aRow = bd.rows[ai];
+          var aImp = _parseNum(aRow[bd.importeIdx]);
+          if (aImp <= 0) continue;
+          var aFec = _parseDateDash(aRow[bd.fecVencIdx]);
+          if (!aFec) continue;
+          var aDias = Math.floor((today - aFec) / 86400000);
+          if (aDias >= aSh.min && aDias <= aSh.max) {
+            agingFiltered.push(aRow);
+            var aAseg = String(aRow[bd.aseguradoIdx] || 'Sin Asegurado').trim();
+            if (!agingGroups[aAseg]) agingGroups[aAseg] = { monto: 0, estado: '', resp: '' };
+            agingGroups[aAseg].monto += aImp;
+            // Try to get estado/resp from bitacora
+            var bKey = aAseg.toUpperCase();
+            if (asegMap[bKey] && asegMap[bKey].latest) {
+              agingGroups[aAseg].estado = String(asegMap[bKey].latest[iEstado] || '');
+              agingGroups[aAseg].resp = String(asegMap[bKey].latest[iResp] || '');
+            }
+          }
+        }
+
+        // Create aging detail sheet
+        var agSheet = tempSS.insertSheet(aSh.name);
+        DE.prepareCanvas(agSheet);
+        var ar = DE.writeHeaderSection(agSheet, aSh.name.toUpperCase() + ' DÍAS', agingFiltered.length + ' cupones encontrados', 1);
+
+        var agKeys = Object.keys(agingGroups).sort(function(a, b) { return agingGroups[b].monto - agingGroups[a].monto; });
+        var agRows = [];
+        for (var ag = 0; ag < agKeys.length; ag++) {
+          var agd = agingGroups[agKeys[ag]];
+          var agEst = agd.estado || 'N/A';
+          var agResp = agd.resp || 'N/A';
+          agRows.push([agKeys[ag], agd.monto, agEst, agResp]);
+        }
+        DE.writeTable(agSheet, {
+          headers: ['GRUPO_ECONOMICO', 'MONTO S/', 'STATUS', 'RESPONSABLE'],
+          rows: agRows
+        }, ar, { currencyCols: [1] });
+      }
+
+      SpreadsheetApp.flush();
+      var base64 = _exportDashboardSS(ssId);
+      var timestamp = Utilities.formatDate(new Date(), 'America/Lima', 'yyyyMMdd_HHmmss');
+
+      return {
+        ok: true,
+        data: {
+          base64: base64,
+          fileName: 'Reporte_Bitacora_Cobranzas_' + timestamp + '.xlsx',
+          filas: totalClientes
+        }
+      };
+
+    } finally {
+      try { DriveApp.getFileById(ssId).setTrashed(true); } catch (e) { /* ignore */ }
+    }
+
+  } catch (error) {
+    Logger.log('[generarReporteBitacoraConDashboard] Error: ' + error.message);
+    return { ok: false, error: error.message };
+  }
+}
