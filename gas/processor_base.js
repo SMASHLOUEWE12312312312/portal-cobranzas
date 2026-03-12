@@ -291,50 +291,39 @@ const ProcessorBase = {
      * @returns {Date|string} Date object if valid, original string if not
      */
     parseToDate(fecha) {
-        if (!fecha) return new Date(); // Return current date if empty
+        if (!fecha) return new Date();
         if (fecha instanceof Date && !isNaN(fecha.getTime())) return fecha;
-        
+
         const str = String(fecha).trim();
         if (!str) return new Date();
-        
+
         // Remove time portion if present (e.g., "25/09/2025 00:00:00")
         const datePart = str.includes(' ') ? str.split(' ')[0] : str;
-        
+
         // Try dd/mm/yyyy or d/m/yyyy format (most common in EECC files)
         const dmyMatch = datePart.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
         if (dmyMatch) {
             const day = parseInt(dmyMatch[1], 10);
-            const month = parseInt(dmyMatch[2], 10) - 1; // JavaScript months are 0-indexed
+            const month = parseInt(dmyMatch[2], 10) - 1;
             const year = parseInt(dmyMatch[3], 10);
-            
-            // Validate day and month ranges
+
             if (day >= 1 && day <= 31 && month >= 0 && month <= 11) {
-                const d = new Date(year, month, day);
-                Logger.log('[parseToDate] Input: ' + str + ' → Date: ' + d);
-                return d;
+                return new Date(year, month, day);
             }
         }
-        
+
         // Try yyyy-mm-dd format (ISO)
         const isoMatch = datePart.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
         if (isoMatch) {
-            const year = parseInt(isoMatch[1], 10);
-            const month = parseInt(isoMatch[2], 10) - 1;
-            const day = parseInt(isoMatch[3], 10);
-            const d = new Date(year, month, day);
-            Logger.log('[parseToDate] Input: ' + str + ' (ISO) → Date: ' + d);
-            return d;
+            return new Date(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10) - 1, parseInt(isoMatch[3], 10));
         }
-        
+
         // Try native Date parsing as last resort
         const nativeDate = new Date(str);
         if (!isNaN(nativeDate.getTime())) {
-            Logger.log('[parseToDate] Input: ' + str + ' (native) → Date: ' + nativeDate);
             return nativeDate;
         }
-        
-        // Return current date if can't parse (ensures always a Date object)
-        Logger.log('[parseToDate] WARN: Could not parse: ' + str + ', using current date');
+
         return new Date();
     },
 
