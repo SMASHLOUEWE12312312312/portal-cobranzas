@@ -4543,7 +4543,7 @@
             // Asegurar que los datos estén cargados
             if (EECC_MODE === 'asegurado') {
                 if (ASEGURADOS_DS.items.length === 0 && !ASEGURADOS_DS.loading) {
-                    fetchAseguradosPaged('', null, true);
+                    loadAsegurados();
                 } else if (!searchText) {
                     // Si no hay búsqueda, mostrar todos los asegurados
                     ASEGURADOS_FILTERED = [...ASEGURADOS_DS.items];
