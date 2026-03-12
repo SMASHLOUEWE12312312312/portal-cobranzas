@@ -1,13 +1,11 @@
 /**
- * @fileoverview Dashboard Reports v2.0 - Reportes con hojas Dashboard profesionales
+ * @fileoverview Dashboard Reports v3.0 - Reportes profesionales Power BI-level
  *
- * Rediseño completo:
- * - Canvas blanco sin gridlines
- * - KPIs grandes e impactantes
- * - TODOS los asegurados (sin límites de top N)
- * - Tablas limpias con bordes sutiles
- * - Secciones bien espaciadas
- * - Exporta via Drive API → base64 XLSX
+ * - Grid uniforme de 6 columnas (todas las tablas mismo ancho)
+ * - Ranking integrado en nombre (sin columna # separada)
+ * - Iconos de severidad ● con formato condicional
+ * - TODOS los asegurados sin límites
+ * - Agrupación RAM/Asegurado con collapse
  */
 
 // ============================================================
@@ -121,9 +119,6 @@ function _monKey(val) {
   return (s.indexOf('USD') !== -1 || s.indexOf('US$') !== -1 || s.indexOf('DOLAR') !== -1) ? 'USD' : 'PEN';
 }
 
-/**
- * Adds data sheet copying BD format + filtered rows
- */
 function _addFilteredDataSheet(tempSS, filtered, tabName) {
   var sheetName = getConfig('SHEETS.BASE', 'BD');
   var srcSS = SheetsIO._getSpreadsheet();
@@ -150,9 +145,6 @@ function _addFilteredDataSheet(tempSS, filtered, tabName) {
   return copied;
 }
 
-/**
- * Export temp SS as base64 XLSX and trash it
- */
 function _exportDashboardSS(ssId) {
   SpreadsheetApp.flush();
   var exportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId + '/export?format=xlsx';
@@ -175,7 +167,6 @@ function generarDashboardEjecutivo() {
     var today = new Date(); today.setHours(0, 0, 0, 0);
     var DE = DashboardEngine;
 
-    // ---- Compute metrics ----
     var totalPEN = 0, totalUSD = 0, totalVencido = 0;
     var countPEN = 0, countUSD = 0;
     var asegurados = {};
@@ -250,14 +241,12 @@ function generarDashboardEjecutivo() {
 
     var r = DE.writeHeaderSection(sheet, 'DASHBOARD EJECUTIVO DE COBRANZAS', 'Resumen integral del portafolio', 1);
 
-    // KPIs Row 1
     r = DE.writeKPIRow(sheet, [
       { value: DE.formatCurrency(totalPEN, 'PEN'), label: 'CARTERA TOTAL PEN', color: DE.COLORS.BRAND_DARK },
       { value: DE.formatCurrency(totalUSD, 'USD'), label: 'CARTERA TOTAL USD', color: DE.COLORS.BRAND_DARK },
       { value: rows.length.toLocaleString(), label: 'CUPONES TOTALES', color: DE.COLORS.BRAND_DARK }
     ], r);
 
-    // KPIs Row 2
     var dsoColor = dso > 45 ? DE.COLORS.RED : dso > 35 ? DE.COLORS.ORANGE : DE.COLORS.GREEN;
     var vencColor = parseFloat(pctVencido) > 20 ? DE.COLORS.RED : parseFloat(pctVencido) > 10 ? DE.COLORS.ORANGE : DE.COLORS.GREEN;
     r = DE.writeKPIRow(sheet, [
@@ -266,11 +255,11 @@ function generarDashboardEjecutivo() {
       { value: DE.formatCurrency(totalVencido, 'PEN'), label: 'MONTO TOTAL VENCIDO', color: DE.COLORS.RED }
     ], r);
 
-    // Aging
+    // Aging (6 cols)
     r = DE.writeSectionTitle(sheet, 'ANTIGÜEDAD DE CARTERA (AGING)', r);
     r = DE.writeAgingTable(sheet, agingBuckets, r);
 
-    // CIA Distribution
+    // CIA (6 cols)
     r = DE.writeSectionTitle(sheet, 'DISTRIBUCIÓN POR ASEGURADORA', r);
     var ciaKeys = Object.keys(ciaData).sort(function(a, b) { return (ciaData[b].pen + ciaData[b].usd) - (ciaData[a].pen + ciaData[a].usd); });
     var ciaRows = [];
@@ -284,9 +273,9 @@ function generarDashboardEjecutivo() {
     r = DE.writeTable(sheet, {
       headers: ['Aseguradora', '# Cupones', 'Monto PEN', 'Monto USD', '% Cartera', '% Vencido'],
       rows: ciaRows
-    }, r, { currencyCols: [2, 3], pctCols: [4, 5], colWidths: [220, 90, 130, 130, 90, 90] });
+    }, r, { currencyCols: [2, 3], pctCols: [4, 5] });
 
-    // Area Distribution
+    // Área (6 cols)
     r = DE.writeSectionTitle(sheet, 'DISTRIBUCIÓN POR ÁREA', r);
     var areaKeys = Object.keys(areaData).sort(function(a, b) { return (areaData[b].pen + areaData[b].usd) - (areaData[a].pen + areaData[a].usd); });
     var areaRows = [];
@@ -300,9 +289,9 @@ function generarDashboardEjecutivo() {
     r = DE.writeTable(sheet, {
       headers: ['Área', '# Cupones', 'Monto PEN', 'Monto USD', '% Cartera', '% Vencido'],
       rows: areaRows
-    }, r, { currencyCols: [2, 3], pctCols: [4, 5], colWidths: [220, 90, 130, 130, 90, 90] });
+    }, r, { currencyCols: [2, 3], pctCols: [4, 5] });
 
-    // ALL Asegurados (sorted by total amount)
+    // Asegurados (5 cols - rank in name, extends to full span)
     r = DE.writeSectionTitle(sheet, 'DETALLE COMPLETO POR ASEGURADO (' + Object.keys(asegurados).length + ')', r);
     var asegKeys = Object.keys(asegurados).sort(function(a, b) {
       return (asegurados[b].pen + asegurados[b].usd) - (asegurados[a].pen + asegurados[a].usd);
@@ -311,15 +300,15 @@ function generarDashboardEjecutivo() {
     for (var t = 0; t < asegKeys.length; t++) {
       var ad = asegurados[asegKeys[t]];
       var asegTotal = ad.pen + ad.usd;
-      asegRows.push([t + 1, asegKeys[t], ad.count, ad.pen, ad.usd,
+      asegRows.push([(t + 1) + '. ' + asegKeys[t], ad.count, ad.pen, ad.usd,
         totalCartera > 0 ? (asegTotal / totalCartera * 100).toFixed(1) : '0.0']);
     }
     r = DE.writeTable(sheet, {
-      headers: ['#', 'Asegurado', '# Cupones', 'Monto PEN', 'Monto USD', '% Portafolio'],
+      headers: ['Asegurado', '# Cupones', 'Monto PEN', 'Monto USD', '% Portafolio'],
       rows: asegRows
-    }, r, { currencyCols: [3, 4], pctCols: [5], colWidths: [45, 310, 80, 120, 120, 90] });
+    }, r, { currencyCols: [2, 3], pctCols: [4] });
 
-    // Currency Distribution
+    // Moneda (4 cols - extends to full span)
     r = DE.writeSectionTitle(sheet, 'DISTRIBUCIÓN POR MONEDA', r);
     r = DE.writeTable(sheet, {
       headers: ['Moneda', '# Cupones', 'Monto Total', '% del Total'],
@@ -328,9 +317,9 @@ function generarDashboardEjecutivo() {
         ['USD (US$)', countUSD, totalUSD, totalCartera > 0 ? (totalUSD / totalCartera * 100).toFixed(1) : '0.0'],
         ['TOTAL', rows.length, totalCartera, '100.0']
       ]
-    }, r, { currencyCols: [2], pctCols: [3], totalRow: true, colWidths: [220, 90, 150, 100] });
+    }, r, { currencyCols: [2], pctCols: [3], totalRow: true });
 
-    // Alerts
+    // Alertas
     var alerts = [];
     if (parseFloat(pctVencido) > 20) alerts.push({ indicator: '% Cartera Vencida', value: pctVencido + '%', status: 'ROJO' });
     else if (parseFloat(pctVencido) > 10) alerts.push({ indicator: '% Cartera Vencida', value: pctVencido + '%', status: 'NARANJA' });
@@ -381,7 +370,6 @@ function generarReporteSaldosConDashboard() {
     var rows = bd.rows;
     var DE = DashboardEngine;
 
-    // Filter: IMPORTE <= 0 or empty
     var filtered = [];
     for (var i = 0; i < rows.length; i++) {
       var val = rows[i][bd.importeIdx];
@@ -394,7 +382,6 @@ function generarReporteSaldosConDashboard() {
       return { ok: true, data: { base64: null, fileName: null, filas: 0, message: 'No hay registros de saldos a favor' } };
     }
 
-    // ---- Compute metrics ----
     var totalPEN = 0, totalUSD = 0, countPEN = 0, countUSD = 0;
     var ciaData = {};
     var asegData = {};
@@ -435,26 +422,23 @@ function generarReporteSaldosConDashboard() {
 
     var totalSaldos = totalPEN + totalUSD;
 
-    // ---- Build workbook ----
     var tempSS = SpreadsheetApp.create('TMP_SALDOS_DASH_' + Date.now());
     var ssId = tempSS.getId();
 
     try {
-      // Dashboard sheet
       var dashSheet = tempSS.getSheets()[0];
       dashSheet.setName('Reporte');
       DE.prepareCanvas(dashSheet);
 
       var r = DE.writeHeaderSection(dashSheet, 'SALDOS A FAVOR Y AJUSTES', 'Registros con importe negativo, cero o vacío', 1);
 
-      // KPIs
       r = DE.writeKPIRow(dashSheet, [
         { value: filtered.length.toString(), label: 'REGISTROS TOTALES', color: DE.COLORS.BRAND_DARK },
         { value: DE.formatCurrency(totalPEN, 'PEN'), label: 'TOTAL SALDOS PEN', color: DE.COLORS.GREEN },
         { value: DE.formatCurrency(totalUSD, 'USD'), label: 'TOTAL SALDOS USD', color: DE.COLORS.GREEN }
       ], r);
 
-      // CIA Concentration
+      // CIA (5 cols)
       r = DE.writeSectionTitle(dashSheet, 'CONCENTRACIÓN POR ASEGURADORA', r);
       var ciaKeys = Object.keys(ciaData).sort(function(a, b) { return (ciaData[b].pen + ciaData[b].usd) - (ciaData[a].pen + ciaData[a].usd); });
       var ciaRows = [];
@@ -468,24 +452,9 @@ function generarReporteSaldosConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['Aseguradora', '# Registros', 'Saldo PEN', 'Saldo USD', '% Concentración'],
         rows: ciaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4], totalRow: true, colWidths: [240, 90, 130, 130, 110] });
+      }, r, { currencyCols: [2, 3], pctCols: [4], totalRow: true });
 
-      // ALL Asegurados with saldo
-      r = DE.writeSectionTitle(dashSheet, 'DETALLE COMPLETO - ASEGURADOS CON SALDO A FAVOR (' + Object.keys(asegData).length + ')', r);
-      var asegKeys = Object.keys(asegData).sort(function(a, b) {
-        return (asegData[b].pen + asegData[b].usd) - (asegData[a].pen + asegData[a].usd);
-      });
-      var asegRows = [];
-      for (var t = 0; t < asegKeys.length; t++) {
-        var ad = asegData[asegKeys[t]];
-        asegRows.push([t + 1, asegKeys[t], ad.count, ad.pen, ad.usd]);
-      }
-      r = DE.writeTable(dashSheet, {
-        headers: ['#', 'Asegurado', '# Registros', 'Saldo PEN', 'Saldo USD'],
-        rows: asegRows
-      }, r, { currencyCols: [3, 4], colWidths: [45, 330, 80, 130, 130] });
-
-      // Area Distribution
+      // Área (5 cols)
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR ÁREA', r);
       var sAreaKeys = Object.keys(areaData).sort(function(a, b) { return (areaData[b].pen + areaData[b].usd) - (areaData[a].pen + areaData[a].usd); });
       var sAreaRows = [];
@@ -498,9 +467,24 @@ function generarReporteSaldosConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['Área', '# Registros', 'Saldo PEN', 'Saldo USD', '% Concentración'],
         rows: sAreaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4], colWidths: [240, 90, 130, 130, 110] });
+      }, r, { currencyCols: [2, 3], pctCols: [4] });
 
-      // RAM Distribution (with AREA column)
+      // Asegurados (4 cols - rank in name)
+      r = DE.writeSectionTitle(dashSheet, 'DETALLE - ASEGURADOS CON SALDO A FAVOR (' + Object.keys(asegData).length + ')', r);
+      var asegKeys = Object.keys(asegData).sort(function(a, b) {
+        return (asegData[b].pen + asegData[b].usd) - (asegData[a].pen + asegData[a].usd);
+      });
+      var asegRows = [];
+      for (var t = 0; t < asegKeys.length; t++) {
+        var ad = asegData[asegKeys[t]];
+        asegRows.push([(t + 1) + '. ' + asegKeys[t], ad.count, ad.pen, ad.usd]);
+      }
+      r = DE.writeTable(dashSheet, {
+        headers: ['Asegurado', '# Registros', 'Saldo PEN', 'Saldo USD'],
+        rows: asegRows
+      }, r, { currencyCols: [2, 3] });
+
+      // RAM (5 cols)
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR RAM', r);
       var ramKeys = Object.keys(ramData).sort(function(a, b) { return ramData[b].total - ramData[a].total; });
       var ramRows = [];
@@ -512,11 +496,9 @@ function generarReporteSaldosConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['RAM', 'Área', '# Registros', 'Monto Total', '% del Total'],
         rows: ramRows
-      }, r, { currencyCols: [3], pctCols: [4], colWidths: [130, 180, 80, 130, 90] });
+      }, r, { currencyCols: [3], pctCols: [4] });
 
       SpreadsheetApp.flush();
-
-      // Data sheet
       _addFilteredDataSheet(tempSS, filtered, 'Saldos a Favor');
       SpreadsheetApp.flush();
 
@@ -554,7 +536,6 @@ function generarReporteVencidos60ConDashboard() {
     var cutoffMs = 60 * 86400000;
     var DE = DashboardEngine;
 
-    // Filter
     var filtered = [];
     for (var i = 0; i < rows.length; i++) {
       var importe = Number(rows[i][bd.importeIdx]);
@@ -570,7 +551,6 @@ function generarReporteVencidos60ConDashboard() {
       return { ok: true, data: { base64: null, fileName: null, filas: 0, message: 'No hay cupones vencidos +60 días' } };
     }
 
-    // ---- Compute metrics ----
     var totalPEN = 0, totalUSD = 0, countPEN = 0, countUSD = 0;
     var ciaData = {};
     var asegData = {};
@@ -607,13 +587,12 @@ function generarReporteVencidos60ConDashboard() {
       if (mon === 'PEN') asegData[aseg].pen += imp;
       else asegData[aseg].usd += imp;
 
-      // RAM per asegurado
       if (!asegData[aseg].rams[ram]) asegData[aseg].rams[ram] = { count: 0, pen: 0, usd: 0 };
       asegData[aseg].rams[ram].count++;
       if (mon === 'PEN') asegData[aseg].rams[ram].pen += imp;
       else asegData[aseg].rams[ram].usd += imp;
 
-      if (!ramData[ram]) ramData[ram] = { count: 0, pen: 0, usd: 0, asegurados: {}, area: _getArea(ram) };
+      if (!ramData[ram]) ramData[ram] = { count: 0, pen: 0, usd: 0, asegurados: {} };
       ramData[ram].count++;
       if (mon === 'PEN') ramData[ram].pen += imp;
       else ramData[ram].usd += imp;
@@ -624,7 +603,6 @@ function generarReporteVencidos60ConDashboard() {
       if (mon === 'PEN') areaData[area].pen += imp;
       else areaData[area].usd += imp;
 
-      // Asegurado per RAM
       if (!ramData[ram].asegurados[aseg]) ramData[ram].asegurados[aseg] = { count: 0, pen: 0, usd: 0 };
       ramData[ram].asegurados[aseg].count++;
       if (mon === 'PEN') ramData[ram].asegurados[aseg].pen += imp;
@@ -650,7 +628,6 @@ function generarReporteVencidos60ConDashboard() {
     var totalVencido = totalPEN + totalUSD;
     var dsoVencido = sumImportes > 0 ? Math.round(sumDiasMora / sumImportes) : 0;
 
-    // ---- Build workbook ----
     var tempSS = SpreadsheetApp.create('TMP_VENC60_DASH_' + Date.now());
     var ssId = tempSS.getId();
 
@@ -661,7 +638,6 @@ function generarReporteVencidos60ConDashboard() {
 
       var r = DE.writeHeaderSection(dashSheet, 'VENCIDOS +60 DÍAS SIN COBERTURA', 'Cupones con más de 60 días de vencimiento e importe positivo', 1);
 
-      // KPIs Row 1
       var dsoColor = dsoVencido > 180 ? DE.COLORS.RED : dsoVencido > 120 ? DE.COLORS.ORANGE : DE.COLORS.YELLOW;
       r = DE.writeKPIRow(dashSheet, [
         { value: filtered.length.toString(), label: 'CUPONES VENCIDOS +60d', color: DE.COLORS.RED },
@@ -669,7 +645,6 @@ function generarReporteVencidos60ConDashboard() {
         { value: DE.formatCurrency(totalUSD, 'USD'), label: 'MONTO VENCIDO USD', color: DE.COLORS.RED }
       ], r);
 
-      // KPIs Row 2
       var totalCarteraFull = 0;
       for (var j = 0; j < rows.length; j++) totalCarteraFull += _parseNum(rows[j][bd.importeIdx]);
       var pctCartera = totalCarteraFull > 0 ? (totalVencido / totalCarteraFull * 100).toFixed(1) : '0.0';
@@ -680,11 +655,11 @@ function generarReporteVencidos60ConDashboard() {
         { value: Object.keys(asegData).length.toString(), label: 'ASEGURADOS MOROSOS', color: DE.COLORS.ORANGE }
       ], r);
 
-      // Extended Aging
+      // Aging (6 cols)
       r = DE.writeSectionTitle(dashSheet, 'ANTIGÜEDAD EXTENDIDA DE MORA (+60 DÍAS)', r);
       r = DE.writeAgingTable(dashSheet, agingBuckets, r);
 
-      // CIA Concentration
+      // CIA (6 cols)
       r = DE.writeSectionTitle(dashSheet, 'CONCENTRACIÓN POR ASEGURADORA', r);
       var ciaKeys = Object.keys(ciaData).sort(function(a, b) { return (ciaData[b].pen + ciaData[b].usd) - (ciaData[a].pen + ciaData[a].usd); });
       var ciaRows = [];
@@ -698,9 +673,9 @@ function generarReporteVencidos60ConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['Aseguradora', '# Cupones', 'Vencido PEN', 'Vencido USD', '% Concentración', 'Riesgo'],
         rows: ciaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5, colWidths: [200, 90, 120, 120, 100, 100] });
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
 
-      // Area Distribution
+      // Área (6 cols)
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR ÁREA', r);
       var vAreaKeys = Object.keys(areaData).sort(function(a, b) { return (areaData[b].pen + areaData[b].usd) - (areaData[a].pen + areaData[a].usd); });
       var vAreaRows = [];
@@ -714,9 +689,9 @@ function generarReporteVencidos60ConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['Área', '# Cupones', 'Vencido PEN', 'Vencido USD', '% Concentración', 'Criticidad'],
         rows: vAreaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5, colWidths: [200, 90, 120, 120, 100, 100] });
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
 
-      // RAM Distribution with asegurado sub-rows grouped (includes AREA column)
+      // RAM with asegurado sub-rows (6 cols)
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR RAMO (RAM)', r);
       var ramKeys = Object.keys(ramData).sort(function(a, b) { return (ramData[b].pen + ramData[b].usd) - (ramData[a].pen + ramData[a].usd); });
       var ramDetailRows = [];
@@ -728,17 +703,16 @@ function generarReporteVencidos60ConDashboard() {
         var ramTotal = rd.pen + rd.usd;
         var ramPct = totalVencido > 0 ? (ramTotal / totalVencido * 100) : 0;
         var ramSev = ramPct > 30 ? 'CRITICO' : ramPct > 15 ? 'ALTO' : ramPct > 5 ? 'NORMAL' : 'BAJO';
-        ramDetailRows.push([ramKeys[rm], _getArea(ramKeys[rm]), rd.count, rd.pen, rd.usd, ramPct.toFixed(1), ramSev]);
+        ramDetailRows.push([ramKeys[rm] + '  [' + _getArea(ramKeys[rm]) + ']', rd.count, rd.pen, rd.usd, ramPct.toFixed(1), ramSev]);
         ramRowIdx++;
 
-        // Asegurado sub-rows under this RAM
         var ramAsegKeys = Object.keys(rd.asegurados).sort(function(a, b) {
           return (rd.asegurados[b].pen + rd.asegurados[b].usd) - (rd.asegurados[a].pen + rd.asegurados[a].usd);
         });
         var ramGrpStart = ramRowIdx;
         for (var ra = 0; ra < ramAsegKeys.length; ra++) {
           var raData = rd.asegurados[ramAsegKeys[ra]];
-          ramDetailRows.push(['    ' + ramAsegKeys[ra], '', raData.count, raData.pen, raData.usd, '', '']);
+          ramDetailRows.push(['    ' + ramAsegKeys[ra], raData.count, raData.pen, raData.usd, '', '']);
           ramRowIdx++;
         }
         if (ramAsegKeys.length > 0) {
@@ -748,11 +722,11 @@ function generarReporteVencidos60ConDashboard() {
 
       var ramTableStart = r;
       r = DE.writeTable(dashSheet, {
-        headers: ['Ramo / Asegurado', 'Área', '# Cupones', 'Vencido PEN', 'Vencido USD', '% del Total', 'Criticidad'],
+        headers: ['Ramo / Asegurado', '# Cupones', 'Vencido PEN', 'Vencido USD', '% del Total', 'Criticidad'],
         rows: ramDetailRows
-      }, r, { currencyCols: [3, 4], pctCols: [5], severityCol: 6, colWidths: [180, 150, 75, 115, 115, 80, 90] });
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
 
-      // Group + collapse asegurado sub-rows under each RAM
+      // Group + collapse RAM sub-rows
       var ramDataStart = ramTableStart + 1;
       for (var rg = 0; rg < ramGroupRanges.length; rg++) {
         var rgr = ramGroupRanges[rg];
@@ -760,7 +734,6 @@ function generarReporteVencidos60ConDashboard() {
           dashSheet.getRange(ramDataStart + rgr.start, 1, rgr.count).shiftRowGroupDepth(1);
         } catch (e) { /* ignore */ }
       }
-      // Collapse RAM groups + style sub-rows
       try {
         var ramCollapseReqs = [];
         for (var rgc = 0; rgc < ramGroupRanges.length; rgc++) {
@@ -782,27 +755,27 @@ function generarReporteVencidos60ConDashboard() {
           Sheets.Spreadsheets.batchUpdate({ requests: ramCollapseReqs }, dashSheet.getParent().getId());
         }
       } catch (e) { /* ignore */ }
+      // Style sub-rows
       for (var rgs = 0; rgs < ramGroupRanges.length; rgs++) {
         var rgrs = ramGroupRanges[rgs];
         for (var rgi = 0; rgi < rgrs.count; rgi++) {
           var rSubRow = ramDataStart + rgrs.start + rgi;
           dashSheet.getRange(rSubRow, 2, 1, 1)
             .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontWeight('normal').setFontSize(8);
-          dashSheet.getRange(rSubRow, 3, 1, 4)
+          dashSheet.getRange(rSubRow, 3, 1, 3)
             .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontSize(8);
         }
       }
 
-      // ALL Debtors with RAM grouping
+      // Asegurado detail with RAM sub-rows (6 cols - rank in name)
       r = DE.writeSectionTitle(dashSheet, 'DETALLE COMPLETO - ASEGURADOS MOROSOS +60 DÍAS (' + Object.keys(asegData).length + ')', r);
       var asegKeys = Object.keys(asegData).sort(function(a, b) {
         return (asegData[b].pen + asegData[b].usd) - (asegData[a].pen + asegData[a].usd);
       });
 
-      // Build flat rows: asegurado header + RAM detail rows
-      var detailHeaders = ['#', 'Asegurado / Ramo', 'Área', '# Cupones', 'Vencido PEN', 'Vencido USD', 'Criticidad'];
+      var detailHeaders = ['Asegurado / Ramo', '# Cupones', 'Vencido PEN', 'Vencido USD', '% del Total', 'Criticidad'];
       var detailRows = [];
-      var groupRanges = []; // track which rows are RAM detail (for grouping)
+      var groupRanges = [];
       var rowIdx = 0;
 
       for (var t = 0; t < asegKeys.length; t++) {
@@ -810,17 +783,16 @@ function generarReporteVencidos60ConDashboard() {
         var asegTotal = ad.pen + ad.usd;
         var asegPct = totalVencido > 0 ? (asegTotal / totalVencido * 100) : 0;
         var asegSev = asegPct > 10 ? 'CRITICO' : asegPct > 5 ? 'ALTO' : asegTotal > 10000 ? 'NARANJA' : 'NORMAL';
-        detailRows.push([t + 1, asegKeys[t], '', ad.count, ad.pen, ad.usd, asegSev]);
+        detailRows.push([(t + 1) + '. ' + asegKeys[t], ad.count, ad.pen, ad.usd, asegPct.toFixed(1), asegSev]);
         rowIdx++;
 
-        // RAM sub-rows for this asegurado
         var ramSubKeys = Object.keys(ad.rams).sort(function(a, b) {
           return (ad.rams[b].pen + ad.rams[b].usd) - (ad.rams[a].pen + ad.rams[a].usd);
         });
         var groupStart = rowIdx;
         for (var rk = 0; rk < ramSubKeys.length; rk++) {
           var ramSub = ad.rams[ramSubKeys[rk]];
-          detailRows.push(['', '    ' + ramSubKeys[rk], _getArea(ramSubKeys[rk]), ramSub.count, ramSub.pen, ramSub.usd, '']);
+          detailRows.push(['    ' + ramSubKeys[rk] + '  [' + _getArea(ramSubKeys[rk]) + ']', ramSub.count, ramSub.pen, ramSub.usd, '', '']);
           rowIdx++;
         }
         if (ramSubKeys.length > 0) {
@@ -828,27 +800,24 @@ function generarReporteVencidos60ConDashboard() {
         }
       }
 
-      // Write the table
       var tableStartRow = r;
       r = DE.writeTable(dashSheet, {
         headers: detailHeaders,
         rows: detailRows
-      }, r, { currencyCols: [4, 5], severityCol: 6, colWidths: [40, 240, 140, 75, 115, 115, 90] });
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
 
-      // Apply row grouping for RAM sub-rows + collapse by default
-      var dataStartRow = tableStartRow + 1; // +1 for header
+      // Group + collapse RAM sub-rows under asegurados
+      var dataStartRow = tableStartRow + 1;
       for (var g = 0; g < groupRanges.length; g++) {
         var gr = groupRanges[g];
         try {
-          var groupRange = dashSheet.getRange(dataStartRow + gr.start, 1, gr.count);
-          groupRange.shiftRowGroupDepth(1);
-        } catch (e) { /* grouping not critical */ }
+          dashSheet.getRange(dataStartRow + gr.start, 1, gr.count).shiftRowGroupDepth(1);
+        } catch (e) { /* ignore */ }
       }
 
-      // Collapse all groups via Sheets API (default collapsed)
       try {
         var sheetId = dashSheet.getSheetId();
-        var ssId = dashSheet.getParent().getId();
+        var ssIdCollapse = dashSheet.getParent().getId();
         var requests = [];
         for (var gc = 0; gc < groupRanges.length; gc++) {
           var grc = groupRanges[gc];
@@ -857,7 +826,7 @@ function generarReporteVencidos60ConDashboard() {
               range: {
                 sheetId: sheetId,
                 dimension: 'ROWS',
-                startIndex: dataStartRow + grc.start - 1, // 0-indexed
+                startIndex: dataStartRow + grc.start - 1,
                 endIndex: dataStartRow + grc.start - 1 + grc.count
               },
               properties: { hiddenByUser: true },
@@ -866,18 +835,18 @@ function generarReporteVencidos60ConDashboard() {
           });
         }
         if (requests.length > 0) {
-          Sheets.Spreadsheets.batchUpdate({ requests: requests }, ssId);
+          Sheets.Spreadsheets.batchUpdate({ requests: requests }, ssIdCollapse);
         }
-      } catch (e) { /* collapse not critical */ }
+      } catch (e) { /* ignore */ }
 
-      // Style RAM sub-rows (lighter font, indented look)
+      // Style sub-rows
       for (var g2 = 0; g2 < groupRanges.length; g2++) {
         var gr2 = groupRanges[g2];
         for (var gi = 0; gi < gr2.count; gi++) {
           var subRow = dataStartRow + gr2.start + gi;
-          dashSheet.getRange(subRow, 2, 1, 2)
+          dashSheet.getRange(subRow, 2, 1, 1)
             .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontWeight('normal').setFontSize(8);
-          dashSheet.getRange(subRow, 4, 1, 3)
+          dashSheet.getRange(subRow, 3, 1, 3)
             .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontSize(8);
         }
       }
@@ -899,8 +868,6 @@ function generarReporteVencidos60ConDashboard() {
       }
 
       SpreadsheetApp.flush();
-
-      // Data sheet
       _addFilteredDataSheet(tempSS, filtered, 'Vencidos +60');
       SpreadsheetApp.flush();
 

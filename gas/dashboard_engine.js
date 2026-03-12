@@ -1,76 +1,55 @@
 /**
- * @fileoverview Dashboard Engine v2.0 - Motor de formateo profesional para reportes Excel
+ * @fileoverview Dashboard Engine v3.0 - Motor profesional Power BI-level
  *
- * Diseño nivel Power BI / Executive Report:
+ * Rediseño completo:
+ * - Grid fijo de 6 columnas (B-G) - TODAS las tablas mismo ancho
+ * - Tablas cortas se extienden visualmente al ancho completo
+ * - Iconos de severidad (●) con formato condicional
  * - Canvas blanco sin gridlines
- * - Columnas anchas con espacio generoso
- * - KPI cards grandes e impactantes
- * - Tablas limpias con bordes sutiles
- * - Secciones bien separadas con breathing room
- * - Tipografía profesional Calibri
- *
- * Cada método recibe un sheet + startRow y retorna el siguiente row disponible.
+ * - KPI cards impactantes
+ * - Tipografía Calibri profesional
  */
 
 const DashboardEngine = {
   COLORS: {
-    // === Brand ===
     BRAND_RED: '#C62828',
     BRAND_DARK: '#1B2A4A',
-
-    // === Canvas ===
     WHITE: '#FFFFFF',
     CANVAS: '#FFFFFF',
-
-    // === Text ===
     DARK_TEXT: '#1A1A2E',
     MEDIUM_TEXT: '#4A5568',
     LIGHT_TEXT: '#A0AEC0',
     SUBTITLE_TEXT: '#718096',
-
-    // === KPI Cards ===
     KPI_BG: '#F7FAFC',
     KPI_BORDER: '#E2E8F0',
-    KPI_ACCENT: '#EBF4FF',
-
-    // === Tables ===
     TABLE_HEADER_BG: '#1A202C',
     TABLE_HEADER_TEXT: '#FFFFFF',
     SECTION_BG: '#EDF2F7',
     SECTION_BORDER: '#1A202C',
     ALT_ROW: '#F7FAFC',
     ROW_BORDER: '#EDF2F7',
-
-    // === Severity ===
     GREEN: '#276749',
     GREEN_BG: '#F0FFF4',
-    GREEN_ACCENT: '#C6F6D5',
     YELLOW: '#975A16',
     YELLOW_BG: '#FFFFF0',
-    YELLOW_ACCENT: '#FEFCBF',
     ORANGE: '#C05621',
     ORANGE_BG: '#FFFAF0',
-    ORANGE_ACCENT: '#FEEBC8',
     RED: '#C53030',
     RED_BG: '#FFF5F5',
-    RED_ACCENT: '#FED7D7',
     RED_DARK: '#742A2A',
     RED_DARK_BG: '#FFF5F5',
-
-    // === Dividers ===
     DIVIDER: '#E2E8F0',
     DIVIDER_STRONG: '#CBD5E0'
   },
 
-  NUM_COLS: 9,
+  // Fixed 6-column grid: ALL tables span B through G (same width)
+  TABLE_SPAN: 6,
+  COL_WIDTHS: [280, 100, 115, 115, 95, 95],  // B, C, D, E, F, G = 800px total
 
   // ==================================================================
   // CANVAS SETUP
   // ==================================================================
 
-  /**
-   * Creates temp workbook for dashboard export
-   */
   createTempWorkbook(name) {
     var ss = SpreadsheetApp.create('TMP_DASH_' + name + '_' + Date.now());
     var sheet = ss.getSheets()[0];
@@ -78,11 +57,8 @@ const DashboardEngine = {
     return { ss: ss, sheet: sheet };
   },
 
-  /**
-   * Prepares the dashboard canvas: white background, no gridlines, column widths
-   */
   prepareCanvas(sheet) {
-    // Hide gridlines via Sheets API
+    // Hide gridlines
     try {
       Sheets.Spreadsheets.batchUpdate({
         requests: [{
@@ -95,52 +71,45 @@ const DashboardEngine = {
           }
         }]
       }, sheet.getParent().getId());
-    } catch (e) {
-      // Sheets API not available - will rely on white background
-    }
+    } catch (e) { /* Sheets API fallback */ }
 
-    // White canvas on entire visible area (500 rows x 30 cols)
-    // This ensures NO gridlines are visible even without Sheets API
+    // White canvas
     sheet.getRange(1, 1, 500, 30).setBackground(this.COLORS.WHITE);
 
-    // Hide unused columns beyond our data (J through AD)
-    try { sheet.hideColumns(10, 21); } catch (e) { /* ignore */ }
+    // Column A = margin
+    sheet.setColumnWidth(1, 30);
 
-    // Default column widths (overridden per-table via colWidths option)
-    var widths = [30, 260, 160, 95, 120, 120, 100, 100, 100];
-    for (var i = 0; i < widths.length; i++) {
-      sheet.setColumnWidth(i + 1, widths[i]);
+    // Fixed widths B through G (set ONCE, never changed)
+    for (var i = 0; i < this.TABLE_SPAN; i++) {
+      sheet.setColumnWidth(i + 2, this.COL_WIDTHS[i]);
     }
+
+    // Hide columns H onwards
+    try { sheet.hideColumns(2 + this.TABLE_SPAN, 24); } catch (e) { /* ignore */ }
   },
 
   // ==================================================================
-  // HEADER SECTION
+  // HEADER
   // ==================================================================
 
-  /**
-   * Writes executive header block
-   * @returns {number} Next available row
-   */
   writeHeaderSection(sheet, title, subtitle, startRow) {
-    var nc = this.NUM_COLS;
+    var span = this.TABLE_SPAN;
     var r = startRow || 1;
 
-    // Spacer top
     sheet.setRowHeight(r, 20);
     r++;
 
-    // Brand accent line (thin red line across top)
-    sheet.getRange(r, 2, 1, nc - 1)
+    // Brand accent line
+    sheet.getRange(r, 2, 1, span)
       .setBorder(true, false, false, false, false, false, this.COLORS.BRAND_RED, SpreadsheetApp.BorderStyle.SOLID_THICK);
     sheet.setRowHeight(r, 4);
     r++;
 
-    // Spacer
     sheet.setRowHeight(r, 12);
     r++;
 
     // Company name
-    sheet.getRange(r, 2, 1, nc - 1).merge()
+    sheet.getRange(r, 2, 1, span).merge()
       .setValue('TRANSPERUANA CORREDORES DE SEGUROS S.A.')
       .setFontFamily('Calibri').setFontSize(10).setFontWeight('bold')
       .setFontColor(this.COLORS.BRAND_RED)
@@ -148,8 +117,8 @@ const DashboardEngine = {
     sheet.setRowHeight(r, 24);
     r++;
 
-    // Report title
-    sheet.getRange(r, 2, 1, nc - 1).merge()
+    // Title
+    sheet.getRange(r, 2, 1, span).merge()
       .setValue(title)
       .setFontFamily('Calibri').setFontSize(20).setFontWeight('bold')
       .setFontColor(this.COLORS.BRAND_DARK)
@@ -160,19 +129,18 @@ const DashboardEngine = {
     // Subtitle + date
     var fecha = Utilities.formatDate(new Date(), 'America/Lima', 'dd/MM/yyyy HH:mm');
     var subText = subtitle ? subtitle + '   |   Generado: ' + fecha : 'Generado: ' + fecha;
-    sheet.getRange(r, 2, 1, nc - 1).merge()
+    sheet.getRange(r, 2, 1, span).merge()
       .setValue(subText)
       .setFontFamily('Calibri').setFontSize(9).setFontColor(this.COLORS.SUBTITLE_TEXT);
     sheet.setRowHeight(r, 20);
     r++;
 
-    // Divider line
-    sheet.getRange(r, 2, 1, nc - 1)
+    // Divider
+    sheet.getRange(r, 2, 1, span)
       .setBorder(false, false, true, false, false, false, this.COLORS.DIVIDER_STRONG, SpreadsheetApp.BorderStyle.SOLID);
     sheet.setRowHeight(r, 6);
     r++;
 
-    // Spacer
     sheet.setRowHeight(r, 20);
     return r + 1;
   },
@@ -181,20 +149,12 @@ const DashboardEngine = {
   // KPI CARDS
   // ==================================================================
 
-  /**
-   * Writes a row of KPI cards - large, impactful
-   * kpis: [{ value, label, color?, sub? }]
-   * @returns {number} Next available row
-   */
   writeKPIRow(sheet, kpis, startRow) {
     var r = startRow;
     var count = kpis.length;
-
-    // Available columns for KPIs (cols 2 through NUM_COLS)
-    var availCols = this.NUM_COLS - 1; // exclude margin col A
+    var availCols = this.TABLE_SPAN;
     var colsPerKpi = Math.floor(availCols / count);
 
-    // Spacer before
     sheet.setRowHeight(r, 8);
     r++;
 
@@ -206,10 +166,9 @@ const DashboardEngine = {
     for (var i = 0; i < count; i++) {
       var kpi = kpis[i];
       var startCol = 2 + (i * colsPerKpi);
-      var endCol = (i === count - 1) ? this.NUM_COLS : startCol + colsPerKpi - 1;
+      var endCol = (i === count - 1) ? (2 + availCols - 1) : startCol + colsPerKpi - 1;
       var span = endCol - startCol + 1;
 
-      // Value cell
       sheet.getRange(valueRow, startCol, 1, span).merge()
         .setValue(kpi.value)
         .setFontFamily('Calibri').setFontSize(22).setFontWeight('bold')
@@ -217,7 +176,6 @@ const DashboardEngine = {
         .setHorizontalAlignment('center').setVerticalAlignment('middle')
         .setBackground(this.COLORS.KPI_BG);
 
-      // Label cell
       sheet.getRange(labelRow, startCol, 1, span).merge()
         .setValue(kpi.label)
         .setFontFamily('Calibri').setFontSize(8).setFontWeight('bold')
@@ -225,16 +183,13 @@ const DashboardEngine = {
         .setHorizontalAlignment('center').setVerticalAlignment('top')
         .setBackground(this.COLORS.KPI_BG);
 
-      // Subtle card border
       sheet.getRange(valueRow, startCol, 2, span)
         .setBorder(true, true, true, true, false, false, this.COLORS.KPI_BORDER, SpreadsheetApp.BorderStyle.SOLID);
 
-      // Top accent line on card
       sheet.getRange(valueRow, startCol, 1, span)
         .setBorder(true, null, null, null, false, false, kpi.color || this.COLORS.BRAND_DARK, SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
     }
 
-    // Spacer after
     r = labelRow + 1;
     sheet.setRowHeight(r, 20);
     return r + 1;
@@ -244,19 +199,13 @@ const DashboardEngine = {
   // SECTION TITLE
   // ==================================================================
 
-  /**
-   * Writes a section title with clean divider
-   * @returns {number} Next row
-   */
   writeSectionTitle(sheet, title, startRow) {
     var r = startRow;
 
-    // Spacer before section
     sheet.setRowHeight(r, 14);
     r++;
 
-    // Title row
-    sheet.getRange(r, 2, 1, this.NUM_COLS - 1).merge()
+    sheet.getRange(r, 2, 1, this.TABLE_SPAN).merge()
       .setValue(title)
       .setFontFamily('Calibri').setFontSize(11).setFontWeight('bold')
       .setFontColor(this.COLORS.BRAND_DARK)
@@ -264,42 +213,28 @@ const DashboardEngine = {
       .setHorizontalAlignment('left');
     sheet.setRowHeight(r, 30);
 
-    // Bottom border accent
-    sheet.getRange(r, 2, 1, this.NUM_COLS - 1)
+    sheet.getRange(r, 2, 1, this.TABLE_SPAN)
       .setBorder(false, false, true, false, false, false, this.COLORS.BRAND_RED, SpreadsheetApp.BorderStyle.SOLID);
     r++;
 
-    // Small spacer
     sheet.setRowHeight(r, 6);
     return r + 1;
   },
 
   // ==================================================================
-  // DATA TABLE
+  // DATA TABLE (uniform width, severity icons)
   // ==================================================================
 
-  /**
-   * Writes a formatted data table
-   * @param {Object} tableData - { headers: string[], rows: any[][] }
-   * @param {Object} opts - { severityCol?, startCol?, currencyCols?, pctCols?, totalRow? }
-   * @returns {number} Next available row
-   */
   writeTable(sheet, tableData, startRow, opts) {
     opts = opts || {};
     var r = startRow;
     var headers = tableData.headers;
     var rows = tableData.rows;
     var numCols = headers.length;
-    var startCol = opts.startCol || 2; // Start from col B (col A is margin)
+    var startCol = 2; // Always col B
+    var fullSpan = this.TABLE_SPAN; // Always 6 cols
 
-    // Dynamic column widths per table
-    if (opts.colWidths && opts.colWidths.length === numCols) {
-      for (var w = 0; w < numCols; w++) {
-        sheet.setColumnWidth(startCol + w, opts.colWidths[w]);
-      }
-    }
-
-    // Header row
+    // --- Header row (full span) ---
     var headerRange = sheet.getRange(r, startCol, 1, numCols);
     headerRange.setValues([headers])
       .setFontFamily('Calibri').setFontSize(9).setFontWeight('bold')
@@ -308,58 +243,65 @@ const DashboardEngine = {
       .setHorizontalAlignment('center').setVerticalAlignment('middle');
     sheet.setRowHeight(r, 32);
 
+    // Extend header background to full span
+    if (numCols < fullSpan) {
+      sheet.getRange(r, startCol + numCols, 1, fullSpan - numCols)
+        .setBackground(this.COLORS.TABLE_HEADER_BG);
+    }
+
     if (rows.length === 0) {
       r++;
       sheet.setRowHeight(r, 16);
       return r + 1;
     }
 
-    // Data rows
+    // --- Data rows ---
     var dataRange = sheet.getRange(r + 1, startCol, rows.length, numCols);
     dataRange.setValues(rows)
       .setFontFamily('Calibri').setFontSize(9)
       .setFontColor(this.COLORS.DARK_TEXT)
       .setVerticalAlignment('middle');
 
-    // Alternating row colors + subtle horizontal borders only
+    // Alternating rows + borders (full span)
     for (var i = 0; i < rows.length; i++) {
       var bg = i % 2 === 0 ? this.COLORS.WHITE : this.COLORS.ALT_ROW;
-      var rowRange = sheet.getRange(r + 1 + i, startCol, 1, numCols);
-      rowRange.setBackground(bg);
+      // Full span background (data cols + extension)
+      sheet.getRange(r + 1 + i, startCol, 1, fullSpan)
+        .setBackground(bg)
+        .setBorder(false, false, true, false, false, false, this.COLORS.ROW_BORDER, SpreadsheetApp.BorderStyle.SOLID);
       sheet.setRowHeight(r + 1 + i, 24);
-
-      // Subtle bottom border only (clean look)
-      rowRange.setBorder(false, false, true, false, false, false, this.COLORS.ROW_BORDER, SpreadsheetApp.BorderStyle.SOLID);
     }
 
-    // Left/right outer borders on whole table
+    // Outer borders on full span
     sheet.getRange(r, startCol, rows.length + 1, 1)
       .setBorder(null, true, null, null, false, false, this.COLORS.DIVIDER, SpreadsheetApp.BorderStyle.SOLID);
-    sheet.getRange(r, startCol + numCols - 1, rows.length + 1, 1)
+    sheet.getRange(r, startCol + fullSpan - 1, rows.length + 1, 1)
       .setBorder(null, null, null, true, false, false, this.COLORS.DIVIDER, SpreadsheetApp.BorderStyle.SOLID);
 
-    // Bottom border on last row
-    sheet.getRange(r + rows.length, startCol, 1, numCols)
+    // Bottom border full span
+    sheet.getRange(r + rows.length, startCol, 1, fullSpan)
       .setBorder(false, false, true, false, false, false, this.COLORS.DIVIDER_STRONG, SpreadsheetApp.BorderStyle.SOLID);
 
-    // First column left-aligned, bold for labels
+    // First column left-aligned, bold
     sheet.getRange(r + 1, startCol, rows.length, 1)
       .setHorizontalAlignment('left').setFontWeight('bold');
 
-    // Center numeric columns
+    // Numeric columns right-aligned
     if (numCols > 2) {
       sheet.getRange(r + 1, startCol + 1, rows.length, numCols - 1)
         .setHorizontalAlignment('right');
     }
 
-    // Severity column coloring
+    // --- Severity column with ● icons ---
     if (opts.severityCol !== undefined) {
       for (var s = 0; s < rows.length; s++) {
         var val = String(rows[s][opts.severityCol] || '');
+        if (!val) continue;
         var colors = this._severityColors(val);
         if (colors) {
           var cell = sheet.getRange(r + 1 + s, startCol + opts.severityCol);
-          cell.setBackground(colors.bg).setFontColor(colors.text).setFontWeight('bold')
+          cell.setValue('● ' + val)
+            .setBackground(colors.bg).setFontColor(colors.text).setFontWeight('bold')
             .setHorizontalAlignment('center');
         }
       }
@@ -367,6 +309,7 @@ const DashboardEngine = {
 
     // Currency format
     if (opts.currencyCols) {
+      var self = this;
       opts.currencyCols.forEach(function(colIdx) {
         sheet.getRange(r + 1, startCol + colIdx, rows.length, 1)
           .setNumberFormat('#,##0.00').setHorizontalAlignment('right');
@@ -381,16 +324,15 @@ const DashboardEngine = {
       });
     }
 
-    // Bold total row
+    // Bold total row (full span)
     if (opts.totalRow) {
       var lastDataRow = r + rows.length;
-      sheet.getRange(lastDataRow, startCol, 1, numCols)
+      sheet.getRange(lastDataRow, startCol, 1, fullSpan)
         .setFontWeight('bold')
         .setBackground(this.COLORS.SECTION_BG)
         .setBorder(true, null, true, null, false, false, this.COLORS.SECTION_BORDER, SpreadsheetApp.BorderStyle.SOLID);
     }
 
-    // Spacer after table
     var nextRow = r + 1 + rows.length;
     sheet.setRowHeight(nextRow, 20);
     return nextRow + 1;
@@ -400,9 +342,6 @@ const DashboardEngine = {
   // SPECIALIZED TABLES
   // ==================================================================
 
-  /**
-   * Writes aging table with severity indicators
-   */
   writeAgingTable(sheet, buckets, startRow) {
     var headers = ['Tramo', '# Cupones', 'Monto PEN', 'Monto USD', '% del Total', 'Criticidad'];
     var rows = [];
@@ -424,21 +363,16 @@ const DashboardEngine = {
     return this.writeTable(sheet, { headers: headers, rows: rows }, startRow, {
       severityCol: 5,
       currencyCols: [2, 3],
-      totalRow: true,
-      colWidths: [200, 90, 130, 130, 90, 100]
+      totalRow: true
     });
   },
 
-  /**
-   * Writes alert indicators table
-   */
   writeAlertTable(sheet, alerts, startRow) {
     var headers = ['Indicador', 'Valor', 'Estado'];
     var rows = alerts.map(function(a) { return [a.indicator, a.value, a.status]; });
 
     return this.writeTable(sheet, { headers: headers, rows: rows }, startRow, {
-      severityCol: 2,
-      colWidths: [300, 150, 120]
+      severityCol: 2
     });
   },
 
@@ -446,9 +380,6 @@ const DashboardEngine = {
   // EXPORT
   // ==================================================================
 
-  /**
-   * Exports temp spreadsheet as base64 XLSX and trashes it
-   */
   exportAndCleanup(ss) {
     SpreadsheetApp.flush();
     var ssId = ss.getId();
