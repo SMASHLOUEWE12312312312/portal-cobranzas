@@ -10792,7 +10792,15 @@
                             }
                             if (statLoaded) statLoaded.textContent = '✅';
                             if (statRows) statRows.textContent = (result.rows || 0).toLocaleString();
-                            if (statDate) statDate.textContent = 'Hoy';
+                            if (statDate) {
+                                if (result.lastModified) {
+                                    const d = new Date(result.lastModified);
+                                    statDate.textContent = d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+                                    statDate.style.fontSize = '0.95rem';
+                                } else {
+                                    statDate.textContent = 'Cargada';
+                                }
+                            }
                             enablePaso2();
                         } else {
                             if (badge) {

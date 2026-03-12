@@ -277,10 +277,21 @@ const ConciliacionServiceV2 = {
             }
 
             const lastRow = bdCruce.getLastRow();
+
+            // Get last modified date from spreadsheet metadata
+            var lastModified = null;
+            try {
+                var file = DriveApp.getFileById(ss.getId());
+                lastModified = file.getLastUpdated().toISOString();
+            } catch (e) {
+                // fallback: no date available
+            }
+
             return {
                 ok: true,
                 loaded: lastRow > 1,
-                rows: Math.max(0, lastRow - 1)
+                rows: Math.max(0, lastRow - 1),
+                lastModified: lastModified
             };
 
         } catch (error) {
