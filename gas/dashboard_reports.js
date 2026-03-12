@@ -284,7 +284,7 @@ function generarDashboardEjecutivo() {
     r = DE.writeTable(sheet, {
       headers: ['Aseguradora', '# Cupones', 'Monto PEN', 'Monto USD', '% Cartera', '% Vencido'],
       rows: ciaRows
-    }, r, { currencyCols: [2, 3], pctCols: [4, 5] });
+    }, r, { currencyCols: [2, 3], pctCols: [4, 5], colWidths: [220, 90, 130, 130, 90, 90] });
 
     // Area Distribution
     r = DE.writeSectionTitle(sheet, 'DISTRIBUCIÓN POR ÁREA', r);
@@ -300,7 +300,7 @@ function generarDashboardEjecutivo() {
     r = DE.writeTable(sheet, {
       headers: ['Área', '# Cupones', 'Monto PEN', 'Monto USD', '% Cartera', '% Vencido'],
       rows: areaRows
-    }, r, { currencyCols: [2, 3], pctCols: [4, 5] });
+    }, r, { currencyCols: [2, 3], pctCols: [4, 5], colWidths: [220, 90, 130, 130, 90, 90] });
 
     // ALL Asegurados (sorted by total amount)
     r = DE.writeSectionTitle(sheet, 'DETALLE COMPLETO POR ASEGURADO (' + Object.keys(asegurados).length + ')', r);
@@ -317,7 +317,7 @@ function generarDashboardEjecutivo() {
     r = DE.writeTable(sheet, {
       headers: ['#', 'Asegurado', '# Cupones', 'Monto PEN', 'Monto USD', '% Portafolio'],
       rows: asegRows
-    }, r, { currencyCols: [3, 4], pctCols: [5] });
+    }, r, { currencyCols: [3, 4], pctCols: [5], colWidths: [45, 310, 80, 120, 120, 90] });
 
     // Currency Distribution
     r = DE.writeSectionTitle(sheet, 'DISTRIBUCIÓN POR MONEDA', r);
@@ -328,7 +328,7 @@ function generarDashboardEjecutivo() {
         ['USD (US$)', countUSD, totalUSD, totalCartera > 0 ? (totalUSD / totalCartera * 100).toFixed(1) : '0.0'],
         ['TOTAL', rows.length, totalCartera, '100.0']
       ]
-    }, r, { currencyCols: [2], pctCols: [3], totalRow: true });
+    }, r, { currencyCols: [2], pctCols: [3], totalRow: true, colWidths: [220, 90, 150, 100] });
 
     // Alerts
     var alerts = [];
@@ -468,7 +468,7 @@ function generarReporteSaldosConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['Aseguradora', '# Registros', 'Saldo PEN', 'Saldo USD', '% Concentración'],
         rows: ciaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4], totalRow: true });
+      }, r, { currencyCols: [2, 3], pctCols: [4], totalRow: true, colWidths: [240, 90, 130, 130, 110] });
 
       // ALL Asegurados with saldo
       r = DE.writeSectionTitle(dashSheet, 'DETALLE COMPLETO - ASEGURADOS CON SALDO A FAVOR (' + Object.keys(asegData).length + ')', r);
@@ -483,7 +483,7 @@ function generarReporteSaldosConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['#', 'Asegurado', '# Registros', 'Saldo PEN', 'Saldo USD'],
         rows: asegRows
-      }, r, { currencyCols: [3, 4] });
+      }, r, { currencyCols: [3, 4], colWidths: [45, 330, 80, 130, 130] });
 
       // Area Distribution
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR ÁREA', r);
@@ -498,7 +498,7 @@ function generarReporteSaldosConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['Área', '# Registros', 'Saldo PEN', 'Saldo USD', '% Concentración'],
         rows: sAreaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4] });
+      }, r, { currencyCols: [2, 3], pctCols: [4], colWidths: [240, 90, 130, 130, 110] });
 
       // RAM Distribution (with AREA column)
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR RAM', r);
@@ -512,7 +512,7 @@ function generarReporteSaldosConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['RAM', 'Área', '# Registros', 'Monto Total', '% del Total'],
         rows: ramRows
-      }, r, { currencyCols: [3], pctCols: [4] });
+      }, r, { currencyCols: [3], pctCols: [4], colWidths: [130, 180, 80, 130, 90] });
 
       SpreadsheetApp.flush();
 
@@ -698,7 +698,7 @@ function generarReporteVencidos60ConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['Aseguradora', '# Cupones', 'Vencido PEN', 'Vencido USD', '% Concentración', 'Riesgo'],
         rows: ciaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5, colWidths: [200, 90, 120, 120, 100, 100] });
 
       // Area Distribution
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR ÁREA', r);
@@ -714,7 +714,7 @@ function generarReporteVencidos60ConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['Área', '# Cupones', 'Vencido PEN', 'Vencido USD', '% Concentración', 'Criticidad'],
         rows: vAreaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5, colWidths: [200, 90, 120, 120, 100, 100] });
 
       // RAM Distribution with asegurado sub-rows grouped (includes AREA column)
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR RAMO (RAM)', r);
@@ -750,7 +750,7 @@ function generarReporteVencidos60ConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: ['Ramo / Asegurado', 'Área', '# Cupones', 'Vencido PEN', 'Vencido USD', '% del Total', 'Criticidad'],
         rows: ramDetailRows
-      }, r, { currencyCols: [3, 4], pctCols: [5], severityCol: 6 });
+      }, r, { currencyCols: [3, 4], pctCols: [5], severityCol: 6, colWidths: [180, 150, 75, 115, 115, 80, 90] });
 
       // Group + collapse asegurado sub-rows under each RAM
       var ramDataStart = ramTableStart + 1;
@@ -833,7 +833,7 @@ function generarReporteVencidos60ConDashboard() {
       r = DE.writeTable(dashSheet, {
         headers: detailHeaders,
         rows: detailRows
-      }, r, { currencyCols: [4, 5], severityCol: 6 });
+      }, r, { currencyCols: [4, 5], severityCol: 6, colWidths: [40, 240, 140, 75, 115, 115, 90] });
 
       // Apply row grouping for RAM sub-rows + collapse by default
       var dataStartRow = tableStartRow + 1; // +1 for header

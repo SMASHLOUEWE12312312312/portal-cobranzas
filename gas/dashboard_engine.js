@@ -62,7 +62,7 @@ const DashboardEngine = {
     DIVIDER_STRONG: '#CBD5E0'
   },
 
-  NUM_COLS: 8,
+  NUM_COLS: 9,
 
   // ==================================================================
   // CANVAS SETUP
@@ -103,11 +103,11 @@ const DashboardEngine = {
     // This ensures NO gridlines are visible even without Sheets API
     sheet.getRange(1, 1, 500, 30).setBackground(this.COLORS.WHITE);
 
-    // Hide unused columns beyond our data (I through AD)
-    try { sheet.hideColumns(9, 22); } catch (e) { /* ignore */ }
+    // Hide unused columns beyond our data (J through AD)
+    try { sheet.hideColumns(10, 21); } catch (e) { /* ignore */ }
 
-    // Professional column widths - extra wide name column
-    var widths = [40, 420, 110, 150, 150, 130, 130, 130];
+    // Default column widths (overridden per-table via colWidths option)
+    var widths = [30, 260, 160, 95, 120, 120, 100, 100, 100];
     for (var i = 0; i < widths.length; i++) {
       sheet.setColumnWidth(i + 1, widths[i]);
     }
@@ -292,6 +292,13 @@ const DashboardEngine = {
     var numCols = headers.length;
     var startCol = opts.startCol || 2; // Start from col B (col A is margin)
 
+    // Dynamic column widths per table
+    if (opts.colWidths && opts.colWidths.length === numCols) {
+      for (var w = 0; w < numCols; w++) {
+        sheet.setColumnWidth(startCol + w, opts.colWidths[w]);
+      }
+    }
+
     // Header row
     var headerRange = sheet.getRange(r, startCol, 1, numCols);
     headerRange.setValues([headers])
@@ -417,7 +424,8 @@ const DashboardEngine = {
     return this.writeTable(sheet, { headers: headers, rows: rows }, startRow, {
       severityCol: 5,
       currencyCols: [2, 3],
-      totalRow: true
+      totalRow: true,
+      colWidths: [200, 90, 130, 130, 90, 100]
     });
   },
 
@@ -429,7 +437,8 @@ const DashboardEngine = {
     var rows = alerts.map(function(a) { return [a.indicator, a.value, a.status]; });
 
     return this.writeTable(sheet, { headers: headers, rows: rows }, startRow, {
-      severityCol: 2
+      severityCol: 2,
+      colWidths: [300, 150, 120]
     });
   },
 
