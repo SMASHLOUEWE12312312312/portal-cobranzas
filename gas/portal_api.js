@@ -442,6 +442,37 @@ function obtenerDatosIniciales(token) {
 }
 
 /**
+ * Consolidated dashboard refresh - reduces 2 polling calls to 1
+ * @param {string} token - Session token
+ * @return {Object} { ok, dashboardStats, queueHealth }
+ */
+function refreshDashboardConsolidado(token) {
+  const context = 'refreshDashboardConsolidado';
+  try {
+    AuthService.validateSession(token);
+
+    var dashboardStats = null;
+    var queueHealth = null;
+
+    try { dashboardStats = MonitoringService.getDashboardStats(); } catch (e) {
+      Logger.warn(context, 'dashboardStats failed', e);
+    }
+    try { queueHealth = MonitoringService.getMailQueueHealth(); } catch (e) {
+      Logger.warn(context, 'queueHealth failed', e);
+    }
+
+    return {
+      ok: true,
+      dashboardStats: dashboardStats || { ok: false },
+      queueHealth: queueHealth || { ok: false }
+    };
+  } catch (error) {
+    Logger.error(context, 'Failed', error);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
  * Get dashboard statistics (cached, soft-fail)
  * @param {string} token - Session token
  * @return {Object} Dashboard stats

@@ -2403,8 +2403,7 @@
 
             // 6. Dashboard auto-refresh: start when entering, stop when leaving
             if (viewName === 'dashboard') {
-                refreshDashboardStats();
-                loadQueueHealth();
+                refreshDashboardAll();
                 startDashboardAutoRefresh();
             } else {
                 stopDashboardAutoRefresh();
@@ -2802,8 +2801,8 @@
                 })
                 .obtenerDatosIniciales(TOKEN);
 
-            // Precargar asegurados en background (no bloquea el dashboard)
-            setTimeout(() => loadAsegurados(), 500);
+            // ── OPTIMIZACIÓN P2-Item6: Asegurados lazy-load ──
+            // No precargar aquí; se carga en switchView() cuando el usuario navega a generar/bitacora/enviar
 
             // Inicializar notificaciones (separate call - uses its own timeout/polling)
             inicializarNotificaciones();
@@ -3006,11 +3005,26 @@
             }
         }
 
+        /** ── OPTIMIZACIÓN P2-Item7: Consolidated polling (1 call instead of 2) ── */
+        function refreshDashboardAll() {
+            google.script.run
+                .withSuccessHandler(result => {
+                    if (result && result.ok) {
+                        _applyDashboardStats(result.dashboardStats);
+                        _applyQueueHealth(result.queueHealth);
+                        _log('[Phase3] Dashboard consolidated refresh OK');
+                    }
+                })
+                .withFailureHandler(err => {
+                    _log('[Phase3] Dashboard consolidated refresh failed: ' + err);
+                })
+                .refreshDashboardConsolidado(TOKEN);
+        }
+
         function startDashboardAutoRefresh() {
             if (dashboardStatsInterval) clearInterval(dashboardStatsInterval);
             dashboardStatsInterval = setInterval(() => {
-                refreshDashboardStats();
-                loadQueueHealth();
+                refreshDashboardAll();
             }, 180000); // 180 seconds (3 min)
         }
 
@@ -3808,6 +3822,9 @@
             _log('[loadAsegurados] Cache invalidado');
         }
 
+        const GRUPOS_CACHE_KEY = 'portal_grupos_cache';
+        const GRUPOS_CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+
         function loadGrupos() {
             // Si ya está cargando, no hacer nada
             if (LOAD_STATE.grupos.loading) {
@@ -3823,6 +3840,32 @@
                     _log('[loadGrupos] ✅ Usando cache local, edad:', Math.round(cacheAge / 1000), 's');
                     return;
                 }
+            }
+
+            // ── OPTIMIZACIÓN P2-Item5: sessionStorage cache ──
+            try {
+                const cached = sessionStorage.getItem(GRUPOS_CACHE_KEY);
+                if (cached) {
+                    const { data, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < GRUPOS_CACHE_TTL && Array.isArray(data) && data.length > 0) {
+                        _log('[loadGrupos] ⚡ Cache hit sessionStorage - ' + data.length + ' grupos');
+                        ALL_GRUPOS = data;
+                        LOAD_STATE.grupos.loaded = true;
+                        LOAD_STATE.grupos.lastLoad = Date.now();
+                        LOAD_STATE.grupos.error = null;
+                        if (EECC_MODE === 'grupo') {
+                            AUTOCOMPLETE_EECC_OPTIONS = [...ALL_GRUPOS];
+                            renderAutocompleteOptionsEECC();
+                        }
+                        if (BITACORA_MODE === 'grupo') {
+                            AUTOCOMPLETE_OPTIONS = [...ALL_GRUPOS];
+                            renderAutocompleteOptions();
+                        }
+                        return;
+                    }
+                }
+            } catch (e) {
+                _log('[loadGrupos] sessionStorage read error:', e);
             }
 
             _log('[loadGrupos] 🔄 Iniciando carga de grupos...');
@@ -3855,6 +3898,16 @@
                         LOAD_STATE.grupos.retries = 0;
                         LOAD_STATE.grupos.lastLoad = Date.now();
                         LOAD_STATE.grupos.error = null;
+
+                        // Guardar en sessionStorage
+                        try {
+                            sessionStorage.setItem(GRUPOS_CACHE_KEY, JSON.stringify({
+                                data: response.data,
+                                timestamp: Date.now()
+                            }));
+                        } catch (e) {
+                            _log('[loadGrupos] sessionStorage write error:', e);
+                        }
 
                         _log(`[loadGrupos] ✅ ${ALL_GRUPOS.length} grupos cargados exitosamente`);
 
