@@ -37,15 +37,8 @@ const LaPositivaProcessorV2 = {
      * @returns {Object} Processing result
      */
     processOptimized(convertResult, ss, dataContext) {
-        const context = 'LaPositivaProcessorV2.processOptimized';
         const cfg = this.CONFIG;
-        const T = { start: Date.now() };
-        const perfLog = (label) => {
-            Logger.log('[PERF-V2] LaPositiva | ' + label + ' | ' + (Date.now() - T.start) + 'ms');
-        };
-
-        Logger.log(context + ': Iniciando procesamiento OPTIMIZADO');
-        perfLog('INIT');
+        const T = Date.now();
 
         // Get sheets (from cached spreadsheet)
         let wsEECC = ss.getSheetByName(cfg.HOJA_EECC);
@@ -59,23 +52,23 @@ const LaPositivaProcessorV2 = {
         if (!wsBDCruce) {
             throw new Error('BD_Cruce no encontrada en contexto');
         }
-        perfLog('SHEETS_READY');
+        // perfLog('SHEETS_READY');
 
         // Clear destination sheets
         ProcessorBase.clearFromRow(wsEECC, cfg.START_ROW);
         ProcessorBase.clearFromRow(wsTrama, 2);
-        perfLog('SHEETS_CLEARED');
+        // perfLog('SHEETS_CLEARED');
 
         // Get source data - use pre-parsed if available (SheetJS)
         let srcData;
         if (convertResult.data) {
             srcData = convertResult.data;
-            perfLog('DATA_FROM_SHEETJS');
+            // perfLog('DATA_FROM_SHEETJS');
         } else {
             const tempSS = SpreadsheetApp.openById(convertResult.fileId);
             const tempSheet = tempSS.getSheets()[0];
             srcData = tempSheet.getDataRange().getDisplayValues();
-            perfLog('DATA_FROM_DRIVE');
+            // perfLog('DATA_FROM_DRIVE');
         }
 
         // Write to EECC sheet (batch)
@@ -89,7 +82,7 @@ const LaPositivaProcessorV2 = {
                 targetRange.setValues(dataRows);
             }
         }
-        perfLog('EECC_WRITTEN');
+        // perfLog('EECC_WRITTEN');
 
         const filasCargadas = Math.max(0, srcData.length - cfg.START_ROW + 1);
 
@@ -122,14 +115,14 @@ const LaPositivaProcessorV2 = {
                 tramaRows.push([numeroCupon, fechaPago, factura, '']);
             }
         }
-        perfLog('EECC_PROCESSED');
+        // perfLog('EECC_PROCESSED');
 
         // Write Trama
         ProcessorBase.writeTramaHeaders(wsTrama, cfg.TRAMA_HEADERS);
         if (tramaRows.length > 0) {
             ProcessorBase.writeTramaData(wsTrama, tramaRows, cfg.TRAMA_FORMAT);
         }
-        perfLog('TRAMA_WRITTEN');
+        // perfLog('TRAMA_WRITTEN');
 
         const filasEscritas = tramaRows.length;
 
@@ -138,34 +131,23 @@ const LaPositivaProcessorV2 = {
             statusCol: 4,
             bdCruceCupones: dataContext.bdCruceCupones  // Use cached data
         });
-        perfLog('CRUCE_COMPLETE');
+        // perfLog('CRUCE_COMPLETE');
 
-        // V8 OPTIMIZATION: Build export data from memory instead of re-reading sheet
-        // This saves one getDataRange().getDisplayValues() call (~500-1000ms for large datasets)
+        // V9: Build export data from memory (NO re-read from sheet)
         const tramaDataForExport = [cfg.TRAMA_HEADERS];
+        const statusFromCruce = cruceResult._statusValues || [];
         for (let i = 0; i < tramaRows.length; i++) {
             const row = tramaRows[i];
-            // Convert Date objects to strings for export compatibility
-            const exportRow = row.map((cell, idx) => {
+            const exportRow = row.map(function(cell) {
                 if (cell instanceof Date && !isNaN(cell.getTime())) {
-                    const d = cell.getDate();
-                    const m = cell.getMonth() + 1;
-                    const y = cell.getFullYear();
-                    return d + '/' + m + '/' + y;
+                    return cell.getDate() + '/' + (cell.getMonth() + 1) + '/' + cell.getFullYear();
                 }
                 return cell;
             });
-            // Add STATUS from cruce result (read from sheet only for status column)
+            // Use status from cruce result directly (no sheet read needed)
+            exportRow[3] = statusFromCruce[i] ? statusFromCruce[i][0] : '';
             tramaDataForExport.push(exportRow);
         }
-        // Read only STATUS column from sheet (much faster than full getDataRange)
-        if (tramaRows.length > 0) {
-            const statusValues = wsTrama.getRange(2, 4, tramaRows.length, 1).getDisplayValues();
-            for (let i = 0; i < statusValues.length; i++) {
-                tramaDataForExport[i + 1][3] = statusValues[i][0];
-            }
-        }
-        perfLog('EXPORT_DATA_BUILT');
         
         const exportResult = ConciliacionExportV2.exportarResultados(
             wsTrama, wsEECC, wsBDCruce, 'La_Positiva',
@@ -179,13 +161,13 @@ const LaPositivaProcessorV2 = {
                 eeccData: srcData
             }
         );
-        perfLog('EXPORT_COMPLETE');
+        // perfLog('EXPORT_COMPLETE');
 
         // Cleanup STATUS column
         ConciliacionCruceV2.limpiarStatusBDCruce(wsBDCruce);
-        perfLog('CLEANUP');
+        // perfLog('CLEANUP');
 
-        Logger.log(context + ': Completado. Cargadas: ' + filasCargadas +
+        Logger.log('LaPositiva completado en ' + (Date.now() - T) + 'ms | Cargadas: ' + filasCargadas +
             ', Cancelado: ' + filasCancelado + ', Escritas: ' + filasEscritas);
 
         return {

@@ -301,15 +301,7 @@ const ConciliacionIOV2 = {
         const T = { start: Date.now() };
 
         try {
-            Logger.log('[FLOW][' + runId + '] convertirXLSXaSheet START | file: ' + fileName);
-            
-            // V4 FIX: ALWAYS use Drive API for conversion
-            // SheetJS hangs on large files in Apps Script environment
-            // Drive API is slower but reliable for production use
-            
-            Logger.log('[FLOW][' + runId + '] Using Drive API conversion (reliable method)...');
             const bytes = this._safeBase64Decode(base64Data);
-            Logger.log('[FLOW][' + runId + '] Base64 decoded | bytes: ' + bytes.length);
             
             const effectiveMime = mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
             const blob = Utilities.newBlob(bytes, effectiveMime, fileName);
@@ -320,13 +312,12 @@ const ConciliacionIOV2 = {
             };
 
             const file = Drive.Files.insert(resource, blob, { convert: true });
-            Logger.log('[FLOW][' + runId + '] Drive conversion SUCCESS | fileId: ' + file.id + ' | ' + (Date.now() - T.start) + 'ms');
-            
+
             // Read the data so processor doesn't have to re-open
             const tempSS = SpreadsheetApp.openById(file.id);
             const tempSheet = tempSS.getSheets()[0];
             const data = tempSheet.getDataRange().getDisplayValues();
-            Logger.log('[FLOW][' + runId + '] Data read from temp file | rows: ' + data.length);
+            Logger.log('[convertirXLSX] ' + fileName + ' | rows: ' + data.length + ' | ' + (Date.now() - T.start) + 'ms');
             
             return { 
                 ok: true, 

@@ -233,7 +233,8 @@ const ConciliacionCruceV2 = {
             validar: contValidar,
             noRegistrado: contNoRegistrado,
             total: contRegistrado + contValidar + contNoRegistrado,
-            perfMs: totalTime
+            perfMs: totalTime,
+            _statusValues: tramaStatusValues  // Para uso interno (evita re-leer del sheet)
         };
     },
 

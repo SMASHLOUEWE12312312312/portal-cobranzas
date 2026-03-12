@@ -215,22 +215,24 @@ const ProcessorBase = {
             processedRows[r] = newRow;
         }
 
-        // V8 OPTIMIZATION: Single setValues() call for all data
+        // V9 OPTIMIZATION: Single setValues() + single setNumberFormats() call
         const range = sheet.getRange(2, 1, numRows, numCols);
         range.setValues(processedRows);
 
-        // V8: Apply formats efficiently (batch by column type)
-        // Apply text format to text columns
-        textColumns.forEach(col => {
-            sheet.getRange(2, col, numRows, 1).setNumberFormat('@');
-        });
-
-        // Apply date format to date columns
-        dateColumns.forEach(col => {
-            sheet.getRange(2, col, numRows, 1).setNumberFormat(formatConfig[col]);
-        });
-
-        Logger.log('[writeTramaData] V8: ' + numRows + ' rows, ' + numCols + ' cols in ' + (Date.now() - T) + 'ms');
+        // Build 2D format array and apply in ONE call (instead of per-column)
+        const formats = [];
+        const formatRow = [];
+        for (let col = 1; col <= numCols; col++) {
+            if (dateColumns.has(col)) {
+                formatRow.push(formatConfig[col]);
+            } else {
+                formatRow.push('@');
+            }
+        }
+        for (let r = 0; r < numRows; r++) {
+            formats.push(formatRow);
+        }
+        range.setNumberFormats(formats);
     },
 
     /**
