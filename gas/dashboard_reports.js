@@ -405,14 +405,25 @@ function generarReporteSaldosConDashboard() {
       if (mon === 'PEN') ciaData[cia].pen += importe;
       else ciaData[cia].usd += importe;
 
-      if (!asegData[aseg]) asegData[aseg] = { count: 0, pen: 0, usd: 0 };
+      if (!asegData[aseg]) asegData[aseg] = { count: 0, pen: 0, usd: 0, rams: {} };
       asegData[aseg].count++;
       if (mon === 'PEN') asegData[aseg].pen += importe;
       else asegData[aseg].usd += importe;
 
-      if (!ramData[ram]) ramData[ram] = { count: 0, total: 0 };
+      if (!asegData[aseg].rams[ram]) asegData[aseg].rams[ram] = { count: 0, pen: 0, usd: 0 };
+      asegData[aseg].rams[ram].count++;
+      if (mon === 'PEN') asegData[aseg].rams[ram].pen += importe;
+      else asegData[aseg].rams[ram].usd += importe;
+
+      if (!ramData[ram]) ramData[ram] = { count: 0, pen: 0, usd: 0, asegurados: {} };
       ramData[ram].count++;
-      ramData[ram].total += importe;
+      if (mon === 'PEN') ramData[ram].pen += importe;
+      else ramData[ram].usd += importe;
+
+      if (!ramData[ram].asegurados[aseg]) ramData[ram].asegurados[aseg] = { count: 0, pen: 0, usd: 0 };
+      ramData[ram].asegurados[aseg].count++;
+      if (mon === 'PEN') ramData[ram].asegurados[aseg].pen += importe;
+      else ramData[ram].asegurados[aseg].usd += importe;
 
       if (!areaData[area]) areaData[area] = { count: 0, pen: 0, usd: 0 };
       areaData[area].count++;
@@ -421,6 +432,7 @@ function generarReporteSaldosConDashboard() {
     }
 
     var totalSaldos = totalPEN + totalUSD;
+    var avgSaldo = filtered.length > 0 ? totalSaldos / filtered.length : 0;
 
     var tempSS = SpreadsheetApp.create('TMP_SALDOS_DASH_' + Date.now());
     var ssId = tempSS.getId();
@@ -438,65 +450,226 @@ function generarReporteSaldosConDashboard() {
         { value: DE.formatCurrency(totalUSD, 'USD'), label: 'TOTAL SALDOS USD', color: DE.COLORS.GREEN }
       ], r);
 
-      // CIA (5 cols)
+      var topCiaPct = 0;
+      var ciaKeysSorted = Object.keys(ciaData).sort(function(a, b) { return (ciaData[b].pen + ciaData[b].usd) - (ciaData[a].pen + ciaData[a].usd); });
+      if (ciaKeysSorted.length > 0 && totalSaldos > 0) {
+        var topCia = ciaData[ciaKeysSorted[0]];
+        topCiaPct = ((topCia.pen + topCia.usd) / totalSaldos * 100);
+      }
+      var concColor = topCiaPct > 50 ? DE.COLORS.RED : topCiaPct > 30 ? DE.COLORS.ORANGE : DE.COLORS.GREEN;
+      r = DE.writeKPIRow(dashSheet, [
+        { value: DE.formatCurrency(avgSaldo, 'PEN'), label: 'SALDO PROMEDIO POR REGISTRO', color: DE.COLORS.BRAND_DARK },
+        { value: topCiaPct.toFixed(1) + '%', label: 'CONCENTRACIÓN TOP 1 CIA', color: concColor },
+        { value: Object.keys(asegData).length.toString(), label: 'ASEGURADOS CON SALDO', color: DE.COLORS.ORANGE }
+      ], r);
+
+      // CIA (6 cols with severity)
       r = DE.writeSectionTitle(dashSheet, 'CONCENTRACIÓN POR ASEGURADORA', r);
-      var ciaKeys = Object.keys(ciaData).sort(function(a, b) { return (ciaData[b].pen + ciaData[b].usd) - (ciaData[a].pen + ciaData[a].usd); });
+      var ciaKeys = ciaKeysSorted;
       var ciaRows = [];
       for (var c = 0; c < ciaKeys.length; c++) {
         var cd = ciaData[ciaKeys[c]];
         var ciaTotal = cd.pen + cd.usd;
-        ciaRows.push([ciaKeys[c], cd.count, cd.pen, cd.usd,
-          totalSaldos > 0 ? (ciaTotal / totalSaldos * 100).toFixed(1) : '0.0']);
+        var ciaPct = totalSaldos > 0 ? (ciaTotal / totalSaldos * 100).toFixed(1) : '0.0';
+        var ciaSev = parseFloat(ciaPct) > 40 ? 'CRITICO' : parseFloat(ciaPct) > 25 ? 'ALTO' : 'NORMAL';
+        ciaRows.push([ciaKeys[c], cd.count, cd.pen, cd.usd, ciaPct, ciaSev]);
       }
-      ciaRows.push(['TOTAL', filtered.length, totalPEN, totalUSD, '100.0']);
       r = DE.writeTable(dashSheet, {
-        headers: ['Aseguradora', '# Registros', 'Saldo PEN', 'Saldo USD', '% Concentración'],
+        headers: ['Aseguradora', '# Registros', 'Saldo PEN', 'Saldo USD', '% Concentración', 'Riesgo'],
         rows: ciaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4], totalRow: true });
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
 
-      // Área (5 cols)
+      // Área (6 cols with severity)
       r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR ÁREA', r);
       var sAreaKeys = Object.keys(areaData).sort(function(a, b) { return (areaData[b].pen + areaData[b].usd) - (areaData[a].pen + areaData[a].usd); });
       var sAreaRows = [];
       for (var sa = 0; sa < sAreaKeys.length; sa++) {
         var saD = areaData[sAreaKeys[sa]];
         var saTotal = saD.pen + saD.usd;
-        sAreaRows.push([sAreaKeys[sa], saD.count, saD.pen, saD.usd,
-          totalSaldos > 0 ? (saTotal / totalSaldos * 100).toFixed(1) : '0.0']);
+        var saPct = totalSaldos > 0 ? (saTotal / totalSaldos * 100).toFixed(1) : '0.0';
+        var saSev = parseFloat(saPct) > 60 ? 'CRITICO' : parseFloat(saPct) > 40 ? 'ALTO' : 'NORMAL';
+        sAreaRows.push([sAreaKeys[sa], saD.count, saD.pen, saD.usd, saPct, saSev]);
       }
       r = DE.writeTable(dashSheet, {
-        headers: ['Área', '# Registros', 'Saldo PEN', 'Saldo USD', '% Concentración'],
+        headers: ['Área', '# Registros', 'Saldo PEN', 'Saldo USD', '% Concentración', 'Criticidad'],
         rows: sAreaRows
-      }, r, { currencyCols: [2, 3], pctCols: [4] });
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
 
-      // Asegurados (4 cols - rank in name)
+      // RAM with asegurado sub-rows (6 cols with severity + collapse)
+      r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR RAMO (RAM)', r);
+      var ramKeys = Object.keys(ramData).sort(function(a, b) { return (ramData[b].pen + ramData[b].usd) - (ramData[a].pen + ramData[a].usd); });
+      var ramDetailRows = [];
+      var ramGroupRanges = [];
+      var ramRowIdx = 0;
+
+      for (var rm = 0; rm < ramKeys.length; rm++) {
+        var rd = ramData[ramKeys[rm]];
+        var ramTotal = rd.pen + rd.usd;
+        var ramPct = totalSaldos > 0 ? (ramTotal / totalSaldos * 100) : 0;
+        var ramSev = ramPct > 30 ? 'CRITICO' : ramPct > 15 ? 'ALTO' : ramPct > 5 ? 'NORMAL' : 'BAJO';
+        ramDetailRows.push([ramKeys[rm] + '  [' + _getArea(ramKeys[rm]) + ']', rd.count, rd.pen, rd.usd, ramPct.toFixed(1), ramSev]);
+        ramRowIdx++;
+
+        var ramAsegKeys = Object.keys(rd.asegurados).sort(function(a, b) {
+          return (rd.asegurados[b].pen + rd.asegurados[b].usd) - (rd.asegurados[a].pen + rd.asegurados[a].usd);
+        });
+        var ramGrpStart = ramRowIdx;
+        for (var ra = 0; ra < ramAsegKeys.length; ra++) {
+          var raData = rd.asegurados[ramAsegKeys[ra]];
+          ramDetailRows.push(['    ' + ramAsegKeys[ra], raData.count, raData.pen, raData.usd, '', '']);
+          ramRowIdx++;
+        }
+        if (ramAsegKeys.length > 0) {
+          ramGroupRanges.push({ start: ramGrpStart, count: ramAsegKeys.length });
+        }
+      }
+
+      var ramTableStart = r;
+      r = DE.writeTable(dashSheet, {
+        headers: ['Ramo / Asegurado', '# Registros', 'Saldo PEN', 'Saldo USD', '% del Total', 'Criticidad'],
+        rows: ramDetailRows
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
+
+      // Group + collapse RAM sub-rows
+      var ramDataStart = ramTableStart + 1;
+      for (var rg = 0; rg < ramGroupRanges.length; rg++) {
+        var rgr = ramGroupRanges[rg];
+        try {
+          dashSheet.getRange(ramDataStart + rgr.start, 1, rgr.count).shiftRowGroupDepth(1);
+        } catch (e) { /* ignore */ }
+      }
+      try {
+        var ramCollapseReqs = [];
+        for (var rgc = 0; rgc < ramGroupRanges.length; rgc++) {
+          var rgrc = ramGroupRanges[rgc];
+          ramCollapseReqs.push({
+            updateDimensionProperties: {
+              range: {
+                sheetId: dashSheet.getSheetId(),
+                dimension: 'ROWS',
+                startIndex: ramDataStart + rgrc.start - 1,
+                endIndex: ramDataStart + rgrc.start - 1 + rgrc.count
+              },
+              properties: { hiddenByUser: true },
+              fields: 'hiddenByUser'
+            }
+          });
+        }
+        if (ramCollapseReqs.length > 0) {
+          Sheets.Spreadsheets.batchUpdate({ requests: ramCollapseReqs }, dashSheet.getParent().getId());
+        }
+      } catch (e) { /* ignore */ }
+      // Style sub-rows
+      for (var rgs = 0; rgs < ramGroupRanges.length; rgs++) {
+        var rgrs = ramGroupRanges[rgs];
+        for (var rgi = 0; rgi < rgrs.count; rgi++) {
+          var rSubRow = ramDataStart + rgrs.start + rgi;
+          dashSheet.getRange(rSubRow, 2, 1, 1)
+            .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontWeight('normal').setFontSize(8);
+          dashSheet.getRange(rSubRow, 3, 1, 3)
+            .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontSize(8);
+        }
+      }
+
+      // Asegurado detail with RAM sub-rows (6 cols with severity + collapse)
       r = DE.writeSectionTitle(dashSheet, 'DETALLE - ASEGURADOS CON SALDO A FAVOR (' + Object.keys(asegData).length + ')', r);
       var asegKeys = Object.keys(asegData).sort(function(a, b) {
         return (asegData[b].pen + asegData[b].usd) - (asegData[a].pen + asegData[a].usd);
       });
-      var asegRows = [];
+
+      var detailHeaders = ['Asegurado / Ramo', '# Registros', 'Saldo PEN', 'Saldo USD', '% del Total', 'Criticidad'];
+      var detailRows = [];
+      var groupRanges = [];
+      var rowIdx = 0;
+
       for (var t = 0; t < asegKeys.length; t++) {
         var ad = asegData[asegKeys[t]];
-        asegRows.push([(t + 1) + '. ' + asegKeys[t], ad.count, ad.pen, ad.usd]);
-      }
-      r = DE.writeTable(dashSheet, {
-        headers: ['Asegurado', '# Registros', 'Saldo PEN', 'Saldo USD'],
-        rows: asegRows
-      }, r, { currencyCols: [2, 3] });
+        var asegTotal = ad.pen + ad.usd;
+        var asegPct = totalSaldos > 0 ? (asegTotal / totalSaldos * 100) : 0;
+        var asegSev = asegPct > 10 ? 'CRITICO' : asegPct > 5 ? 'ALTO' : asegTotal > 10000 ? 'NARANJA' : 'NORMAL';
+        detailRows.push([(t + 1) + '. ' + asegKeys[t], ad.count, ad.pen, ad.usd, asegPct.toFixed(1), asegSev]);
+        rowIdx++;
 
-      // RAM (5 cols)
-      r = DE.writeSectionTitle(dashSheet, 'DISTRIBUCIÓN POR RAM', r);
-      var ramKeys = Object.keys(ramData).sort(function(a, b) { return ramData[b].total - ramData[a].total; });
-      var ramRows = [];
-      for (var rm = 0; rm < ramKeys.length; rm++) {
-        var rd = ramData[ramKeys[rm]];
-        ramRows.push([ramKeys[rm], _getArea(ramKeys[rm]), rd.count, rd.total,
-          totalSaldos > 0 ? (rd.total / totalSaldos * 100).toFixed(1) : '0.0']);
+        var ramSubKeys = Object.keys(ad.rams).sort(function(a, b) {
+          return (ad.rams[b].pen + ad.rams[b].usd) - (ad.rams[a].pen + ad.rams[a].usd);
+        });
+        var groupStart = rowIdx;
+        for (var rk = 0; rk < ramSubKeys.length; rk++) {
+          var ramSub = ad.rams[ramSubKeys[rk]];
+          detailRows.push(['    ' + ramSubKeys[rk] + '  [' + _getArea(ramSubKeys[rk]) + ']', ramSub.count, ramSub.pen, ramSub.usd, '', '']);
+          rowIdx++;
+        }
+        if (ramSubKeys.length > 0) {
+          groupRanges.push({ start: groupStart, count: ramSubKeys.length });
+        }
       }
+
+      var tableStartRow = r;
       r = DE.writeTable(dashSheet, {
-        headers: ['RAM', 'Área', '# Registros', 'Monto Total', '% del Total'],
-        rows: ramRows
-      }, r, { currencyCols: [3], pctCols: [4] });
+        headers: detailHeaders,
+        rows: detailRows
+      }, r, { currencyCols: [2, 3], pctCols: [4], severityCol: 5 });
+
+      // Group + collapse RAM sub-rows under asegurados
+      var dataStartRow = tableStartRow + 1;
+      for (var g = 0; g < groupRanges.length; g++) {
+        var gr = groupRanges[g];
+        try {
+          dashSheet.getRange(dataStartRow + gr.start, 1, gr.count).shiftRowGroupDepth(1);
+        } catch (e) { /* ignore */ }
+      }
+
+      try {
+        var sheetId = dashSheet.getSheetId();
+        var ssIdCollapse = dashSheet.getParent().getId();
+        var requests = [];
+        for (var gc = 0; gc < groupRanges.length; gc++) {
+          var grc = groupRanges[gc];
+          requests.push({
+            updateDimensionProperties: {
+              range: {
+                sheetId: sheetId,
+                dimension: 'ROWS',
+                startIndex: dataStartRow + grc.start - 1,
+                endIndex: dataStartRow + grc.start - 1 + grc.count
+              },
+              properties: { hiddenByUser: true },
+              fields: 'hiddenByUser'
+            }
+          });
+        }
+        if (requests.length > 0) {
+          Sheets.Spreadsheets.batchUpdate({ requests: requests }, ssIdCollapse);
+        }
+      } catch (e) { /* ignore */ }
+
+      // Style sub-rows
+      for (var g2 = 0; g2 < groupRanges.length; g2++) {
+        var gr2 = groupRanges[g2];
+        for (var gi = 0; gi < gr2.count; gi++) {
+          var subRow = dataStartRow + gr2.start + gi;
+          dashSheet.getRange(subRow, 2, 1, 1)
+            .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontWeight('normal').setFontSize(8);
+          dashSheet.getRange(subRow, 3, 1, 3)
+            .setFontColor(DE.COLORS.MEDIUM_TEXT).setFontSize(8);
+        }
+      }
+
+      // Alerts
+      var alerts = [];
+      for (var ca = 0; ca < ciaKeys.length; ca++) {
+        var cdA = ciaData[ciaKeys[ca]];
+        var pctA = totalSaldos > 0 ? ((cdA.pen + cdA.usd) / totalSaldos * 100) : 0;
+        if (pctA > 30) alerts.push({ indicator: ciaKeys[ca] + ' (concentración)', value: pctA.toFixed(1) + '%', status: 'CRITICO' });
+      }
+      if (filtered.length > 50) alerts.push({ indicator: 'Volumen de registros con saldo', value: filtered.length + ' registros', status: 'NARANJA' });
+      if (totalSaldos > 100000) alerts.push({ indicator: 'Monto total saldos a favor', value: DE.formatCurrency(totalSaldos, 'PEN'), status: 'ROJO' });
+      else if (totalSaldos > 50000) alerts.push({ indicator: 'Monto total saldos a favor', value: DE.formatCurrency(totalSaldos, 'PEN'), status: 'NARANJA' });
+
+      if (alerts.length > 0) {
+        r = DE.writeSectionTitle(dashSheet, 'ALERTAS DE CONCENTRACIÓN Y RIESGO', r);
+        r = DE.writeAlertTable(dashSheet, alerts, r);
+      }
 
       SpreadsheetApp.flush();
       _addFilteredDataSheet(tempSS, filtered, 'Saldos a Favor');
