@@ -2596,25 +2596,51 @@
          */
         function initBitacoraInline() {
             try {
-                _log('[BITACORA] Inicializando...');
+                _log('[BITACORA] Inicializando (consolidated)...');
 
-                // Comportamiento v15: cargar datos
-                if (typeof window.loadBitacoraData === 'function') {
-                    window.loadBitacoraData(true);
-                    _log('[BITACORA] ✅ loadBitacoraData OK');
-                }
+                // ── OPTIMIZACIÓN P1: 1 call instead of 3 ──
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        if (result && result.ok) {
+                            _log('[BITACORA] ✅ Datos consolidados recibidos');
 
-                // Cargar clientes con ciclos activos
-                if (typeof window.loadClientesConCiclos === 'function') {
-                    window.loadClientesConCiclos();
-                    _log('[BITACORA] ✅ loadClientesConCiclos OK');
-                }
+                            // 1. Resumen ciclos → loadBitacoraData
+                            if (result.resumen && result.resumen.length > 0) {
+                                BITACORA_DATA = result.resumen;
+                                BITACORA_FILTERED = result.resumen;
+                                if (typeof renderBitacoraTable === 'function') renderBitacoraTable();
+                                if (typeof populateFiltros === 'function') populateFiltros();
+                                if (typeof setCachedBitacoraData === 'function') setCachedBitacoraData(result.resumen);
+                                _log('[BITACORA] ✅ resumen: ' + result.resumen.length + ' ciclos');
+                            }
 
-                // Cargar responsables únicos
-                if (typeof window.loadResponsablesUnicos === 'function') {
-                    window.loadResponsablesUnicos();
-                    _log('[BITACORA] ✅ loadResponsablesUnicos OK');
-                }
+                            // 2. Clientes con ciclos
+                            if (result.clientes && result.clientes.length > 0) {
+                                BITACORA_CLIENTES = result.clientes;
+                                if (typeof populateAseguradoSelect === 'function') populateAseguradoSelect();
+                                _log('[BITACORA] ✅ clientes: ' + result.clientes.length);
+                            }
+
+                            // 3. Responsables únicos
+                            if (result.responsables && result.responsables.length > 0) {
+                                BITACORA_RESPONSABLES = result.responsables;
+                                if (typeof populateResponsableFilter === 'function') populateResponsableFilter();
+                                _log('[BITACORA] ✅ responsables: ' + result.responsables.length);
+                            }
+                        } else {
+                            _log('[BITACORA] ⚠️ Consolidated failed, falling back...');
+                            if (typeof window.loadBitacoraData === 'function') window.loadBitacoraData(true);
+                            if (typeof window.loadClientesConCiclos === 'function') window.loadClientesConCiclos();
+                            if (typeof window.loadResponsablesUnicos === 'function') window.loadResponsablesUnicos();
+                        }
+                    })
+                    .withFailureHandler(function(err) {
+                        _log('[BITACORA] ⚠️ Consolidated error: ' + err + ', falling back...');
+                        if (typeof window.loadBitacoraData === 'function') window.loadBitacoraData(true);
+                        if (typeof window.loadClientesConCiclos === 'function') window.loadClientesConCiclos();
+                        if (typeof window.loadResponsablesUnicos === 'function') window.loadResponsablesUnicos();
+                    })
+                    .obtenerBitacoraCompleta(TOKEN);
 
                 _log('[BITACORA] ✅ init OK');
 
@@ -2738,19 +2764,50 @@
                 console.error('[initPortal] ❌ pbiFrame no encontrado');
             }
 
-            // Cargar grupos (lightweight, needed across views)
-            loadGrupos();
+            // ── OPTIMIZACIÓN P1: Consolidated initial load (1 call instead of 3) ──
+            google.script.run
+                .withSuccessHandler(result => {
+                    if (result && result.ok) {
+                        // Dashboard stats
+                        _applyDashboardStats(result.dashboardStats);
+                        // Queue health
+                        _applyQueueHealth(result.queueHealth);
+                        // Grupos
+                        if (result.grupos && result.grupos.length > 0) {
+                            ALL_GRUPOS = result.grupos;
+                            LOAD_STATE.grupos.loaded = true;
+                            LOAD_STATE.grupos.lastLoad = Date.now();
+                            _log('[initPortal] ✅ Datos iniciales consolidados: grupos=' + result.grupos.length);
+                            if (EECC_MODE === 'grupo') {
+                                AUTOCOMPLETE_EECC_OPTIONS = [...ALL_GRUPOS];
+                                renderAutocompleteOptionsEECC();
+                            }
+                            if (BITACORA_MODE === 'grupo') {
+                                AUTOCOMPLETE_OPTIONS = [...ALL_GRUPOS];
+                                renderAutocompleteOptions();
+                            }
+                        }
+                    } else {
+                        _log('[initPortal] ⚠️ obtenerDatosIniciales failed, falling back...');
+                        loadGrupos();
+                        refreshDashboardStats();
+                        loadQueueHealth();
+                    }
+                })
+                .withFailureHandler(err => {
+                    _log('[initPortal] ⚠️ obtenerDatosIniciales error: ' + err + ', falling back...');
+                    loadGrupos();
+                    refreshDashboardStats();
+                    loadQueueHealth();
+                })
+                .obtenerDatosIniciales(TOKEN);
 
             // Precargar asegurados en background (no bloquea el dashboard)
-            // Se cargan silenciosamente para que estén listos cuando el usuario navegue a Generar/Bitácora
             setTimeout(() => loadAsegurados(), 500);
 
-            // Inicializar notificaciones
+            // Inicializar notificaciones (separate call - uses its own timeout/polling)
             inicializarNotificaciones();
 
-            // Dashboard Stats
-            refreshDashboardStats();
-            loadQueueHealth();
             startDashboardAutoRefresh();
 
             // Pausar polling cuando el tab está oculto
@@ -2785,6 +2842,63 @@
         // PHASE 3: DASHBOARD STATS & QUEUE HEALTH
         // ============================================================
         let dashboardStatsInterval = null;
+
+        /** Apply dashboard stats from consolidated or individual response */
+        function _applyDashboardStats(result) {
+            if (result && result.ok) {
+                document.getElementById('statEeccToday').textContent = result.eecc?.today ?? '-';
+                document.getElementById('statEeccWeek').textContent = result.eecc?.week ?? '-';
+                document.getElementById('statMailSent').textContent = result.mail?.sent24h ?? '-';
+                document.getElementById('statMailQueued').textContent = result.mail?.queuedNow ?? '-';
+                const errors = (result.eecc?.errors24h ?? 0) + (result.mail?.failed24h ?? 0) + (result.system?.errors24h ?? 0);
+                document.getElementById('statErrors').textContent = errors;
+                const now = new Date();
+                document.getElementById('statsLastUpdated').textContent = 'Actualizado: ' + now.toLocaleTimeString('es-PE');
+            }
+        }
+
+        /** Apply queue health from consolidated or individual response */
+        function _applyQueueHealth(result) {
+            const indicator = document.getElementById('queueHealthIndicator');
+            const badge = document.getElementById('queueHealthBadge');
+            if (!indicator || !badge) return;
+
+            if (!result || !result.ok || !result.available) {
+                indicator.textContent = '❓';
+                badge.textContent = 'No disponible';
+                badge.style.background = 'var(--tp-bg-muted)';
+                return;
+            }
+            if (result.status === 'OK') {
+                indicator.textContent = '🟢';
+                badge.textContent = 'Cola saludable';
+                badge.style.background = '#E8F5E9';
+                badge.style.color = '#2e7d32';
+            } else if (result.status === 'WARN') {
+                indicator.textContent = '🟡';
+                badge.textContent = 'Retraso detectado';
+                badge.style.background = '#FFF3E0';
+                badge.style.color = '#EF6C00';
+            } else {
+                indicator.textContent = '🔴';
+                badge.textContent = 'Cola atascada';
+                badge.style.background = '#FFEBEE';
+                badge.style.color = '#C62828';
+            }
+            document.getElementById('qhPending').textContent = result.pendingCount ?? '-';
+            document.getElementById('qhProcessing').textContent = result.processingCount ?? '-';
+            document.getElementById('qhFailed').textContent = result.failedCount24h ?? '-';
+            document.getElementById('qhOldest').textContent = result.oldestPendingAgeMinutes ? result.oldestPendingAgeMinutes + ' min' : '-';
+            document.getElementById('qhLastProcessed').textContent = result.lastProcessedAt
+                ? new Date(result.lastProcessedAt).toLocaleString('es-PE')
+                : 'Nunca';
+            const reasonsEl = document.getElementById('qhReasons');
+            if (result.reasons && result.reasons.length > 0) {
+                reasonsEl.innerHTML = result.reasons.map(r => '⚠️ ' + escapeHtml(r)).join('<br>');
+            } else if (reasonsEl) {
+                reasonsEl.innerHTML = '';
+            }
+        }
 
         function refreshDashboardStats() {
             const statsSection = document.getElementById('dashboardStatsSection');
@@ -2897,7 +3011,7 @@
             dashboardStatsInterval = setInterval(() => {
                 refreshDashboardStats();
                 loadQueueHealth();
-            }, 60000); // 60 seconds
+            }, 180000); // 180 seconds (3 min)
         }
 
         function stopDashboardAutoRefresh() {

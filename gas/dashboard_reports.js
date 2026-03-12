@@ -157,7 +157,17 @@ function _getGrupoEconomico(asegurado) {
 // HELPERS
 // ============================================================
 
+var _bdDashboardCache = null;
+var _bdDashboardCacheTime = 0;
+var BD_DASHBOARD_CACHE_TTL = 60000; // 60s in-memory TTL
+
 function _loadBDForDashboard() {
+  // In-memory cache within same execution context
+  var now = Date.now();
+  if (_bdDashboardCache && (now - _bdDashboardCacheTime) < BD_DASHBOARD_CACHE_TTL) {
+    return _bdDashboardCache;
+  }
+
   var sheetData = SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
   if (!sheetData || !sheetData.rows || sheetData.rows.length === 0) {
     throw new Error('No hay datos en BD');
@@ -178,7 +188,7 @@ function _loadBDForDashboard() {
     }
   }
 
-  return {
+  var result = {
     headers: sheetData.headers,
     rows: sheetData.rows,
     colMap: colMap,
@@ -189,6 +199,12 @@ function _loadBDForDashboard() {
     fecVencIdx: fecVencIdx,
     ramIdx: colMap['RAM'] != null ? colMap['RAM'] : -1
   };
+
+  // Cache for reuse within same report generation
+  _bdDashboardCache = result;
+  _bdDashboardCacheTime = Date.now();
+
+  return result;
 }
 
 function _parseNum(val) {

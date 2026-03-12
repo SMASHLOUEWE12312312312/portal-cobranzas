@@ -405,6 +405,43 @@ function logout(token) {
 // ========== PHASE 3: MONITORING ENDPOINTS ==========
 
 /**
+ * Consolidated initial data load - reduces 4 google.script.run calls to 1
+ * Returns: dashboardStats, queueHealth, grupos
+ * @param {string} token - Session token
+ * @return {Object} { ok, dashboardStats, queueHealth, grupos }
+ */
+function obtenerDatosIniciales(token) {
+  const context = 'obtenerDatosIniciales';
+  try {
+    AuthService.validateSession(token);
+
+    var dashboardStats = null;
+    var queueHealth = null;
+    var grupos = null;
+
+    try { dashboardStats = MonitoringService.getDashboardStats(); } catch (e) {
+      Logger.warn(context, 'dashboardStats failed', e);
+    }
+    try { queueHealth = MonitoringService.getMailQueueHealth(); } catch (e) {
+      Logger.warn(context, 'queueHealth failed', e);
+    }
+    try { grupos = GrupoEconomicoService.getGrupos(); } catch (e) {
+      Logger.warn(context, 'grupos failed', e);
+    }
+
+    return {
+      ok: true,
+      dashboardStats: dashboardStats || { ok: false },
+      queueHealth: queueHealth || { ok: false },
+      grupos: grupos || []
+    };
+  } catch (error) {
+    Logger.error(context, 'Failed', error);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
  * Get dashboard statistics (cached, soft-fail)
  * @param {string} token - Session token
  * @return {Object} Dashboard stats
@@ -2451,6 +2488,81 @@ function bitacoraGetAllGestiones() {
  * @param {string} token - Token de autenticación
  * @return {Object} { ok, data: [resumen de ciclos] }
  */
+/**
+ * Consolidated bitácora init - reduces 3 google.script.run calls to 1
+ * Returns: resumen ciclos + clientes con ciclos + responsables únicos
+ * @param {string} token - Session token
+ * @return {Object} { ok, resumen, clientes, responsables }
+ */
+function obtenerBitacoraCompleta(token) {
+  const context = 'obtenerBitacoraCompleta';
+  const startTime = Date.now();
+
+  try {
+    AuthService.validateSession(token);
+
+    // 1. Resumen de ciclos (reuses cache logic from bitacoraGetResumenCiclos)
+    var resumenData = [];
+    try {
+      const resumen = BitacoraService.obtenerResumenCiclos({}, { page: 1, pageSize: 50 });
+      resumenData = (resumen.data || []).map(function(ciclo) {
+        return Object.assign({}, ciclo, {
+          fechaEnvioEECC: ciclo.fechaEnvioEECC instanceof Date ? ciclo.fechaEnvioEECC.toISOString() : ciclo.fechaEnvioEECC,
+          fechaRegistro: ciclo.fechaRegistro instanceof Date ? ciclo.fechaRegistro.toISOString() : ciclo.fechaRegistro,
+          fechaCompromiso: ciclo.fechaCompromiso instanceof Date ? ciclo.fechaCompromiso.toISOString() : ciclo.fechaCompromiso
+        });
+      });
+    } catch (e) {
+      Logger.warn(context, 'resumen failed', e);
+    }
+
+    // 2. Clientes (asegurados from BD)
+    var clientes = [];
+    try {
+      const baseData = SheetsIO.readSheet(getConfig('SHEETS.BASE'));
+      if (baseData && baseData.rows && baseData.rows.length > 0) {
+        const colAsegurado = baseData.headers.findIndex(function(h) {
+          return h && h.toString().toUpperCase().indexOf('ASEGURADO') !== -1;
+        });
+        if (colAsegurado !== -1) {
+          const set = new Set();
+          baseData.rows.forEach(function(row) {
+            var a = row[colAsegurado];
+            if (a && a.toString().trim() !== '') set.add(a.toString().trim());
+          });
+          clientes = Array.from(set).sort(function(a, b) { return a.localeCompare(b, 'es', { sensitivity: 'base' }); });
+        }
+      }
+    } catch (e) {
+      Logger.warn(context, 'clientes failed', e);
+    }
+
+    // 3. Responsables únicos (from resumen data already loaded)
+    var responsables = [];
+    try {
+      const resumenFull = BitacoraService.obtenerResumenCiclos({}, { page: 1, pageSize: 10000 });
+      const respSet = new Set();
+      (resumenFull.data || []).forEach(function(c) { if (c.responsable) respSet.add(c.responsable); });
+      responsables = Array.from(respSet).sort(function(a, b) { return a.localeCompare(b, 'es'); });
+    } catch (e) {
+      Logger.warn(context, 'responsables failed', e);
+    }
+
+    const elapsed = Date.now() - startTime;
+    Logger.info(context, 'Consolidated load in ' + elapsed + 'ms: ' + resumenData.length + ' ciclos, ' + clientes.length + ' clientes, ' + responsables.length + ' responsables');
+
+    return {
+      ok: true,
+      resumen: resumenData,
+      clientes: clientes,
+      responsables: responsables
+    };
+  } catch (error) {
+    Logger.error(context, 'Failed', error);
+    return { ok: false, error: error.message, resumen: [], clientes: [], responsables: [] };
+  }
+}
+
 function bitacoraGetResumenCiclos(token, opciones) {
   const context = 'bitacoraGetResumenCiclos';
   const startTime = Date.now();
