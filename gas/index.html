@@ -226,17 +226,19 @@
                         </div>
                         <div id="statsGrid"
                             style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
-                            <div class="stat-card"
-                                style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div class="stat-card" onclick="toggleStatDetail('statDetailToday')"
+                                style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center; cursor: pointer; position: relative;" title="Click para ver detalle por usuario">
                                 <div style="font-size: 1.5rem; font-weight: bold; color: var(--tp-primary);"
                                     id="statEeccToday">-</div>
                                 <div style="font-size: 0.75rem; color: var(--tp-text-muted);">EECC Hoy</div>
+                                <div id="statDetailToday" style="display:none; margin-top: 0.5rem; padding: 0.5rem; background: white; border: 1px solid var(--tp-border-light); border-radius: 6px; text-align: left; font-size: 0.7rem; color: var(--tp-text-secondary);"></div>
                             </div>
-                            <div class="stat-card"
-                                style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div class="stat-card" onclick="toggleStatDetail('statDetailWeek')"
+                                style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center; cursor: pointer; position: relative;" title="Click para ver detalle por usuario">
                                 <div style="font-size: 1.5rem; font-weight: bold; color: var(--tp-primary);"
                                     id="statEeccWeek">-</div>
                                 <div style="font-size: 0.75rem; color: var(--tp-text-muted);">EECC Semana</div>
+                                <div id="statDetailWeek" style="display:none; margin-top: 0.5rem; padding: 0.5rem; background: white; border: 1px solid var(--tp-border-light); border-radius: 6px; text-align: left; font-size: 0.7rem; color: var(--tp-text-secondary);"></div>
                             </div>
                             <div class="stat-card"
                                 style="background: var(--tp-bg-light); padding: 1rem; border-radius: 8px; text-align: center;">
@@ -2926,7 +2928,33 @@
                 document.getElementById('statErrors').textContent = errors;
                 const now = new Date();
                 document.getElementById('statsLastUpdated').textContent = 'Actualizado: ' + now.toLocaleTimeString('es-PE');
+
+                // Render user detail for EECC metrics
+                _renderUserDetail('statDetailToday', result.eecc?.todayByUser, 'Hoy');
+                _renderUserDetail('statDetailWeek', result.eecc?.weekByUser, 'Semana');
             }
+        }
+
+        function _renderUserDetail(elementId, byUser, label) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            if (!byUser || Object.keys(byUser).length === 0) {
+                el.innerHTML = '<div style="color:var(--tp-text-muted);text-align:center;">Sin actividad</div>';
+                return;
+            }
+            const sorted = Object.entries(byUser).sort((a, b) => b[1] - a[1]);
+            el.innerHTML = sorted.map(([user, count]) =>
+                '<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid var(--tp-border-light);">' +
+                '<span style="font-weight:500;">' + escapeHtml(user) + '</span>' +
+                '<span style="background:var(--tp-primary);color:white;padding:1px 6px;border-radius:10px;font-size:0.65rem;font-weight:600;">' + count + '</span>' +
+                '</div>'
+            ).join('');
+        }
+
+        function toggleStatDetail(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
         }
 
         /** Apply queue health from consolidated or individual response */
@@ -2981,15 +3009,7 @@
             google.script.run
                 .withSuccessHandler(result => {
                     if (result && result.ok) {
-                        document.getElementById('statEeccToday').textContent = result.eecc?.today ?? '-';
-                        document.getElementById('statEeccWeek').textContent = result.eecc?.week ?? '-';
-                        document.getElementById('statMailSent').textContent = result.mail?.sent24h ?? '-';
-                        document.getElementById('statMailQueued').textContent = result.mail?.queuedNow ?? '-';
-                        const errors = (result.eecc?.errors24h ?? 0) + (result.mail?.failed24h ?? 0) + (result.system?.errors24h ?? 0);
-                        document.getElementById('statErrors').textContent = errors;
-
-                        const now = new Date();
-                        document.getElementById('statsLastUpdated').textContent = 'Actualizado: ' + now.toLocaleTimeString('es-PE');
+                        _applyDashboardStats(result);
                         _log('[Phase3] Dashboard stats loaded', result);
                     } else {
                         document.getElementById('statsLastUpdated').textContent = 'Error al cargar';

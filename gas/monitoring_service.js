@@ -67,7 +67,7 @@ const MonitoringService = {
                 queue: false,
                 debugLog: false
             },
-            eecc: { today: 0, week: 0, errors24h: 0 },
+            eecc: { today: 0, week: 0, errors24h: 0, todayByUser: {}, weekByUser: {} },
             mail: { sent24h: 0, queuedNow: 0, failed24h: 0 },
             system: { errors24h: 0, lastActivity: null }
         };
@@ -82,21 +82,41 @@ const MonitoringService = {
                 const origenIdx = this._findColumnIndex(bitacoraData.headers, ['ORIGEN_REGISTRO', 'ORIGEN']);
                 const fechaEnvioIdx = this._findColumnIndex(bitacoraData.headers, ['FECHA_ENVIO_EECC', 'FECHA_ENVIO']);
                 const fechaRegistroIdx = this._findColumnIndex(bitacoraData.headers, ['FECHA_REGISTRO', 'FECHA']);
+                const tipoGestionIdx = this._findColumnIndex(bitacoraData.headers, ['TIPO_GESTION', 'TIPO']);
+                const responsableIdx = this._findColumnIndex(bitacoraData.headers, ['RESPONSABLE']);
+                const aseguradoIdx = this._findColumnIndex(bitacoraData.headers, ['ASEGURADO']);
 
                 let lastActivity = null;
+                // Track unique EECC per ciclo to avoid double-counting
+                const seenCiclosToday = new Set();
+                const seenCiclosWeek = new Set();
+                const idCicloIdx = this._findColumnIndex(bitacoraData.headers, ['ID_CICLO']);
 
                 bitacoraData.rows.forEach(row => {
                     // P2-FIX: Guard against -1 column indices to prevent row[undefined]
                     const origen = origenIdx >= 0 ? String(row[origenIdx] || '').toUpperCase() : '';
+                    const tipoGestion = tipoGestionIdx >= 0 ? String(row[tipoGestionIdx] || '').toUpperCase() : '';
                     const fechaEnvio = fechaEnvioIdx >= 0 ? this._parseDate(row[fechaEnvioIdx]) : null;
                     const fechaRegistro = fechaRegistroIdx >= 0 ? this._parseDate(row[fechaRegistroIdx]) : null;
+                    const responsable = responsableIdx >= 0 ? String(row[responsableIdx] || '').trim() : '';
+                    const idCiclo = idCicloIdx >= 0 ? String(row[idCicloIdx] || '') : '';
 
-                    // EECC Stats logic: Match 'AUTO_ENVIO', 'MANUAL_PORTAL', or literal 'EECC'
-                    const isEECC = origen.includes('AUTO') || origen.includes('MANUAL') || origen.includes('EECC');
+                    // EECC Stats: count ENVIO_EECC type OR AUTO_ENVIO origin (first gestión of each cycle)
+                    const isEECC = tipoGestion === 'ENVIO_EECC' || origen === 'AUTO_ENVIO';
 
                     if (isEECC && fechaEnvio) {
-                        if (fechaEnvio >= todayStart) result.eecc.today++;
-                        if (fechaEnvio >= weekAgo) result.eecc.week++;
+                        const userKey = responsable ? responsable.replace(/@.*/, '') : 'sistema';
+
+                        if (fechaEnvio >= todayStart && !seenCiclosToday.has(idCiclo)) {
+                            if (idCiclo) seenCiclosToday.add(idCiclo);
+                            result.eecc.today++;
+                            result.eecc.todayByUser[userKey] = (result.eecc.todayByUser[userKey] || 0) + 1;
+                        }
+                        if (fechaEnvio >= weekAgo && !seenCiclosWeek.has(idCiclo)) {
+                            if (idCiclo) seenCiclosWeek.add(idCiclo);
+                            result.eecc.week++;
+                            result.eecc.weekByUser[userKey] = (result.eecc.weekByUser[userKey] || 0) + 1;
+                        }
                     }
 
                     // Track last activity from any record
