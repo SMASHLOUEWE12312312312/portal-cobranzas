@@ -9,7 +9,7 @@
 
 const MonitoringService = {
     CACHE_TTL_SECONDS: 60,
-    CACHE_KEY_STATS: 'MONITORING_DASH_STATS_V2',
+    CACHE_KEY_STATS: 'MONITORING_DASH_STATS_V3',
     CACHE_KEY_QUEUE_HEALTH: 'MONITORING_QUEUE_HEALTH_V1',
 
     /**
@@ -63,7 +63,7 @@ const MonitoringService = {
             ok: true,
             timestamp: now.toISOString(),
             available: {
-                bitacora: false,
+                audit: false,
                 queue: false,
                 debugLog: false
             },
@@ -72,63 +72,47 @@ const MonitoringService = {
             system: { errors24h: 0, lastActivity: null }
         };
 
-        // === EECC Stats from Bitacora_Gestiones_EECC ===
+        // === EECC Stats from Audit_Log (GENERATE_EECC actions) ===
         try {
-            const bitacoraData = this._readSheetSafe('Bitacora_Gestiones_EECC');
-            if (bitacoraData) {
-                result.available.bitacora = true;
+            const auditData = this._readSheetSafe('Audit_Log');
+            if (auditData) {
+                result.available.audit = true;
 
-                // Find column indices
-                const origenIdx = this._findColumnIndex(bitacoraData.headers, ['ORIGEN_REGISTRO', 'ORIGEN']);
-                const fechaEnvioIdx = this._findColumnIndex(bitacoraData.headers, ['FECHA_ENVIO_EECC', 'FECHA_ENVIO']);
-                const fechaRegistroIdx = this._findColumnIndex(bitacoraData.headers, ['FECHA_REGISTRO', 'FECHA']);
-                const tipoGestionIdx = this._findColumnIndex(bitacoraData.headers, ['TIPO_GESTION', 'TIPO']);
-                const responsableIdx = this._findColumnIndex(bitacoraData.headers, ['RESPONSABLE']);
-                const aseguradoIdx = this._findColumnIndex(bitacoraData.headers, ['ASEGURADO']);
+                const timestampIdx = this._findColumnIndex(auditData.headers, ['TIMESTAMP', 'FECHA']);
+                const userIdx = this._findColumnIndex(auditData.headers, ['USER', 'USUARIO']);
+                const actionIdx = this._findColumnIndex(auditData.headers, ['ACTION', 'ACCION']);
+                const targetIdx = this._findColumnIndex(auditData.headers, ['TARGET', 'OBJETIVO']);
 
                 let lastActivity = null;
-                // Track unique EECC per ciclo to avoid double-counting
-                const seenCiclosToday = new Set();
-                const seenCiclosWeek = new Set();
-                const idCicloIdx = this._findColumnIndex(bitacoraData.headers, ['ID_CICLO']);
 
-                bitacoraData.rows.forEach(row => {
-                    // P2-FIX: Guard against -1 column indices to prevent row[undefined]
-                    const origen = origenIdx >= 0 ? String(row[origenIdx] || '').toUpperCase() : '';
-                    const tipoGestion = tipoGestionIdx >= 0 ? String(row[tipoGestionIdx] || '').toUpperCase() : '';
-                    const fechaEnvio = fechaEnvioIdx >= 0 ? this._parseDate(row[fechaEnvioIdx]) : null;
-                    const fechaRegistro = fechaRegistroIdx >= 0 ? this._parseDate(row[fechaRegistroIdx]) : null;
-                    const responsable = responsableIdx >= 0 ? String(row[responsableIdx] || '').trim() : '';
-                    const idCiclo = idCicloIdx >= 0 ? String(row[idCicloIdx] || '') : '';
+                auditData.rows.forEach(row => {
+                    const action = actionIdx >= 0 ? String(row[actionIdx] || '').toUpperCase() : '';
+                    if (action !== 'GENERATE_EECC') return;
 
-                    // EECC Stats: count ENVIO_EECC type OR AUTO_ENVIO origin (first gestión of each cycle)
-                    const isEECC = tipoGestion === 'ENVIO_EECC' || origen === 'AUTO_ENVIO';
+                    const ts = timestampIdx >= 0 ? this._parseDate(row[timestampIdx]) : null;
+                    if (!ts) return;
 
-                    if (isEECC && fechaEnvio) {
-                        const userKey = responsable ? responsable.replace(/@.*/, '') : 'sistema';
+                    const user = userIdx >= 0 ? String(row[userIdx] || '').trim() : '';
+                    const userKey = user ? user.replace(/@.*/, '') : 'sistema';
 
-                        if (fechaEnvio >= todayStart && !seenCiclosToday.has(idCiclo)) {
-                            if (idCiclo) seenCiclosToday.add(idCiclo);
-                            result.eecc.today++;
-                            result.eecc.todayByUser[userKey] = (result.eecc.todayByUser[userKey] || 0) + 1;
-                        }
-                        if (fechaEnvio >= weekAgo && !seenCiclosWeek.has(idCiclo)) {
-                            if (idCiclo) seenCiclosWeek.add(idCiclo);
-                            result.eecc.week++;
-                            result.eecc.weekByUser[userKey] = (result.eecc.weekByUser[userKey] || 0) + 1;
-                        }
+                    if (ts >= todayStart) {
+                        result.eecc.today++;
+                        result.eecc.todayByUser[userKey] = (result.eecc.todayByUser[userKey] || 0) + 1;
+                    }
+                    if (ts >= weekAgo) {
+                        result.eecc.week++;
+                        result.eecc.weekByUser[userKey] = (result.eecc.weekByUser[userKey] || 0) + 1;
                     }
 
-                    // Track last activity from any record
-                    if (fechaRegistro && (!lastActivity || fechaRegistro > lastActivity)) {
-                        lastActivity = fechaRegistro;
+                    if (!lastActivity || ts > lastActivity) {
+                        lastActivity = ts;
                     }
                 });
 
                 result.system.lastActivity = lastActivity ? lastActivity.toISOString() : null;
             }
         } catch (e) {
-            Logger.warn(context, 'Bitacora_Gestiones_EECC read failed (soft-fail)', e);
+            Logger.warn(context, 'Audit_Log read failed (soft-fail)', e);
         }
 
         // === Mail Queue Stats ===
