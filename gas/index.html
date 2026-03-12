@@ -91,29 +91,29 @@
                     <span class="nav-icon">📊</span>
                     <span>Dashboard</span>
                 </div>
-                <div class="nav-item" onclick="switchView('actualizar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('actualizar')}" id="nav-actualizar" tabindex="0" role="button">
-                    <span class="nav-icon">📤</span>
-                    <span>Actualizar Base</span>
+                <div class="nav-item" onclick="switchView('bitacora')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('bitacora')}" id="nav-bitacora" tabindex="0" role="button">
+                    <span class="nav-icon">📝</span>
+                    <span>Bitácora</span>
                 </div>
                 <div class="nav-item" onclick="switchView('generar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('generar')}" id="nav-generar" tabindex="0" role="button">
                     <span class="nav-icon">📄</span>
                     <span>Generar EECC</span>
                 </div>
-                <div class="nav-item" onclick="switchView('reportes')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('reportes')}" id="nav-reportes" tabindex="0" role="button">
-                    <span class="nav-icon">📋</span>
-                    <span>Reportes</span>
-                </div>
                 <div class="nav-item" onclick="switchView('enviar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('enviar')}" id="nav-enviar" tabindex="0" role="button">
                     <span class="nav-icon">📧</span>
                     <span>Enviar Correos</span>
                 </div>
-                <div class="nav-item" onclick="switchView('bitacora')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('bitacora')}" id="nav-bitacora" tabindex="0" role="button">
-                    <span class="nav-icon">📝</span>
-                    <span>Bitácora</span>
+                <div class="nav-item" onclick="switchView('reportes')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('reportes')}" id="nav-reportes" tabindex="0" role="button">
+                    <span class="nav-icon">📋</span>
+                    <span>Reportes</span>
                 </div>
                 <div class="nav-item" onclick="switchView('conciliacion')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('conciliacion')}" id="nav-conciliacion" tabindex="0" role="button">
                     <span class="nav-icon">🔄</span>
                     <span>Conciliación</span>
+                </div>
+                <div class="nav-item" onclick="switchView('actualizar')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchView('actualizar')}" id="nav-actualizar" tabindex="0" role="button">
+                    <span class="nav-icon">📤</span>
+                    <span>Actualizar Base</span>
                 </div>
             </nav>
             <div class="sidebar-footer">
@@ -174,6 +174,18 @@
 
                 <!-- VIEW: DASHBOARD (Default) -->
                 <div id="view-dashboard" class="view-section active">
+                    <!-- UX: Active User Paradox - Onboarding banner for new users -->
+                    <div id="onboardingBanner" style="display:none; margin-bottom: 1rem; padding: 1.25rem; background: linear-gradient(135deg, var(--tp-primary-pale) 0%, #E8F5E9 100%); border: 1px solid var(--tp-primary); border-radius: 12px; position: relative;">
+                        <button onclick="dismissOnboarding()" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;font-size:1.25rem;color:var(--tp-text-muted);cursor:pointer;" title="Cerrar">✕</button>
+                        <div style="font-weight:700;font-size:1rem;color:var(--tp-primary);margin-bottom:0.5rem;">Bienvenido al Portal de Cobranzas</div>
+                        <div style="font-size:0.8125rem;color:var(--tp-text-secondary);margin-bottom:0.75rem;">Estos son los pasos principales para gestionar tus cobranzas:</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+                            <span onclick="switchView('actualizar')" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.375rem;padding:0.5rem 0.75rem;background:white;border:1px solid var(--tp-border-light);border-radius:8px;font-size:0.75rem;color:var(--tp-text-primary);transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'"><strong>1.</strong> 📤 Cargar Base de Datos</span>
+                            <span onclick="switchView('generar')" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.375rem;padding:0.5rem 0.75rem;background:white;border:1px solid var(--tp-border-light);border-radius:8px;font-size:0.75rem;color:var(--tp-text-primary);transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'"><strong>2.</strong> 📄 Generar EECC</span>
+                            <span onclick="switchView('enviar')" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.375rem;padding:0.5rem 0.75rem;background:white;border:1px solid var(--tp-border-light);border-radius:8px;font-size:0.75rem;color:var(--tp-text-primary);transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'"><strong>3.</strong> 📧 Enviar Correos</span>
+                            <span onclick="switchView('bitacora')" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.375rem;padding:0.5rem 0.75rem;background:white;border:1px solid var(--tp-border-light);border-radius:8px;font-size:0.75rem;color:var(--tp-text-primary);transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'"><strong>4.</strong> 📋 Registrar Gestiones</span>
+                        </div>
+                    </div>
                     <!-- DASHBOARD ANALÍTICO -->
                     <section class="pbi-section" id="pbi-embed">
                         <div class="pbi-toggle collapsed" onclick="togglePowerBI()">
@@ -194,8 +206,11 @@
                         </div>
                     </section>
 
+                    <!-- UX: Proximity - Group monitoring sections -->
+                    <div style="margin-top: 1rem; padding: 1rem; background: var(--tp-surface); border: 1px solid var(--tp-border-light); border-radius: 12px;">
+                        <h3 style="margin: 0 0 0.75rem; font-size: 0.875rem; color: var(--tp-text-tertiary); text-transform: uppercase; letter-spacing: 0.05em;">Monitoreo del Sistema</h3>
                     <!-- PHASE 3: DASHBOARD STATS WIDGET -->
-                    <section id="dashboardStatsSection" class="card" style="margin-bottom: 1rem; margin-top: 1rem;">
+                    <section id="dashboardStatsSection" class="card" style="margin-bottom: 1rem;">
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                             <h3 style="margin: 0; font-size: 1rem; color: var(--tp-text-primary);">📊 Métricas del
@@ -269,6 +284,7 @@
                             <div id="qhReasons" style="margin-top: 0.75rem; color: #C62828; font-size: 0.8rem;"></div>
                         </div>
                     </section>
+                    </div>
 
                     <!-- SHORTCUTS (Original Cards, but smaller or grid) -->
                     <h2 class="section-title" style="margin-top: 2rem;">Accesos Directos</h2>
@@ -310,7 +326,8 @@
                     <div class="card">
                         <div class="form-group">
                             <label class="form-label" for="fileInput">Archivo Excel o CSV</label>
-                            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="validateFileInput(this, 'uploadFileError')">
+<div id="uploadFileError" style="display: none; margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: var(--tp-error-pale); color: var(--tp-error); border-radius: 6px; font-size: 0.8125rem;"></div>
                             <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8125rem;">
                                 Se deduplicará automáticamente por CUPÓN. Aceptamos .xlsx, .xls y .csv.
                             </p>
@@ -773,16 +790,22 @@
                                 <label class="form-label" for="filtroEstadoEmb">📌 Estado de Gestión</label>
                                 <select id="filtroEstadoEmb" onchange="filtrarBitacoraEmbedded()" style="width: 100%;">
                                     <option value="">Todos los estados</option>
-                                    <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
-                                    <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
-                                    <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
-                                    <option value="REPROGRAMADO">📅 Reprogramado</option>
-                                    <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
-                                    <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
-                                    <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales</option>
-                                    <option value="NO_CONTACTABLE">📵 No contactable</option>
-                                    <option value="NO_COBRABLE">🚫 No cobrable</option>
-                                    <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
+                                    <optgroup label="En gestión">
+                                        <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
+                                        <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
+                                        <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
+                                        <option value="REPROGRAMADO">📅 Reprogramado</option>
+                                    </optgroup>
+                                    <optgroup label="Derivados">
+                                        <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
+                                        <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
+                                        <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales</option>
+                                    </optgroup>
+                                    <optgroup label="Cerrados">
+                                        <option value="NO_CONTACTABLE">📵 No contactable</option>
+                                        <option value="NO_COBRABLE">🚫 No cobrable</option>
+                                        <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
+                                    </optgroup>
                                 </select>
                             </div>
                             <div class="form-group mb-0" style="flex: 1; min-width: 130px;">
@@ -845,51 +868,56 @@
                                 <thead
                                     style="background: #E5E7EB; color: #374151; position: sticky; top: 0; z-index: 5;">
                                     <tr>
+                                        <!-- UX Chunking: Cliente -->
                                         <th onclick="ordenarBitacora('asegurado')"
-                                            style="padding: 8px 10px; text-align: left; font-weight: 600; font-size: 0.7rem; white-space: nowrap; cursor: pointer; user-select: none;">
+                                            style="padding: 8px 10px; text-align: left; font-weight: 600; font-size: 0.7rem; white-space: nowrap; cursor: pointer; user-select: none; border-bottom: 3px solid #1976D2;">
                                             ASEGURADO <span id="sortIndicatorAsegurado"></span></th>
+                                        <!-- UX Chunking: Gestión -->
                                         <th onclick="ordenarBitacora('estadoGestion')"
-                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #F57C00;">
                                             ESTADO <span id="sortIndicatorEstadoGestion"></span></th>
                                         <th onclick="ordenarBitacora('responsable')"
-                                            style="padding: 8px 6px; text-align: left; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            style="padding: 8px 6px; text-align: left; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #F57C00;">
                                             RESP. <span id="sortIndicatorResponsable"></span></th>
+                                        <!-- UX Chunking: Fechas -->
                                         <th onclick="ordenarBitacora('fechaEnvioEECC')"
-                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #7B1FA2;">
                                             F. EECC <span id="sortIndicatorFechaEnvioEECC"></span>
                                         </th>
                                         <th onclick="ordenarBitacora('fechaGestion')"
-                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #7B1FA2;">
                                             F. GESTIÓN <span id="sortIndicatorFechaGestion"></span>
                                         </th>
                                         <th onclick="ordenarBitacora('diasDesde')"
-                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #7B1FA2;">
                                             DÍAS <span id="sortIndicatorDiasDesde"></span></th>
                                         <th onclick="ordenarBitacora('fechaCompromiso')"
-                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #7B1FA2;">
                                             COMPROM. <span id="sortIndicatorFechaCompromiso"></span>
                                         </th>
+                                        <!-- UX Chunking: Montos -->
                                         <th onclick="ordenarBitacora('snapshotVencidoPEN')"
-                                            style="padding: 8px 6px; text-align: right; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            style="padding: 8px 6px; text-align: right; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #2E7D32;">
                                             VENC. PEN <span id="sortIndicatorSnapshotVencidoPEN"></span>
                                         </th>
                                         <th onclick="ordenarBitacora('deltaVencidoPEN')"
-                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;"
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #2E7D32;"
                                             title="Variación vs gestión anterior">
                                             Δ PEN <span id="sortIndicatorDeltaVencidoPEN"></span>
                                         </th>
                                         <th onclick="ordenarBitacora('snapshotVencidoUSD')"
-                                            style="padding: 8px 6px; text-align: right; font-size: 0.7rem; cursor: pointer; user-select: none;">
+                                            style="padding: 8px 6px; text-align: right; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #2E7D32;">
                                             VENC. USD <span id="sortIndicatorSnapshotVencidoUSD"></span>
                                         </th>
                                         <th onclick="ordenarBitacora('deltaVencidoUSD')"
-                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none;"
+                                            style="padding: 8px 6px; text-align: center; font-size: 0.7rem; cursor: pointer; user-select: none; border-bottom: 3px solid #2E7D32;"
                                             title="Variación vs gestión anterior">
                                             Δ USD <span id="sortIndicatorDeltaVencidoUSD"></span>
                                         </th>
-                                        <th style="padding: 8px 6px; text-align: left; font-size: 0.7rem;">PRÓX. ACCIÓN
+                                        <!-- UX Chunking: Acciones -->
+                                        <th style="padding: 8px 6px; text-align: left; font-size: 0.7rem; border-bottom: 3px solid #546E7A;">PRÓX. ACCIÓN
                                         </th>
-                                        <th style="padding: 8px 6px; text-align: center; font-size: 0.7rem;">⚡</th>
+                                        <th style="padding: 8px 6px; text-align: center; font-size: 0.7rem; border-bottom: 3px solid #546E7A;">⚡</th>
                                     </tr>
                                 </thead>
                                 <tbody id="bitacoraTableBodyEmb">
@@ -1252,16 +1280,21 @@
                                                 onchange="onEstadoChangeEmbV4(); validateFormV4();"
                                                 style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer; transition: border-color 0.15s ease;">
                                                 <option value="">¿Cuál fue el resultado?</option>
-                                                <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
-                                                <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
-                                                <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
-                                                <option value="REPROGRAMADO">📅 Reprogramado</option>
-                                                <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
-                                                <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
-                                                <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales
-                                                </option>
-                                                <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
-                                                <option value="NO_COBRABLE">⛔ No cobrable</option>
+                                                <optgroup label="En gestión">
+                                                    <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
+                                                    <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
+                                                    <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
+                                                    <option value="REPROGRAMADO">📅 Reprogramado</option>
+                                                </optgroup>
+                                                <optgroup label="Derivados">
+                                                    <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
+                                                    <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
+                                                    <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales</option>
+                                                </optgroup>
+                                                <optgroup label="Cerrados">
+                                                    <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
+                                                    <option value="NO_COBRABLE">⛔ No cobrable</option>
+                                                </optgroup>
                                             </select>
                                         </div>
 
@@ -1405,6 +1438,19 @@
                         Cruza los estados de cuenta de aseguradoras contra la base de datos de cupones Sisnet
                     </p>
 
+                    <!-- UX: Goal Gradient Stepper -->
+                    <div class="conciliacion-stepper" style="display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 1.5rem; padding: 1rem; background: var(--tp-surface); border-radius: 12px; border: 1px solid var(--tp-border-light);">
+                        <div id="step1Indicator" class="step-item active" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div class="step-circle" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; background: var(--tp-primary); color: white; transition: all 0.3s;">1</div>
+                            <span style="font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">Cargar BD Sisnet</span>
+                        </div>
+                        <div class="step-connector" style="flex: 0 0 60px; height: 2px; background: var(--tp-border-light); margin: 0 0.75rem; transition: background 0.3s;" id="stepConnector"></div>
+                        <div id="step2Indicator" class="step-item" style="display: flex; align-items: center; gap: 0.5rem; opacity: 0.5; transition: opacity 0.3s;">
+                            <div class="step-circle" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; background: var(--tp-border-light); color: var(--tp-text-muted); transition: all 0.3s;">2</div>
+                            <span style="font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-muted); transition: color 0.3s;">Procesar EECC</span>
+                        </div>
+                    </div>
+
                     <!-- ESTADO DE BD CRUCE -->
                     <section class="card" style="margin-bottom: 1.5rem;" id="conciliacionStatusCard">
                         <div
@@ -1453,7 +1499,8 @@
 
                         <div class="form-group">
                             <label class="form-label" for="bdSisnetFileInput">Archivo Excel de BD Sisnet</label>
-                            <input type="file" id="bdSisnetFileInput" accept=".xlsx,.xls,.csv" style="width: 100%;">
+                            <input type="file" id="bdSisnetFileInput" accept=".xlsx,.xls,.csv" style="width: 100%;" onchange="validateFileInput(this, 'bdSisnetFileError')">
+<div id="bdSisnetFileError" style="display: none; margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: var(--tp-error-pale); color: var(--tp-error); border-radius: 6px; font-size: 0.8125rem;"></div>
                             <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.8125rem;">
                                 📌 Formato: .xlsx, .xls o .csv. La columna H debe contener el CUPON para el cruce.
                             </p>
@@ -1743,16 +1790,22 @@
                             </label>
                             <select id="filtroEstado" onchange="filtrarBitacora()">
                                 <option value="">Todos los estados</option>
-                                <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
-                                <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
-                                <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
-                                <option value="REPROGRAMADO">📅 Reprogramado</option>
-                                <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
-                                <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
-                                <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales</option>
-                                <option value="NO_CONTACTABLE">📵 No contactable</option>
-                                <option value="NO_COBRABLE">🚫 No cobrable</option>
-                                <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
+                                <optgroup label="En gestión">
+                                    <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
+                                    <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
+                                    <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
+                                    <option value="REPROGRAMADO">📅 Reprogramado</option>
+                                </optgroup>
+                                <optgroup label="Derivados">
+                                    <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
+                                    <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
+                                    <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales</option>
+                                </optgroup>
+                                <optgroup label="Cerrados">
+                                    <option value="NO_CONTACTABLE">📵 No contactable</option>
+                                    <option value="NO_COBRABLE">🚫 No cobrable</option>
+                                    <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
+                                </optgroup>
                             </select>
                         </div>
 
@@ -1982,16 +2035,21 @@
                                     </label>
                                     <select id="gestionEstado" required onchange="onEstadoChange()">
                                         <option value="">¿Cuál fue el resultado?</option>
-                                        <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
-                                        <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
-                                        <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
-                                        <option value="REPROGRAMADO">📅 Reprogramado</option>
-                                        <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
-                                        <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
-                                        <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales
-                                        </option>
-                                        <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
-                                        <option value="NO_COBRABLE">⛔ No cobrable</option>
+                                        <optgroup label="En gestión">
+                                            <option value="SIN_RESPUESTA">❌ Sin respuesta</option>
+                                            <option value="EN_SEGUIMIENTO">👁️ En seguimiento</option>
+                                            <option value="COMPROMISO_PAGO">🤝 Compromiso de pago</option>
+                                            <option value="REPROGRAMADO">📅 Reprogramado</option>
+                                        </optgroup>
+                                        <optgroup label="Derivados">
+                                            <option value="DERIVADO_COMERCIAL">🔀 Derivado Comercial</option>
+                                            <option value="DERIVADO_RRHH">🔀 Derivado RRHH</option>
+                                            <option value="DERIVADO_RIESGOS_GENERALES">🔀 Derivado Riesgos Generales</option>
+                                        </optgroup>
+                                        <optgroup label="Cerrados">
+                                            <option value="CERRADO_PAGADO">✅ Cerrado/Pagado</option>
+                                            <option value="NO_COBRABLE">⛔ No cobrable</option>
+                                        </optgroup>
                                     </select>
                                 </div>
 
@@ -2120,6 +2178,25 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#x27;');
+        }
+
+        // ============================================================
+        // UX: Postel's Law - File input validation
+        // ============================================================
+        function validateFileInput(input, errorDivId) {
+            const errorDiv = document.getElementById(errorDivId);
+            if (!errorDiv) return;
+            if (!input.files || !input.files.length) { errorDiv.style.display = 'none'; return; }
+            const file = input.files[0];
+            const validExts = ['.xlsx', '.xls', '.csv'];
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (!validExts.includes(ext)) {
+                errorDiv.textContent = 'Formato no soportado: ' + ext + '. Usa .xlsx, .xls o .csv';
+                errorDiv.style.display = 'block';
+                input.value = '';
+            } else {
+                errorDiv.style.display = 'none';
+            }
         }
 
         // ============================================================
@@ -2750,9 +2827,27 @@
         // ============================================================
         // INICIALIZACIÓN DEL PORTAL
         // ============================================================
+        // UX: Active User Paradox - Show onboarding for first-time users
+        function showOnboardingIfNew() {
+            try {
+                if (!sessionStorage.getItem('portal_onboarding_dismissed')) {
+                    const banner = document.getElementById('onboardingBanner');
+                    if (banner) banner.style.display = 'block';
+                }
+            } catch(e) { /* sessionStorage not available */ }
+        }
+        function dismissOnboarding() {
+            const banner = document.getElementById('onboardingBanner');
+            if (banner) banner.style.display = 'none';
+            try { sessionStorage.setItem('portal_onboarding_dismissed', '1'); } catch(e) {}
+        }
+
         function initPortal() {
             _log('[initPortal] 🚀 Iniciando portal...');
             log('Portal inicializado', 'success');
+
+            // UX: Active User Paradox - Show onboarding banner for new users
+            showOnboardingIfNew();
 
             // PSI: PBI iframe lazy-load — only store URL, load when user expands
             const pbiFrame = document.getElementById('pbiFrame');
@@ -6383,7 +6478,7 @@
             if (!tbody) return;
 
             if (!BITACORA_FILTERED || BITACORA_FILTERED.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:2rem;color:var(--tp-text-secondary);">No hay gestiones registradas</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="13"><div class="tp-empty-state"><div class="tp-empty-state-icon">📋</div><div class="tp-empty-state-title">No hay gestiones registradas</div><div class="tp-empty-state-message">Comienza registrando una gestión de cobranza para hacer seguimiento</div></div></td></tr>';
                 if (countEl) countEl.textContent = '0';
                 return;
             }
@@ -10758,6 +10853,12 @@
             const container = document.getElementById(containerId);
             if (!container) return;
 
+            // UX Peak-End: Support 'raw' type for rich HTML summaries
+            if (type === 'raw') {
+                container.innerHTML = message;
+                return;
+            }
+
             const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
             const colors = { success: 'var(--tp-success)', error: 'var(--tp-error)', warning: 'var(--tp-warning)', info: 'var(--tp-info)' };
 
@@ -10838,6 +10939,13 @@
         function enablePaso2() {
             const paso2Card = document.getElementById('paso2Card');
             if (paso2Card) paso2Card.style.opacity = '1';
+            // UX: Goal Gradient - activate step 2
+            const step1 = document.getElementById('step1Indicator');
+            const step2 = document.getElementById('step2Indicator');
+            const connector = document.getElementById('stepConnector');
+            if (step1) { step1.querySelector('.step-circle').style.background = 'var(--tp-success)'; step1.querySelector('.step-circle').textContent = '✓'; }
+            if (connector) connector.style.background = 'var(--tp-success)';
+            if (step2) { step2.style.opacity = '1'; step2.querySelector('.step-circle').style.background = 'var(--tp-primary)'; step2.querySelector('.step-circle').style.color = 'white'; step2.querySelector('span').style.color = 'var(--tp-text-primary)'; }
             updateProcessBtnState();
         }
 
@@ -10849,6 +10957,13 @@
             const btn = document.getElementById('processConciliacionBtn');
             if (paso2Card) paso2Card.style.opacity = '0.6';
             if (btn) btn.disabled = true;
+            // UX: Goal Gradient - deactivate step 2
+            const step1 = document.getElementById('step1Indicator');
+            const step2 = document.getElementById('step2Indicator');
+            const connector = document.getElementById('stepConnector');
+            if (step1) { step1.querySelector('.step-circle').style.background = 'var(--tp-primary)'; step1.querySelector('.step-circle').textContent = '1'; }
+            if (connector) connector.style.background = 'var(--tp-border-light)';
+            if (step2) { step2.style.opacity = '0.5'; step2.querySelector('.step-circle').style.background = 'var(--tp-border-light)'; step2.querySelector('.step-circle').style.color = 'var(--tp-text-muted)'; step2.querySelector('span').style.color = 'var(--tp-text-muted)'; }
         }
 
         // ===============================
@@ -11109,7 +11224,19 @@
                                 }
                             }
 
-                            showConciliacionStatus('conciliacionStatus', 'Procesamiento completado exitosamente', 'success');
+                            // UX Peak-End: Show summary card instead of plain text
+                            const stats = result.stats || {};
+                            const cruce = result.cruce || {};
+                            showConciliacionStatus('conciliacionStatus',
+                                '<div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--tp-success-pale); border-radius: 8px; border-left: 4px solid var(--tp-success);">' +
+                                '<div style="font-size: 1.5rem;">✅</div>' +
+                                '<div><div style="font-weight: 700; color: var(--tp-success); margin-bottom: 0.25rem;">' + insurerName + ' procesado exitosamente</div>' +
+                                '<div style="font-size: 0.8125rem; color: var(--tp-text-secondary); display: flex; gap: 1rem; flex-wrap: wrap;">' +
+                                '<span>' + (stats.filasEscritas || 0) + ' filas escritas</span>' +
+                                '<span>🟢 ' + (cruce.registrado || 0) + ' registrados</span>' +
+                                '<span>🟡 ' + (cruce.validar || 0) + ' a validar</span>' +
+                                '<span>🔴 ' + (cruce.noRegistrado || 0) + ' sin registrar</span>' +
+                                '</div></div></div>', 'raw');
                             showToast(insurerName + ' procesado exitosamente', 'success');
                             log('✅ EECC ' + insurerName + ' procesado', 'success');
 
@@ -11169,15 +11296,18 @@
             const status = document.getElementById('statusDashEjecutivo');
             btn.disabled = true;
             btn.textContent = 'Generando Dashboard...';
-            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando dashboard ejecutivo, esto puede tomar hasta 2 minutos...</span>';
+            status.innerHTML = '<div style="padding: 0.75rem; background: var(--tp-info-pale); border-radius: 8px; font-size: 0.8125rem;"><div style="margin-bottom: 0.5rem; font-weight: 600; color: var(--tp-info);">Generando reporte...</div><div id="reportStepsDashEj" style="display: flex; flex-direction: column; gap: 0.25rem;"><div style="color: var(--tp-info);">● Leyendo base de datos...</div><div style="color: var(--tp-text-muted);">○ Calculando métricas</div><div style="color: var(--tp-text-muted);">○ Generando Excel</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div></div></div>';
+            setTimeout(() => { const s = document.getElementById('reportStepsDashEj'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-info);">● Calculando métricas...</div><div style="color: var(--tp-text-muted);">○ Generando Excel</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div>'; }, 3000);
+            setTimeout(() => { const s = document.getElementById('reportStepsDashEj'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-success);">✓ Métricas calculadas</div><div style="color: var(--tp-info);">● Generando Excel...</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div>'; }, 8000);
+            setTimeout(() => { const s = document.getElementById('reportStepsDashEj'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-success);">✓ Métricas calculadas</div><div style="color: var(--tp-success);">✓ Excel generado</div><div style="color: var(--tp-info);">● Exportando archivo...</div>'; }, 15000);
 
             try {
                 const result = await runGasLong('generarDashboardEjecutivo');
                 if (result && result.ok) {
                     downloadBase64File(result.data.base64, result.data.fileName,
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
-                        escapeHtml(result.data.filas + ' registros analizados') + '</span>';
+                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">✅ ' +
+                        escapeHtml(result.data.filas + ' registros analizados') + ' &middot; <span style="color: var(--tp-text-muted);">' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'}) + '</span></span>';
                 } else {
                     status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
                         escapeHtml(result ? result.error : 'Error desconocido') + '</span>';
@@ -11196,7 +11326,10 @@
             const status = document.getElementById('statusReporteSaldos');
             btn.disabled = true;
             btn.textContent = 'Generando...';
-            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte con dashboard, esto puede tomar hasta 2 minutos...</span>';
+            status.innerHTML = '<div style="padding: 0.75rem; background: var(--tp-info-pale); border-radius: 8px; font-size: 0.8125rem;"><div style="margin-bottom: 0.5rem; font-weight: 600; color: var(--tp-info);">Generando reporte...</div><div id="reportStepsSaldos" style="display: flex; flex-direction: column; gap: 0.25rem;"><div style="color: var(--tp-info);">● Leyendo base de datos...</div><div style="color: var(--tp-text-muted);">○ Calculando métricas</div><div style="color: var(--tp-text-muted);">○ Generando Excel</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div></div></div>';
+            setTimeout(() => { const s = document.getElementById('reportStepsSaldos'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-info);">● Calculando métricas...</div><div style="color: var(--tp-text-muted);">○ Generando Excel</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div>'; }, 3000);
+            setTimeout(() => { const s = document.getElementById('reportStepsSaldos'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-success);">✓ Métricas calculadas</div><div style="color: var(--tp-info);">● Generando Excel...</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div>'; }, 8000);
+            setTimeout(() => { const s = document.getElementById('reportStepsSaldos'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-success);">✓ Métricas calculadas</div><div style="color: var(--tp-success);">✓ Excel generado</div><div style="color: var(--tp-info);">● Exportando archivo...</div>'; }, 15000);
 
             try {
                 const result = await runGasLong('generarReporteSaldosConDashboard');
@@ -11208,8 +11341,8 @@
                     }
                     downloadBase64File(result.data.base64, result.data.fileName,
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
-                        escapeHtml(result.data.filas + ' registros exportados con dashboard') + '</span>';
+                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">✅ ' +
+                        escapeHtml(result.data.filas + ' registros exportados con dashboard') + ' &middot; <span style="color: var(--tp-text-muted);">' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'}) + '</span></span>';
                 } else {
                     status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
                         escapeHtml(result ? result.error : 'Error desconocido') + '</span>';
@@ -11228,7 +11361,10 @@
             const status = document.getElementById('statusReporteVencidos');
             btn.disabled = true;
             btn.textContent = 'Generando...';
-            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte con dashboard, esto puede tomar hasta 2 minutos...</span>';
+            status.innerHTML = '<div style="padding: 0.75rem; background: var(--tp-info-pale); border-radius: 8px; font-size: 0.8125rem;"><div style="margin-bottom: 0.5rem; font-weight: 600; color: var(--tp-info);">Generando reporte...</div><div id="reportStepsVenc60" style="display: flex; flex-direction: column; gap: 0.25rem;"><div style="color: var(--tp-info);">● Leyendo base de datos...</div><div style="color: var(--tp-text-muted);">○ Calculando métricas</div><div style="color: var(--tp-text-muted);">○ Generando Excel</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div></div></div>';
+            setTimeout(() => { const s = document.getElementById('reportStepsVenc60'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-info);">● Calculando métricas...</div><div style="color: var(--tp-text-muted);">○ Generando Excel</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div>'; }, 3000);
+            setTimeout(() => { const s = document.getElementById('reportStepsVenc60'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-success);">✓ Métricas calculadas</div><div style="color: var(--tp-info);">● Generando Excel...</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div>'; }, 8000);
+            setTimeout(() => { const s = document.getElementById('reportStepsVenc60'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-success);">✓ Métricas calculadas</div><div style="color: var(--tp-success);">✓ Excel generado</div><div style="color: var(--tp-info);">● Exportando archivo...</div>'; }, 15000);
 
             try {
                 const result = await runGasLong('generarReporteVencidos60ConDashboard');
@@ -11240,8 +11376,8 @@
                     }
                     downloadBase64File(result.data.base64, result.data.fileName,
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
-                        escapeHtml(result.data.filas + ' registros exportados con dashboard') + '</span>';
+                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">✅ ' +
+                        escapeHtml(result.data.filas + ' registros exportados con dashboard') + ' &middot; <span style="color: var(--tp-text-muted);">' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'}) + '</span></span>';
                 } else {
                     status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
                         escapeHtml(result ? result.error : 'Error desconocido') + '</span>';
@@ -11260,7 +11396,10 @@
             const status = document.getElementById('statusReporteBitacora');
             btn.disabled = true;
             btn.textContent = 'Generando...';
-            status.innerHTML = '<span style="color: var(--tp-text-tertiary); font-size: 0.8125rem;">Generando reporte de bitácora, esto puede tomar hasta 2 minutos...</span>';
+            status.innerHTML = '<div style="padding: 0.75rem; background: var(--tp-info-pale); border-radius: 8px; font-size: 0.8125rem;"><div style="margin-bottom: 0.5rem; font-weight: 600; color: var(--tp-info);">Generando reporte...</div><div id="reportStepsBitacora" style="display: flex; flex-direction: column; gap: 0.25rem;"><div style="color: var(--tp-info);">● Leyendo base de datos...</div><div style="color: var(--tp-text-muted);">○ Calculando métricas</div><div style="color: var(--tp-text-muted);">○ Generando Excel</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div></div></div>';
+            setTimeout(() => { const s = document.getElementById('reportStepsBitacora'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-info);">● Calculando métricas...</div><div style="color: var(--tp-text-muted);">○ Generando Excel</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div>'; }, 3000);
+            setTimeout(() => { const s = document.getElementById('reportStepsBitacora'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-success);">✓ Métricas calculadas</div><div style="color: var(--tp-info);">● Generando Excel...</div><div style="color: var(--tp-text-muted);">○ Exportando archivo</div>'; }, 8000);
+            setTimeout(() => { const s = document.getElementById('reportStepsBitacora'); if(s) s.innerHTML = '<div style="color: var(--tp-success);">✓ Base de datos leída</div><div style="color: var(--tp-success);">✓ Métricas calculadas</div><div style="color: var(--tp-success);">✓ Excel generado</div><div style="color: var(--tp-info);">● Exportando archivo...</div>'; }, 15000);
 
             try {
                 const result = await runGasLong('generarReporteBitacoraConDashboard');
@@ -11272,8 +11411,8 @@
                     }
                     downloadBase64File(result.data.base64, result.data.fileName,
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">' +
-                        escapeHtml(result.data.filas + ' clientes analizados con dashboard') + '</span>';
+                    status.innerHTML = '<span style="color: var(--tp-success); font-size: 0.8125rem;">✅ ' +
+                        escapeHtml(result.data.filas + ' clientes analizados con dashboard') + ' &middot; <span style="color: var(--tp-text-muted);">' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'}) + '</span></span>';
                 } else {
                     status.innerHTML = '<span style="color: var(--tp-error); font-size: 0.8125rem;">' +
                         escapeHtml(result ? result.error : 'Error desconocido') + '</span>';
