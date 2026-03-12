@@ -2801,8 +2801,9 @@
                 })
                 .obtenerDatosIniciales(TOKEN);
 
-            // ── OPTIMIZACIÓN P2-Item6: Asegurados lazy-load ──
-            // No precargar aquí; se carga en switchView() cuando el usuario navega a generar/bitacora/enviar
+            // Precargar asegurados en background (no bloquea el dashboard)
+            // Se cargan silenciosamente para que estén listos cuando el usuario navegue a Generar/Bitácora
+            setTimeout(() => loadAsegurados(), 500);
 
             // Inicializar notificaciones (separate call - uses its own timeout/polling)
             inicializarNotificaciones();
