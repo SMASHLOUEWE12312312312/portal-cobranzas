@@ -368,11 +368,10 @@ function loginPassword(username, password) {
 
     // Mapa de nombres de usuario → nombre completo
     const USER_DISPLAY_NAMES = getConfig('AUTH.USER_DISPLAY_NAMES', {
-      'pilar': 'Pilar',
-      'gladys': 'Gladys',
-      'admin': 'Administrador',
-      'cobranzas1': 'Cobranzas 1',
-      'cobranzas2': 'Cobranzas 2'
+      'cobranzas1': 'Pilar',
+      'cobranzas2': 'Gladys',
+      'admin4': 'Cristian',
+      'admin': 'Roberto'
     });
 
     const displayName = USER_DISPLAY_NAMES[result.user] || result.user;
