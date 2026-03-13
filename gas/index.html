@@ -2799,9 +2799,16 @@
                     document.getElementById('loginSection').classList.add('hidden');
                     document.getElementById('portalSection').classList.remove('hidden');
 
-                    // FIX: null-guard para elementos que pueden no existir en v17
+                    // Mostrar nombre del usuario en sidebar y header
+                    const displayName = CURRENT_USER?.displayName || CURRENT_USER?.nombre || CURRENT_USER?.username || CURRENT_USER || 'Usuario';
                     const userEl = document.getElementById('currentUser');
-                    if (userEl) userEl.textContent = CURRENT_USER?.displayName || CURRENT_USER?.username || CURRENT_USER;
+                    if (userEl) userEl.textContent = displayName;
+
+                    const sidebarUserEl = document.getElementById('sidebarUser');
+                    if (sidebarUserEl) sidebarUserEl.textContent = displayName;
+
+                    const avatarEl = document.getElementById('userAvatar');
+                    if (avatarEl) avatarEl.textContent = (typeof displayName === 'string' ? displayName.charAt(0).toUpperCase() : 'U');
 
                     _log('[LOGIN] ✅ success, user:', CURRENT_USER);
                     initPortal();
@@ -2827,7 +2834,26 @@
             }
             stopDashboardAutoRefresh();
             if (TOKEN) google.script.run.logout(TOKEN);
-            location.reload();
+
+            // Limpiar estado
+            TOKEN = null;
+            CURRENT_USER = null;
+
+            // Mostrar login en vez de pantalla en blanco
+            document.getElementById('portalSection').classList.add('hidden');
+            document.getElementById('loginSection').classList.remove('hidden');
+
+            // Limpiar formulario de login
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) loginForm.reset();
+            const loginError = document.getElementById('loginError');
+            if (loginError) loginError.classList.add('hidden');
+
+            // Resetear sidebar user
+            const sidebarUserEl = document.getElementById('sidebarUser');
+            if (sidebarUserEl) sidebarUserEl.textContent = 'Usuario';
+            const avatarEl = document.getElementById('userAvatar');
+            if (avatarEl) avatarEl.textContent = 'U';
         }
 
         // ============================================================

@@ -366,6 +366,17 @@ function loginPassword(username, password) {
     const userRole = _inferUserRole(result.user);
     const expiresAtMs = Date.now() + ((result.expiresIn || 28800) * 1000);
 
+    // Mapa de nombres de usuario → nombre completo
+    const USER_DISPLAY_NAMES = getConfig('AUTH.USER_DISPLAY_NAMES', {
+      'pilar': 'Pilar',
+      'gladys': 'Gladys',
+      'admin': 'Administrador',
+      'cobranzas1': 'Cobranzas 1',
+      'cobranzas2': 'Cobranzas 2'
+    });
+
+    const displayName = USER_DISPLAY_NAMES[result.user] || result.user;
+
     return {
       ok: true,
       data: {
@@ -373,7 +384,8 @@ function loginPassword(username, password) {
         user: {
           username: result.user,
           role: userRole,
-          displayName: result.user
+          displayName: displayName,
+          nombre: displayName
         },
         expiresAt: expiresAtMs
       }
