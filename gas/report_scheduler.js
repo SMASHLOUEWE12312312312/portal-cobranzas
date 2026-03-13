@@ -296,7 +296,8 @@ const ReportScheduler = {
                 const weekStartDate = new Date();
                 weekStartDate.setHours(0, 0, 0, 0);
                 weekStartDate.setDate(weekStartDate.getDate() - 7);
-                let montoRecuperadoSemana = 0;
+                let montoRecuperadoPEN = 0;
+                let montoRecuperadoUSD = 0;
                 let casosCerradosSemana = 0;
                 gestiones.forEach(g => {
                     if (g.estadoGestion !== 'CERRADO_PAGADO') return;
@@ -304,12 +305,21 @@ const ReportScheduler = {
                     if (fecha >= weekStartDate) {
                         casosCerradosSemana++;
                         const montoRec = g.montoRecuperado || g.montoCompromiso || g.montoComprometido || g.snapshotVencidoPEN || g.montoPEN || 0;
-                        if (montoRec > 0) montoRecuperadoSemana += montoRec;
+                        if (montoRec > 0) {
+                            const moneda = (g.moneda || '').toUpperCase();
+                            if (moneda.includes('USD') || moneda.includes('US$') || moneda.includes('DOLAR')) {
+                                montoRecuperadoUSD += montoRec;
+                            } else {
+                                montoRecuperadoPEN += montoRec;
+                            }
+                        }
                     }
                 });
 
                 data.casosCerradosPagados = casosCerradosSemana;
-                data.montoRecuperado = montoRecuperadoSemana;
+                data.montoRecuperado = montoRecuperadoPEN + montoRecuperadoUSD;
+                data.montoRecuperadoPEN = montoRecuperadoPEN;
+                data.montoRecuperadoUSD = montoRecuperadoUSD;
 
                 // NO calcular tasaCumplimiento desde BitacoraService (sería engañoso)
                 // tasaCumplimiento queda en 0 → el KPI card lo mostrará como "Sin datos PTP"
@@ -804,22 +814,35 @@ const ReportScheduler = {
             trend: data.tendenciaDSO
         });
 
-        // 3. Monto Recuperado (mostrar moneda si se conoce)
+        // 3. Monto Recuperado (PEN + USD separados)
+        const recPEN = data.montoRecuperadoPEN || 0;
+        const recUSD = data.montoRecuperadoUSD || 0;
+        const recParts = [];
+        if (recPEN > 0) recParts.push(kit.formatCurrency(recPEN, 'PEN'));
+        if (recUSD > 0) recParts.push(kit.formatCurrency(recUSD, 'USD'));
         kpis.push({
             label: 'Monto Recuperado',
-            value: data.montoRecuperado > 0 ? kit.formatCurrency(data.montoRecuperado) : 'S/. 0.00',
-            severity: data.montoRecuperado > 0 ? 'OK' : 'NEUTRAL',
+            value: recParts.length > 0 ? recParts.join(' + ') : 'S/. 0',
+            severity: (recPEN + recUSD) > 0 ? 'OK' : 'NEUTRAL',
             icon: '💰'
         });
 
-        // 4. % Cartera Vencida
+        // 4. % Cartera Vencida (desglose PEN/USD)
         const vencidoLastWeek = lastWeek['% Vencido'] || null;
         const vencidoSeverity = data.porcentajeVencido <= 15 ? 'OK' :
                                data.porcentajeVencido <= 25 ? 'WARN' : 'CRITICAL';
+        const byCur = data.byCurrency || {};
+        const penPct = byCur.PEN ? byCur.PEN.porcentajeVencido : null;
+        const usdPct = byCur.USD ? byCur.USD.porcentajeVencido : null;
+        const vencidoDetail = [];
+        if (penPct != null && penPct > 0) vencidoDetail.push(`PEN: ${kit.formatPct(penPct)}`);
+        if (usdPct != null && usdPct > 0) vencidoDetail.push(`USD: ${kit.formatPct(usdPct)}`);
         kpis.push({
             label: '% Cartera Vencida',
             value: kit.formatPct(data.porcentajeVencido),
-            delta: kit.getDeltaDisplay(data.porcentajeVencido, vencidoLastWeek, { format: 'pct' }),
+            delta: vencidoDetail.length > 0
+                ? `<span style="font-size:10px;color:#757575;">${vencidoDetail.join(' · ')}</span>`
+                : kit.getDeltaDisplay(data.porcentajeVencido, vencidoLastWeek, { format: 'pct' }),
             severity: vencidoSeverity,
             icon: '📉'
         });

@@ -676,15 +676,23 @@ const EmailAutomation = {
             icon: '📈'
         });
 
-        // 5. % Cartera Vencida
+        // 5. % Cartera Vencida (desglose PEN/USD)
         const vencidoWarn = getConfig('KPI.VENCIDO_THRESHOLD_WARN', 15);
         const vencidoError = getConfig('KPI.VENCIDO_THRESHOLD_ERROR', 25);
         const vencidoSeverity = (data.porcentajeVencido || 0) > vencidoError ? 'CRITICAL' :
                                (data.porcentajeVencido || 0) > vencidoWarn ? 'WARN' : 'OK';
+        const byCur = data.byCurrency || {};
+        const penVencidoPct = byCur.PEN ? byCur.PEN.porcentajeVencido : null;
+        const usdVencidoPct = byCur.USD ? byCur.USD.porcentajeVencido : null;
+        const vencidoDetailParts = [];
+        if (penVencidoPct != null && penVencidoPct > 0) vencidoDetailParts.push(`PEN: ${kit.formatPct(penVencidoPct)}`);
+        if (usdVencidoPct != null && usdVencidoPct > 0) vencidoDetailParts.push(`USD: ${kit.formatPct(usdVencidoPct)}`);
         kpis.push({
             label: '% Cartera Vencida',
             value: kit.formatPct(data.porcentajeVencido || 0),
-            delta: kit.getDeltaDisplay(data.porcentajeVencido || 0, yesterdayHist['% Vencido'], { format: 'pct' }),
+            delta: vencidoDetailParts.length > 0
+                ? `<span style="font-size:10px;color:#757575;">${vencidoDetailParts.join(' · ')}</span>`
+                : kit.getDeltaDisplay(data.porcentajeVencido || 0, yesterdayHist['% Vencido'], { format: 'pct' }),
             severity: vencidoSeverity,
             icon: '💰'
         });

@@ -105,7 +105,7 @@ var KPIService = {
       { name: 'IMPORT EXPORT PERU SAC', penTotal: 60000, penVencido: 45000, usdTotal: 25000, usdVencido: 20000, count: 7, totalVencido: 65000 },
       { name: 'MINERA LOS ANDES', penTotal: 30000, penVencido: 25000, usdTotal: 40000, usdVencido: 35000, count: 4, totalVencido: 60000 }
     ],
-    byCurrency: { PEN: { count: 4000, total: 5000000, vencido: 1200000 }, USD: { count: 300, total: 1500000, vencido: 256000 } }
+    byCurrency: { PEN: { count: 4000, total: 5000000, vencido: 1200000, porcentajeVencido: 24.0 }, USD: { count: 300, total: 1500000, vencido: 256000, porcentajeVencido: 17.07 } }
   })
 };
 
@@ -324,6 +324,9 @@ console.log('\n📋 Test 7: montoRecuperado con BitacoraService fallback');
   assert(data.montoRecuperado > 0, 'montoRecuperado > 0 (hay CERRADO_PAGADO en semana)');
   assert(typeof data.tasaRecuperacion === 'number', 'tasaRecuperacion calculada');
   assert(typeof data.casosCerradosPagados === 'number', 'casosCerradosPagados es number');
+  assert(typeof data.montoRecuperadoPEN === 'number', 'montoRecuperadoPEN es number');
+  assert(typeof data.montoRecuperadoUSD === 'number', 'montoRecuperadoUSD es number');
+  assert(data.montoRecuperadoPEN > 0 || data.montoRecuperadoUSD > 0, 'Al menos una moneda tiene recuperación');
 }
 
 // --- Test 8: HTML email semanal - secciones completas ---

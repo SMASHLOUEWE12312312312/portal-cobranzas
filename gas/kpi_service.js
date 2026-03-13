@@ -241,6 +241,14 @@ const KPIService = {
                 ? parseFloat((kpis.summary.totalMonto / kpis.summary.totalRegistros).toFixed(2))
                 : 0;
 
+            // Porcentaje vencido por moneda
+            ['PEN', 'USD'].forEach(cur => {
+                const c = kpis.byCurrency[cur];
+                c.porcentajeVencido = c.total > 0
+                    ? parseFloat((c.vencido / c.total * 100).toFixed(2))
+                    : 0;
+            });
+
             kpis.aging.buckets = this.AGING_BUCKETS.map(b => ({
                 ...b,
                 count: bucketCounts[b.id],
