@@ -613,50 +613,53 @@
 
                     <!-- TAB 1: ESTADO ACTUAL -->
                     <div id="bitacora-embedded-estado" class="bitacora-pane">
-                        <!-- KPIs Panel -->
-                        <div id="bitacoraKPIsPanel"
-                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
-                            <div class="kpi-card" onclick="filtrarPorKPI('hoy')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('hoy')}" tabindex="0" role="button"
-                                style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #1976D2;">
-                                <div
-                                    style="font-size: 0.7rem; color: #1565C0; font-weight: 600; text-transform: uppercase;">
-                                    📅 HOY</div>
-                                <div id="kpiHoy" style="font-size: 1.5rem; font-weight: 700; color: #1976D2;">0</div>
-                                <div style="font-size: 0.65rem; color: #1976D2;">Compromisos</div>
-                            </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('1-3dias')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('1-3dias')}" tabindex="0" role="button"
-                                style="background: linear-gradient(135deg, #E8F5E9, #C8E6C9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #388E3C;">
-                                <div
-                                    style="font-size: 0.7rem; color: #2E7D32; font-weight: 600; text-transform: uppercase;">
-                                    📆 1-3 días</div>
-                                <div id="kpi1a3" style="font-size: 1.5rem; font-weight: 700; color: #388E3C;">0</div>
-                                <div style="font-size: 0.65rem; color: #388E3C;">Próximos</div>
-                            </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('4-7dias')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('4-7dias')}" tabindex="0" role="button"
-                                style="background: linear-gradient(135deg, #FFF3E0, #FFE0B2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #F57C00;">
-                                <div
-                                    style="font-size: 0.7rem; color: #E65100; font-weight: 600; text-transform: uppercase;">
-                                    📅 4-7 días</div>
-                                <div id="kpi4a7" style="font-size: 1.5rem; font-weight: 700; color: #F57C00;">0</div>
-                                <div style="font-size: 0.65rem; color: #F57C00;">Semana</div>
-                            </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('vencidos')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('vencidos')}" tabindex="0" role="button"
-                                style="background: linear-gradient(135deg, #FFEBEE, #FFCDD2); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #D32F2F;">
-                                <div
-                                    style="font-size: 0.7rem; color: #C62828; font-weight: 600; text-transform: uppercase;">
-                                    🔴 Vencidos</div>
-                                <div id="kpiVencidos" style="font-size: 1.5rem; font-weight: 700; color: #D32F2F;">0
+                        <!-- KPIs Panel: Estado de Gestiones -->
+                        <div id="bitacoraKPIsPanel" style="margin-bottom: 1.25rem;">
+                            <!-- En gestión -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <div class="kpi-card" onclick="filtrarPorKPI('SIN_RESPUESTA')" tabindex="0" role="button"
+                                    style="background: linear-gradient(135deg, #FFF3E0, #FFE0B2); border-radius: 8px; padding: 0.625rem 0.75rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #E65100;">
+                                    <div style="font-size: 0.625rem; color: #E65100; font-weight: 600; text-transform: uppercase;">Sin Respuesta</div>
+                                    <div id="kpiSinRespuesta" style="font-size: 1.375rem; font-weight: 700; color: #E65100;">0</div>
                                 </div>
-                                <div style="font-size: 0.65rem; color: #D32F2F;">Crítico</div>
-                            </div>
-                            <div class="kpi-card" onclick="filtrarPorKPI('aging60')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorKPI('aging60')}" tabindex="0" role="button"
-                                style="background: linear-gradient(135deg, #FCE4EC, #F8BBD9); border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #C2185B;">
-                                <div
-                                    style="font-size: 0.7rem; color: #AD1457; font-weight: 600; text-transform: uppercase;">
-                                    ⚠️ +60 días</div>
-                                <div id="kpiAging60" style="font-size: 1.5rem; font-weight: 700; color: #C2185B;">0
+                                <div class="kpi-card" onclick="filtrarPorKPI('EN_SEGUIMIENTO')" tabindex="0" role="button"
+                                    style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); border-radius: 8px; padding: 0.625rem 0.75rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #1976D2;">
+                                    <div style="font-size: 0.625rem; color: #1976D2; font-weight: 600; text-transform: uppercase;">En Seguimiento</div>
+                                    <div id="kpiEnSeguimiento" style="font-size: 1.375rem; font-weight: 700; color: #1976D2;">0</div>
                                 </div>
-                                <div style="font-size: 0.65rem; color: #C2185B;">Aging</div>
+                                <div class="kpi-card" onclick="filtrarPorKPI('COMPROMISO_PAGO')" tabindex="0" role="button"
+                                    style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); border-radius: 8px; padding: 0.625rem 0.75rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #1565C0;">
+                                    <div style="font-size: 0.625rem; color: #1565C0; font-weight: 600; text-transform: uppercase;">Compromiso Pago</div>
+                                    <div id="kpiCompromisoPago" style="font-size: 1.375rem; font-weight: 700; color: #1565C0;">0</div>
+                                </div>
+                                <div class="kpi-card" onclick="filtrarPorKPI('REPROGRAMADO')" tabindex="0" role="button"
+                                    style="background: linear-gradient(135deg, #FFF3E0, #FFE0B2); border-radius: 8px; padding: 0.625rem 0.75rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #F57C00;">
+                                    <div style="font-size: 0.625rem; color: #F57C00; font-weight: 600; text-transform: uppercase;">Reprogramado</div>
+                                    <div id="kpiReprogramado" style="font-size: 1.375rem; font-weight: 700; color: #F57C00;">0</div>
+                                </div>
+                            </div>
+                            <!-- Derivados + Cerrados -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem;">
+                                <div class="kpi-card" onclick="filtrarPorKPI('DERIVADO')" tabindex="0" role="button"
+                                    style="background: linear-gradient(135deg, #F3E5F5, #E1BEE7); border-radius: 8px; padding: 0.625rem 0.75rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #6A1B9A;">
+                                    <div style="font-size: 0.625rem; color: #6A1B9A; font-weight: 600; text-transform: uppercase;">Derivados</div>
+                                    <div id="kpiDerivado" style="font-size: 1.375rem; font-weight: 700; color: #6A1B9A;">0</div>
+                                </div>
+                                <div class="kpi-card" onclick="filtrarPorKPI('CERRADO_PAGADO')" tabindex="0" role="button"
+                                    style="background: linear-gradient(135deg, #E8F5E9, #C8E6C9); border-radius: 8px; padding: 0.625rem 0.75rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #1B5E20;">
+                                    <div style="font-size: 0.625rem; color: #1B5E20; font-weight: 600; text-transform: uppercase;">Cerrado Pagado</div>
+                                    <div id="kpiCerradoPagado" style="font-size: 1.375rem; font-weight: 700; color: #1B5E20;">0</div>
+                                </div>
+                                <div class="kpi-card" onclick="filtrarPorKPI('NO_COBRABLE')" tabindex="0" role="button"
+                                    style="background: linear-gradient(135deg, #FFEBEE, #FFCDD2); border-radius: 8px; padding: 0.625rem 0.75rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #C62828;">
+                                    <div style="font-size: 0.625rem; color: #C62828; font-weight: 600; text-transform: uppercase;">No Cobrable</div>
+                                    <div id="kpiNoCobrable" style="font-size: 1.375rem; font-weight: 700; color: #C62828;">0</div>
+                                </div>
+                                <div class="kpi-card" onclick="filtrarPorKPI('NO_CONTACTABLE')" tabindex="0" role="button"
+                                    style="background: linear-gradient(135deg, #EEEEEE, #E0E0E0); border-radius: 8px; padding: 0.625rem 0.75rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-left: 4px solid #757575;">
+                                    <div style="font-size: 0.625rem; color: #757575; font-weight: 600; text-transform: uppercase;">No Contactable</div>
+                                    <div id="kpiNoContactable" style="font-size: 1.375rem; font-weight: 700; color: #757575;">0</div>
+                                </div>
                             </div>
                         </div>
 
@@ -9395,38 +9398,28 @@
                 return;
             }
 
-            const hoy = new Date();
-            hoy.setHours(0, 0, 0, 0);
-
-            let kpiHoy = 0;
-            let kpi1a3 = 0;
-            let kpi4a7 = 0;
-            let kpiVencidos = 0;
-            let kpiAging60 = 0;
+            // Count by estado de gestión
+            const estadoCounts = {
+                SIN_RESPUESTA: 0,
+                EN_SEGUIMIENTO: 0,
+                COMPROMISO_PAGO: 0,
+                REPROGRAMADO: 0,
+                DERIVADO_COMERCIAL: 0,
+                DERIVADO_RRHH: 0,
+                DERIVADO_RIESGOS_GENERALES: 0,
+                CERRADO_PAGADO: 0,
+                NO_COBRABLE: 0,
+                NO_CONTACTABLE: 0
+            };
 
             BITACORA_DATA.forEach(item => {
-                // KPIs de Compromisos (basados en fechaCompromiso)
-                if (item.fechaCompromiso) {
-                    const fechaComp = new Date(item.fechaCompromiso);
-                    fechaComp.setHours(0, 0, 0, 0);
-                    const diffDias = Math.floor((fechaComp - hoy) / (1000 * 60 * 60 * 24));
-
-                    if (diffDias < 0) {
-                        kpiVencidos++;
-                    } else if (diffDias === 0) {
-                        kpiHoy++;
-                    } else if (diffDias >= 1 && diffDias <= 3) {
-                        kpi1a3++;
-                    } else if (diffDias >= 4 && diffDias <= 7) {
-                        kpi4a7++;
-                    }
-                }
-
-                // Aging +60 días (basado en diasPendientes)
-                if (item.diasPendientes && parseInt(item.diasPendientes) > 60) {
-                    kpiAging60++;
+                const estado = (item.estadoGestion || '').toUpperCase();
+                if (estadoCounts.hasOwnProperty(estado)) {
+                    estadoCounts[estado]++;
                 }
             });
+
+            const derivadosTotal = estadoCounts.DERIVADO_COMERCIAL + estadoCounts.DERIVADO_RRHH + estadoCounts.DERIVADO_RIESGOS_GENERALES;
 
             // Actualizar DOM con animación
             const updateWithAnimation = (elementId, value) => {
@@ -9441,68 +9434,55 @@
                 }
             };
 
-            updateWithAnimation('kpiHoy', kpiHoy);
-            updateWithAnimation('kpi1a3', kpi1a3);
-            updateWithAnimation('kpi4a7', kpi4a7);
-            updateWithAnimation('kpiVencidos', kpiVencidos);
-            updateWithAnimation('kpiAging60', kpiAging60);
+            updateWithAnimation('kpiSinRespuesta', estadoCounts.SIN_RESPUESTA);
+            updateWithAnimation('kpiEnSeguimiento', estadoCounts.EN_SEGUIMIENTO);
+            updateWithAnimation('kpiCompromisoPago', estadoCounts.COMPROMISO_PAGO);
+            updateWithAnimation('kpiReprogramado', estadoCounts.REPROGRAMADO);
+            updateWithAnimation('kpiDerivado', derivadosTotal);
+            updateWithAnimation('kpiCerradoPagado', estadoCounts.CERRADO_PAGADO);
+            updateWithAnimation('kpiNoCobrable', estadoCounts.NO_COBRABLE);
+            updateWithAnimation('kpiNoContactable', estadoCounts.NO_CONTACTABLE);
         }
 
         // Variable para rastrear filtro KPI activo
         let KPI_FILTRO_ACTIVO = null;
 
-        function filtrarPorKPI(tipo) {
+        function filtrarPorKPI(estado) {
             // Toggle: si ya está activo el mismo filtro, desactivar
-            if (KPI_FILTRO_ACTIVO === tipo) {
+            if (KPI_FILTRO_ACTIVO === estado) {
                 KPI_FILTRO_ACTIVO = null;
-                // Limpiar estilos de KPIs
                 document.querySelectorAll('.kpi-card').forEach(c => c.style.boxShadow = 'none');
                 filtrarBitacoraEmbedded();
                 return;
             }
 
-            KPI_FILTRO_ACTIVO = tipo;
+            KPI_FILTRO_ACTIVO = estado;
 
             // Resaltar KPI seleccionado
             document.querySelectorAll('.kpi-card').forEach(c => c.style.boxShadow = 'none');
             event.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
 
-            const hoy = new Date();
-            hoy.setHours(0, 0, 0, 0);
-
             BITACORA_FILTERED = BITACORA_DATA.filter(item => {
-                switch (tipo) {
-                    case 'hoy':
-                        if (!item.fechaCompromiso) return false;
-                        const fHoy = new Date(item.fechaCompromiso);
-                        fHoy.setHours(0, 0, 0, 0);
-                        return fHoy.getTime() === hoy.getTime();
-                    case '1-3dias':
-                        if (!item.fechaCompromiso) return false;
-                        const f13 = new Date(item.fechaCompromiso);
-                        f13.setHours(0, 0, 0, 0);
-                        const diff13 = Math.floor((f13 - hoy) / (1000 * 60 * 60 * 24));
-                        return diff13 >= 1 && diff13 <= 3;
-                    case '4-7dias':
-                        if (!item.fechaCompromiso) return false;
-                        const f47 = new Date(item.fechaCompromiso);
-                        f47.setHours(0, 0, 0, 0);
-                        const diff47 = Math.floor((f47 - hoy) / (1000 * 60 * 60 * 24));
-                        return diff47 >= 4 && diff47 <= 7;
-                    case 'vencidos':
-                        if (!item.fechaCompromiso) return false;
-                        const fVenc = new Date(item.fechaCompromiso);
-                        fVenc.setHours(0, 0, 0, 0);
-                        return fVenc < hoy;
-                    case 'aging60':
-                        return item.diasPendientes && parseInt(item.diasPendientes) > 60;
-                    default:
-                        return true;
+                const itemEstado = (item.estadoGestion || '').toUpperCase();
+                if (estado === 'DERIVADO') {
+                    return itemEstado.startsWith('DERIVADO_');
                 }
+                return itemEstado === estado;
             });
 
+            const labels = {
+                'SIN_RESPUESTA': 'Sin Respuesta',
+                'EN_SEGUIMIENTO': 'En Seguimiento',
+                'COMPROMISO_PAGO': 'Compromiso Pago',
+                'REPROGRAMADO': 'Reprogramado',
+                'DERIVADO': 'Derivados',
+                'CERRADO_PAGADO': 'Cerrado Pagado',
+                'NO_COBRABLE': 'No Cobrable',
+                'NO_CONTACTABLE': 'No Contactable'
+            };
+
             renderBitacoraTable();
-            showToast(`Filtrado por: ${tipo}`, 'info');
+            showToast(`Filtrado: ${labels[estado] || estado} (${BITACORA_FILTERED.length})`, 'info');
         }
 
         // ========== BÚSQUEDA GLOBAL ==========
