@@ -110,16 +110,19 @@ const ReportScheduler = {
             try {
                 const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
 
-                // Contar gestiones de AYER (el trigger corre a las 7AM, no hay data de hoy aún)
-                const yesterday = new Date(today);
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayLocal = Utilities.formatDate(yesterday, 'America/Lima', 'yyyy-MM-dd');
+                // Contar gestiones de la SEMANA (lunes a hoy - bitácora se registra semanalmente)
+                const dayOfWeek = today.getDay();
+                const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                const weekStart = new Date(today);
+                weekStart.setDate(today.getDate() - mondayOffset);
+                weekStart.setHours(0, 0, 0, 0);
+                const weekStartLocal = Utilities.formatDate(weekStart, 'America/Lima', 'yyyy-MM-dd');
 
-                data.gestionesAyer = gestiones.filter(g => {
+                data.gestionesSemana = gestiones.filter(g => {
                     if (!g.fechaRegistro) return false;
                     const fechaGestion = new Date(g.fechaRegistro);
                     const fechaLocal = Utilities.formatDate(fechaGestion, 'America/Lima', 'yyyy-MM-dd');
-                    return fechaLocal === yesterdayLocal;
+                    return fechaLocal >= weekStartLocal;
                 }).length;
 
                 // También contar ciclos activos
@@ -630,7 +633,7 @@ const ReportScheduler = {
             sheet.getRange(1, 1, 1, 9).setValues([['Fecha', 'Gestiones', 'PTPs Pendientes', 'PTPs Vencidos', 'Alertas Críticas', 'Alertas Altas', 'DSO', '% Vencido', 'Ciclos Activos']]).setFontWeight('bold').setBackground('#e3f2fd');
             sheet.setFrozenRows(1);
         }
-        sheet.appendRow([data.fechaFormateada, data.gestionesAyer, data.ptpsPendientes, data.ptpsVencidos, data.alertasCriticas, data.alertasAltas, data.dso, data.porcentajeVencido, data.ciclosActivos]);
+        sheet.appendRow([data.fechaFormateada, data.gestionesSemana || data.gestionesAyer || 0, data.ptpsPendientes, data.ptpsVencidos, data.alertasCriticas, data.alertasAltas, data.dso, data.porcentajeVencido, data.ciclosActivos]);
         this._trimSheet(sheet, 90);
         return `DAILY_${data.fechaFormateada}`;
     },

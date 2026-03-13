@@ -195,16 +195,16 @@ console.log('\n📋 Test 2: Enriquecimiento de datos diarios');
 {
   const baseData = {
     fecha: new Date().toISOString(),
-    gestionesAyer: 3, ptpsPendientes: 0, ptpsVencidos: 0,
+    gestionesSemana: 3, ptpsPendientes: 0, ptpsVencidos: 0,
     alertasCriticas: 0, alertasAltas: 0, dso: 0, porcentajeVencido: 0,
     topPendientes: [], ciclosActivos: 0
   };
 
   const enriched = EmailAutomation._enrichDailyData(baseData);
 
-  assert(enriched.recaudacionAyer !== undefined, 'recaudacionAyer existe');
-  assert(typeof enriched.recaudacionAyer === 'number', 'recaudacionAyer es número');
-  assert(enriched.gestionesCerradasAyer !== undefined, 'gestionesCerradasAyer existe');
+  assert(enriched.recaudacionSemanalPEN !== undefined, 'recaudacionSemanalPEN existe');
+  assert(typeof enriched.recaudacionSemanalPEN === 'number', 'recaudacionSemanalPEN es número');
+  assert(enriched.gestionesCerradasSemana !== undefined, 'gestionesCerradasSemana existe');
   assert(Array.isArray(enriched.agingBucketsForBar), 'agingBucketsForBar es array');
   assert(Array.isArray(enriched.topDeudores), 'topDeudores es array');
   assert(enriched.priorities !== undefined, 'priorities existe');
@@ -225,7 +225,7 @@ console.log('\n📋 Test 3: PTPs con montos (fallback BitacoraService)');
 {
   const baseData = {
     fecha: new Date().toISOString(),
-    gestionesAyer: 0, ptpsPendientes: 0, ptpsVencidos: 0,
+    gestionesSemana: 0, ptpsPendientes: 0, ptpsVencidos: 0,
     alertasCriticas: 0, alertasAltas: 0, dso: 0, porcentajeVencido: 0
   };
   const enriched = EmailAutomation._enrichDailyData(baseData);
@@ -262,7 +262,7 @@ console.log('\n📋 Test 5: HTML email diario completo');
 {
   const baseData = {
     fecha: new Date().toISOString(),
-    gestionesAyer: 3, ptpsPendientes: 3, ptpsVencidos: 1,
+    gestionesSemana: 3, ptpsPendientes: 3, ptpsVencidos: 1,
     alertasCriticas: 1, alertasAltas: 3, dso: 12, porcentajeVencido: 22.4
   };
   const enriched = EmailAutomation._enrichDailyData(baseData);
@@ -271,11 +271,11 @@ console.log('\n📋 Test 5: HTML email diario completo');
   assert(html.length > 0, 'HTML generado');
   assertContains(html, '<!DOCTYPE html>', 'HTML válido con DOCTYPE');
   assertContains(html, 'Resumen Diario de Cobranzas', 'Título');
-  assertContains(html, 'Gestiones Ayer', 'KPI Gestiones Ayer (fix 7AM)');
+  assertContains(html, 'Gestiones Semana', 'KPI Gestiones Semana');
   assertContains(html, 'PTPs Pendientes', 'KPI PTPs');
   assertContains(html, 'DSO', 'KPI DSO');
   assertContains(html, 'Cartera Vencida', 'KPI % Cartera Vencida');
-  assertContains(html, 'Recaudación Ayer', 'KPI Recaudación Ayer (fix 7AM)');
+  assertContains(html, 'Recaudación Semanal', 'KPI Recaudación Semanal');
   assertContains(html, 'Distribución de Cartera', 'Mini barra aging');
   assertContains(html, 'Cartera Total', 'Monto total cartera');
   assertContains(html, 'Monto Vencido', 'Monto vencido absoluto');
@@ -504,11 +504,11 @@ console.log('\n📋 Test 16: Cartera summary con desglose PEN/USD');
   const html = EmailAutomation._buildCarteraSummary({
     totalMonto: 6500000, totalVencido: 1456000,
     byCurrency: { PEN: { total: 5000000, vencido: 1200000 }, USD: { total: 1500000, vencido: 256000 } },
-    recaudacionAyer: 5000, recaudacionAyerUSD: 2000, gestionesCerradasAyer: 2
+    recaudacionSemanalPEN: 5000, recaudacionSemanalUSD: 2000, gestionesCerradasSemana: 2
   }, kit);
   assertContains(html, 'Cartera Total', 'Etiqueta cartera');
   assertContains(html, 'Monto Vencido', 'Etiqueta vencido');
-  assertContains(html, 'Recaudación Ayer', 'Etiqueta recaudación ayer');
+  assertContains(html, 'Recaudación Semanal', 'Etiqueta recaudación semanal');
   assertContains(html, 'S/.', 'Muestra moneda PEN');
   assertContains(html, 'US$', 'FIX: Muestra moneda USD');
   assertContains(html, '2 caso(s) cerrado(s)', 'Casos cerrados');
@@ -516,7 +516,7 @@ console.log('\n📋 Test 16: Cartera summary con desglose PEN/USD');
   // Test sin byCurrency (fallback)
   const html2 = EmailAutomation._buildCarteraSummary({
     totalMonto: 6500000, totalVencido: 1456000,
-    recaudacionAyer: 0, recaudacionAyerUSD: 0, gestionesCerradasAyer: 0
+    recaudacionSemanalPEN: 0, recaudacionSemanalUSD: 0, gestionesCerradasSemana: 0
   }, kit);
   assertContains(html2, 'Cartera Total', 'Fallback: muestra cartera');
 }
@@ -582,7 +582,7 @@ console.log('\n📋 Test 21: Validación de tamaño');
 {
   const baseData = {
     fecha: new Date().toISOString(),
-    gestionesAyer: 3, ptpsPendientes: 3, ptpsVencidos: 1,
+    gestionesSemana: 3, ptpsPendientes: 3, ptpsVencidos: 1,
     alertasCriticas: 1, alertasAltas: 3, dso: 12, porcentajeVencido: 22.4
   };
   const dailyHtml = EmailAutomation._buildDailySummaryEmailPro(EmailAutomation._enrichDailyData(baseData));
@@ -617,16 +617,16 @@ console.log('\n📋 Test 22: Manejo de moneda PEN/USD');
   // Test aging con amountPercentage en semanal
   assert(weeklyData.agingDistribution[0].amountPercentage !== undefined, 'agingDistribution incluye amountPercentage');
 
-  // Test recaudación separada PEN/USD
+  // Test recaudación semanal separada PEN/USD
   const enriched = EmailAutomation._enrichDailyData(dailyData);
-  assert(enriched.recaudacionAyer !== undefined, 'recaudacionAyer PEN');
-  assert(enriched.recaudacionAyerUSD !== undefined, 'recaudacionAyerUSD');
-  assert(typeof enriched.recaudacionAyer === 'number', 'recaudacionAyer es number');
-  assert(typeof enriched.recaudacionAyerUSD === 'number', 'recaudacionAyerUSD es number');
+  assert(enriched.recaudacionSemanalPEN !== undefined, 'recaudacionSemanalPEN');
+  assert(enriched.recaudacionSemanalUSD !== undefined, 'recaudacionSemanalUSD');
+  assert(typeof enriched.recaudacionSemanalPEN === 'number', 'recaudacionSemanalPEN es number');
+  assert(typeof enriched.recaudacionSemanalUSD === 'number', 'recaudacionSemanalUSD es number');
 
-  // Verificar que gestiones ayer funciona (no hoy)
-  assert(dailyData.gestionesAyer !== undefined, 'gestionesAyer existe en dailyData');
-  assert(dailyData.gestionesAyer > 0, 'gestionesAyer > 0 con mock de ayer');
+  // Verificar que gestiones semana funciona
+  assert(dailyData.gestionesSemana !== undefined, 'gestionesSemana existe en dailyData');
+  assert(dailyData.gestionesSemana > 0, 'gestionesSemana > 0 con mock de semana');
 }
 
 // --- Test 23: Aging table con amountPercentage ---

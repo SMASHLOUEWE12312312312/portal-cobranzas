@@ -312,30 +312,35 @@ const EmailAutomation = {
             }
         }
 
-        // Calcular recaudación de AYER (el trigger corre a las 7AM, no hay data de hoy aún)
-        data.recaudacionAyer = 0;
-        data.recaudacionAyerUSD = 0;
-        data.gestionesCerradasAyer = 0;
+        // Calcular recaudación SEMANAL (lunes a hoy - bitácora se registra semanalmente los martes)
+        data.recaudacionSemanalPEN = 0;
+        data.recaudacionSemanalUSD = 0;
+        data.gestionesCerradasSemana = 0;
         if (typeof BitacoraService !== 'undefined') {
             try {
                 const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayLocal = Utilities.formatDate(yesterday, 'America/Lima', 'yyyy-MM-dd');
+                // Calcular inicio de semana (lunes)
+                const today = new Date();
+                const dayOfWeek = today.getDay(); // 0=Dom, 1=Lun...
+                const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                const weekStart = new Date(today);
+                weekStart.setDate(today.getDate() - mondayOffset);
+                weekStart.setHours(0, 0, 0, 0);
+                const weekStartLocal = Utilities.formatDate(weekStart, 'America/Lima', 'yyyy-MM-dd');
+
                 gestiones.forEach(g => {
                     if (!g.fechaRegistro) return;
                     const fechaLocal = Utilities.formatDate(new Date(g.fechaRegistro), 'America/Lima', 'yyyy-MM-dd');
-                    if (fechaLocal === yesterdayLocal && g.estadoGestion === 'CERRADO_PAGADO') {
-                        data.gestionesCerradasAyer++;
-                        // Usar snapshots PEN y USD directamente (bitácora no tiene campo moneda)
+                    if (fechaLocal >= weekStartLocal && g.estadoGestion === 'CERRADO_PAGADO') {
+                        data.gestionesCerradasSemana++;
                         const penAmt = parseFloat(g.snapshotVencidoPEN) || 0;
                         const usdAmt = parseFloat(g.snapshotVencidoUSD) || 0;
-                        if (penAmt > 0) data.recaudacionAyer += penAmt;
-                        if (usdAmt > 0) data.recaudacionAyerUSD += usdAmt;
+                        if (penAmt > 0) data.recaudacionSemanalPEN += penAmt;
+                        if (usdAmt > 0) data.recaudacionSemanalUSD += usdAmt;
                     }
                 });
             } catch (e) {
-                Logger.warn(context, 'Error calculando recaudación diaria', e);
+                Logger.warn(context, 'Error calculando recaudación semanal', e);
             }
         }
 
@@ -619,13 +624,13 @@ const EmailAutomation = {
         const yesterdayHist = data.yesterday || {};
         const kpis = [];
 
-        // 1. Gestiones Ayer (trigger corre a 7AM, no hay data del día actual)
-        const gestionesAyer = data.gestionesAyer || 0;
+        // 1. Gestiones Semana (bitácora se registra semanalmente)
+        const gestionesSemana = data.gestionesSemana || data.gestionesAyer || 0;
         kpis.push({
-            label: 'Gestiones Ayer',
-            value: kit.formatInt(gestionesAyer),
-            delta: kit.getDeltaDisplay(gestionesAyer, yesterdayHist.Gestiones, { invertColors: true }),
-            severity: gestionesAyer > 0 ? 'OK' : 'NEUTRAL',
+            label: 'Gestiones Semana',
+            value: kit.formatInt(gestionesSemana),
+            delta: kit.getDeltaDisplay(gestionesSemana, yesterdayHist.Gestiones, { invertColors: true }),
+            severity: gestionesSemana > 0 ? 'OK' : 'NEUTRAL',
             icon: '📊'
         });
 
@@ -685,19 +690,19 @@ const EmailAutomation = {
             icon: '💰'
         });
 
-        // 6. Recaudación Ayer (trigger corre a 7AM)
-        const recaudacionPEN = data.recaudacionAyer || 0;
-        const recaudacionUSD = data.recaudacionAyerUSD || 0;
+        // 6. Recaudación Semanal (bitácora se registra semanalmente)
+        const recaudacionPEN = data.recaudacionSemanalPEN || 0;
+        const recaudacionUSD = data.recaudacionSemanalUSD || 0;
         const recaudacionLabel = [];
         if (recaudacionPEN > 0) recaudacionLabel.push(kit.formatCurrency(recaudacionPEN, 'PEN'));
         if (recaudacionUSD > 0) recaudacionLabel.push(kit.formatCurrency(recaudacionUSD, 'USD'));
         const recaudacionDisplay = recaudacionLabel.length > 0 ? recaudacionLabel.join(' + ') : 'S/. 0';
 
         kpis.push({
-            label: 'Recaudación Ayer',
+            label: 'Recaudación Semanal',
             value: recaudacionDisplay,
-            delta: data.gestionesCerradasAyer > 0
-                ? `<span style="color:#2E7D32;font-size:11px;">${data.gestionesCerradasAyer} caso(s)</span>`
+            delta: data.gestionesCerradasSemana > 0
+                ? `<span style="color:#2E7D32;font-size:11px;">${data.gestionesCerradasSemana} caso(s)</span>`
                 : '',
             severity: (recaudacionPEN + recaudacionUSD) > 0 ? 'OK' : 'NEUTRAL',
             icon: '💵'
@@ -759,8 +764,8 @@ const EmailAutomation = {
     _buildCarteraSummary(data, kit) {
         const byCurrency = data.byCurrency;
         const hasCurrencyData = byCurrency && ((byCurrency.PEN && byCurrency.PEN.total > 0) || (byCurrency.USD && byCurrency.USD.total > 0));
-        const recaudacionPEN = data.recaudacionAyer || 0;
-        const recaudacionUSD = data.recaudacionAyerUSD || 0;
+        const recaudacionPEN = data.recaudacionSemanalPEN || 0;
+        const recaudacionUSD = data.recaudacionSemanalUSD || 0;
         const totalMonto = data.totalMonto || 0;
         const totalVencido = data.totalVencido || 0;
 
@@ -802,15 +807,15 @@ const EmailAutomation = {
             }
         }
 
-        // Recaudación Ayer con desglose por moneda
+        // Recaudación Semanal con desglose por moneda
         const hasRecaudacion = recaudacionPEN > 0 || recaudacionUSD > 0;
         items += `
             <td style="padding:8px 12px;text-align:center;">
-                <div style="font-size:11px;color:#757575;text-transform:uppercase;">Recaudación Ayer</div>
+                <div style="font-size:11px;color:#757575;text-transform:uppercase;">Recaudación Semanal</div>
                 ${recaudacionPEN > 0 ? `<div style="font-size:14px;font-weight:700;color:#2E7D32;margin-top:2px;">${kit.formatCurrency(recaudacionPEN, 'PEN')}</div>` : ''}
                 ${recaudacionUSD > 0 ? `<div style="font-size:14px;font-weight:700;color:#2E7D32;margin-top:1px;">${kit.formatCurrency(recaudacionUSD, 'USD')}</div>` : ''}
                 ${!hasRecaudacion ? `<div style="font-size:14px;font-weight:700;color:#9E9E9E;margin-top:2px;">S/. 0</div>` : ''}
-                ${data.gestionesCerradasAyer > 0 ? `<div style="font-size:10px;color:#757575;">${data.gestionesCerradasAyer} caso(s) cerrado(s)</div>` : ''}
+                ${data.gestionesCerradasSemana > 0 ? `<div style="font-size:10px;color:#757575;">${data.gestionesCerradasSemana} caso(s) cerrado(s)</div>` : ''}
             </td>`;
 
         return `
@@ -854,7 +859,7 @@ const EmailAutomation = {
      */
     _buildDailyPreheader(data) {
         const parts = [];
-        if (data.gestionesAyer) parts.push(`${data.gestionesAyer} gestiones ayer`);
+        if (data.gestionesSemana || data.gestionesAyer) parts.push(`${data.gestionesSemana || data.gestionesAyer} gestiones semana`);
         if (data.ptpsPendientes) parts.push(`${data.ptpsPendientes} PTPs`);
         if (data.alertasCriticas) parts.push(`${data.alertasCriticas} alertas críticas`);
         if (data.dso) parts.push(`DSO: ${data.dso}d`);
@@ -1088,7 +1093,7 @@ function previewDailyEmail_API() {
         // Recolectar datos reales
         const data = typeof ReportScheduler !== 'undefined' 
             ? ReportScheduler._collectDailyData() 
-            : { gestionesAyer: 0, ptpsPendientes: 0, alertasCriticas: 0, dso: 0 };
+            : { gestionesSemana: 0, ptpsPendientes: 0, alertasCriticas: 0, dso: 0 };
         
         const enrichedData = EmailAutomation._enrichDailyData(data);
         const html = EmailAutomation._buildDailySummaryEmailPro(enrichedData);
