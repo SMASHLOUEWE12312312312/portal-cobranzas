@@ -1,605 +1,480 @@
-# 🏢 Portal de Cobranzas - Transperuana
+# Portal de Cobranzas - Transperuana
 
-Sistema integral de gestión y envío de Estados de Cuenta (EECC) para el área de Cobranzas de Transperuana Corredores de Seguros S.A.
+Sistema integral de gestion de cobranzas, generacion y envio de Estados de Cuenta (EECC) para Transperuana Corredores de Seguros S.A.
 
----
-
-## 📋 Tabla de Contenidos
-
-- [Características](#-características)
-- [Arquitectura](#-arquitectura)
-- [Instalación y Configuración](#-instalación-y-configuración)
-- [Uso](#-uso)
-- [Módulos Principales](#-módulos-principales)
-- [Sistema de Bitácora](#-sistema-de-bitácora)
-- [Documentación](#-documentación)
-- [Mantenimiento](#-mantenimiento)
-- [Soporte](#-soporte)
+**Version**: 4.0
+**Ultima actualizacion**: Marzo 2026
 
 ---
 
-## ✨ Características
+## Tabla de Contenidos
 
-### Funcionalidades Principales
-
-- 📊 **Generación Automática de EECC**: Crea estados de cuenta en PDF y Excel con formato profesional
-- 📧 **Envío Masivo de Correos**: Sistema de cola para envío eficiente de EECC por email
-- 🔐 **Sistema de Autenticación**: Control de acceso seguro con gestión de sesiones
-- 📈 **Bitácora de Gestiones**: Registro completo de todas las interacciones con clientes
-- 🎨 **Portal Web**: Interfaz intuitiva para operadores de cobranzas
-- 🔄 **Importación de Datos**: Carga masiva desde Excel/CSV
-- 📥 **Reportes Filtrados**: Exportación de reportes personalizados
-- 🔗 **Integración con BI**: Compatible con Power BI, Looker Studio, Data Studio
-
-### Tecnologías
-
-- **Backend**: Google Apps Script (JavaScript)
-- **Frontend**: HTML5, CSS3, JavaScript
-- **Storage**: Google Sheets (Base de datos)
-- **Files**: Google Drive (Archivos generados)
-- **Email**: Gmail API (Envío de correos)
+- [Arquitectura](#arquitectura)
+- [Stack Tecnologico](#stack-tecnologico)
+- [Estructura del Proyecto](#estructura-del-proyecto)
+- [Modulos del Portal](#modulos-del-portal)
+- [Instalacion y Configuracion](#instalacion-y-configuracion)
+- [Desarrollo](#desarrollo)
+- [Sistema de Bitacora](#sistema-de-bitacora)
+- [Sistema de Correos](#sistema-de-correos)
+- [Monitoreo](#monitoreo)
+- [Troubleshooting](#troubleshooting)
+- [Changelog](#changelog)
 
 ---
 
-## 🏗️ Arquitectura
+## Arquitectura
+
+El sistema usa una arquitectura dual-stack con un BFF (Backend-for-Frontend) en Next.js que se comunica con Google Apps Script via HMAC-SHA256.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Google Workspace                      │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌──────────────┐     ┌──────────────┐                 │
-│  │ Google Sheets│────▶│  Google Drive│                 │
-│  │  (Database)  │     │   (Storage)  │                 │
-│  └──────┬───────┘     └──────────────┘                 │
-│         │                                                │
-│         ▼                                                │
-│  ┌─────────────────────────────────┐                    │
-│  │    Google Apps Script Engine    │                    │
-│  │                                  │                    │
-│  │  ┌────────────┐  ┌────────────┐ │                    │
-│  │  │ Backend    │  │ Frontend   │ │                    │
-│  │  │ (GAS)      │  │ (HTML/JS)  │ │                    │
-│  │  └────────────┘  └────────────┘ │                    │
-│  └─────────────────────────────────┘                    │
-│                                                          │
-│  ┌─────────────────────────────────┐                    │
-│  │        Gmail API                │                    │
-│  │    (Envío de correos)           │                    │
-│  └─────────────────────────────────┘                    │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-                        │
-                        ▼
-            ┌───────────────────────┐
-            │   Power BI / Looker   │
-            │   (Análisis de datos) │
-            └───────────────────────┘
+┌─────────────────────────────────┐
+│       Next.js BFF (web/)        │
+│  - JWT session management       │
+│  - HMAC-signed GAS calls        │
+│  - RBAC middleware              │
+│  - API routes (/api/*)          │
+└──────────────┬──────────────────┘
+               │ POST (HMAC-SHA256 signed)
+               v
+┌─────────────────────────────────┐
+│   Google Apps Script (gas/)     │
+│  - portal_api.js (doPost)       │
+│  - Business logic services      │
+│  - HTML frontend (index.html)   │
+└──────────────┬──────────────────┘
+               │
+    ┌──────────┼──────────┐
+    v          v          v
+  Sheets     Drive      Gmail
+  (BD)     (Storage)   (Email)
 ```
 
-### Estructura del Proyecto
+### Flujo de Autenticacion
+
+1. Usuario envia credenciales a `/api/auth/login`
+2. BFF firma la peticion con HMAC-SHA256 y la envia a GAS
+3. GAS valida credenciales, retorna token + datos de usuario
+4. BFF crea JWT cookie firmado (httpOnly, Secure, SameSite=Strict)
+5. Requests posteriores se validan via middleware JWT
+
+### Firma HMAC de Requests
+
+```typescript
+// web/src/lib/gas-client.ts
+const payload = JSON.stringify({ action, params, timestamp, nonce });
+const signature = createHmac('sha256', BFF_SHARED_SECRET).update(payload).digest('hex');
+```
+
+GAS valida la firma en `config.js::validateBffRequest_()`.
+
+---
+
+## Stack Tecnologico
+
+| Capa | Tecnologia |
+|------|-----------|
+| **BFF** | Next.js 16, TypeScript |
+| **Backend** | Google Apps Script (JavaScript ES6) |
+| **Base de datos** | Google Sheets |
+| **Almacenamiento** | Google Drive |
+| **Email** | Gmail API via GAS |
+| **Autenticacion** | JWT (jose) + HMAC-SHA256 |
+| **Deploy GAS** | clasp (CLI) |
+| **Deploy BFF** | Vercel / Node.js |
+
+---
+
+## Estructura del Proyecto
 
 ```
 portal-cobranzas/
 │
-├── gas/                              # Google Apps Script
-│   ├── main.js                      # Entry points y menús
-│   ├── config.js                    # Configuración centralizada
-│   ├── auth.js                      # Sistema de autenticación
-│   ├── auth_guard.js                # Control de acceso
-│   ├── eecc_core.js                 # Lógica de generación EECC
-│   ├── portal_api.js                # API endpoints
-│   ├── drive_io.js                  # Operaciones con Drive
-│   ├── sheets_io.js                 # I/O optimizado con Sheets
-│   ├── utils.js                     # Utilidades reutilizables
-│   ├── logger.js                    # Sistema de logging
-│   ├── mailer.js                    # Servicio de correos
-│   ├── export.js                    # Exportación PDF/XLSX
-│   ├── bitacora.js                  # ⭐ Sistema de bitácora
+├── gas/                                # Google Apps Script (Backend + Frontend)
+│   ├── config.js                       # Configuracion centralizada, feature flags
+│   ├── portal_api.js                   # API endpoints (doPost handler)
+│   ├── auth.js                         # Autenticacion (login, sesiones)
+│   ├── auth_guard.js                   # Control de acceso
+│   ├── bitacora_v3.js                  # Sistema de bitacora v3
+│   ├── eecc_core.js                    # Generacion de EECC
+│   ├── eecc_pipeline.js                # Pipeline de generacion masiva
+│   ├── mail_queue_service.js           # Cola de correos con auto-recovery
+│   ├── mailer.js                       # Servicio de envio de correos
+│   ├── monitoring_service.js           # Dashboard stats y queue health
+│   ├── reportes_service.js             # Generacion de reportes (XLSX)
+│   ├── conciliacion_cruce.js           # Motor de conciliacion de datos
+│   ├── conciliacion_service.js         # Servicio de conciliacion
+│   ├── sheets_io.js                    # I/O optimizado con Sheets
+│   ├── sheets_mail.js                  # Operaciones de mail en Sheets
+│   ├── drive_io.js                     # Operaciones con Drive
+│   ├── export.js                       # Exportacion PDF/XLSX
+│   ├── logger.js                       # Logging estructurado
+│   ├── audit_service.js                # Auditoria de acciones
+│   ├── SchedulerService.js             # Programacion de tareas
+│   ├── TemplateService.js              # Plantillas de email
+│   ├── main.js                         # Entry points y menus
+│   ├── utils.js                        # Utilidades
 │   │
-│   ├── index.html                   # Portal web principal
-│   ├── sidebar.html                 # Sidebar de generación
-│   ├── ui_send_drawer.html          # Drawer de envío
-│   ├── Upload.html                  # UI de carga de archivos
-│   ├── styles.html                  # Estilos compartidos
-│   └── appsscript.json              # Configuración del proyecto
+│   ├── proc_*.js                       # Procesadores por aseguradora
+│   │   ├── proc_rimac.js
+│   │   ├── proc_pacifico.js
+│   │   ├── proc_mapfre.js
+│   │   ├── proc_la_positiva.js
+│   │   ├── proc_chubb.js
+│   │   └── proc_qualitas.js
+│   │
+│   ├── index.html                      # Portal web principal (SPA)
+│   ├── styles.html                     # Estilos CSS
+│   ├── sidebar.html                    # Sidebar de generacion
+│   ├── ui_send_drawer.html             # Drawer de envio de correos
+│   ├── Upload.html                     # UI de carga de archivos
+│   └── appsscript.json                 # Configuracion del proyecto GAS
 │
-├── BITACORA_DOCUMENTACION.md       # 📚 Doc completa de bitácora
-├── MEJORAS_CODIGO.md                # 📝 Resumen de mejoras implementadas
-└── README.md                        # 📖 Este archivo
+├── web/                                # Next.js BFF
+│   ├── src/
+│   │   ├── app/
+│   │   │   └── api/                    # API routes (proxy a GAS)
+│   │   │       ├── auth/login/
+│   │   │       ├── auth/logout/
+│   │   │       ├── bitacora/
+│   │   │       └── gas/[...path]/
+│   │   ├── lib/
+│   │   │   ├── gas-client.ts           # Cliente GAS con HMAC
+│   │   │   ├── session.ts              # JWT session management
+│   │   │   ├── rbac.ts                 # Role-based access control
+│   │   │   └── bitacora-enums.ts       # Enums tipados de bitacora
+│   │   └── middleware.ts               # Route protection, security headers
+│   ├── tests/                          # Test suites
+│   ├── package.json
+│   └── .env.local                      # Variables de entorno
+│
+├── docs/                               # Documentacion historica
+├── CLAUDE.md                           # Instrucciones para Claude Code
+└── README.md                           # Este archivo
 ```
 
 ---
 
-## 🚀 Instalación y Configuración
+## Modulos del Portal
 
-### Requisitos Previos
+El portal tiene 7 modulos principales accesibles desde la barra lateral:
 
-- Cuenta de Google Workspace con permisos de administrador
-- Acceso a Google Drive con espacio disponible
-- Google Sheets con la estructura de datos requerida
+### 1. Dashboard
 
-### Paso 1: Crear el Proyecto en Google Apps Script
+Panel de control con metricas en tiempo real:
+- **EECC Hoy / Semana**: Conteo de estados de cuenta generados (fuente: Audit_Log)
+- **Detalle por usuario**: Click en las metricas para ver desglose por responsable
+- **Cola de correos**: Estado actual de la cola (pendientes, enviados, fallidos)
+- **Errores del sistema**: Alertas de las ultimas 24 horas
+- **Monitoreo**: Health check de la cola de correos
 
-1. Abrir [Google Apps Script](https://script.google.com/)
-2. Crear nuevo proyecto: `Portal Cobranzas`
-3. Copiar todos los archivos de `gas/` al editor
+### 2. Bitacora
 
-### Paso 2: Configurar Hojas de Cálculo
+Registro y seguimiento de gestiones de cobranza con dos tabs:
 
-1. Crear un nuevo Google Sheet: `Portal_Cobranzas_DB`
-2. Crear las siguientes hojas:
-   - `BD` → Base de datos principal
-   - `EECC_Template` → Plantilla de estados de cuenta
-   - `Debug_Log` → Logs del sistema
-   - `Bitacora` → Bitácora legacy (se mantiene por compatibilidad)
-   - `Mail_Contacts` → Contactos para envío de correos
-   - `Mail_Queue` → Cola de envío de correos
-   - `Mail_Log` → Historial de correos enviados
+- **Estado Actual**: Tabla con todas las gestiones, filtros avanzados (estado, responsable, dias, compromiso, tendencia), KPIs por estado de gestion
+- **Registrar Gestion**: Formulario con acciones rapidas, autocompletado de clientes, historial del cliente, indicador de progreso de campos, sugerencias de proxima accion
 
-### Paso 3: Configurar Drive
+### 3. Generar EECC
 
-1. Crear carpeta en Google Drive: `Cobranzas_Transperuana`
-2. Obtener el ID de la carpeta (desde la URL)
-3. Crear subcarpeta: `Reporte OBS`
+Generacion de estados de cuenta en lote:
+- Seleccion individual o por grupo economico
+- Pipeline con progreso visual por asegurado
+- Generacion en PDF con formato profesional
+- Almacenamiento automatico en Drive
 
-### Paso 4: Actualizar Configuración
+### 4. Enviar Correos
 
-Editar `gas/config.js`:
+Sistema de envio masivo de EECC por email:
+- Cola de correos con auto-recovery
+- Plantillas personalizables
+- Preview antes de enviar
+- Tracking de estado (pendiente, enviado, fallido)
 
-```javascript
-const CONFIG = {
-  // ...
-  DRIVE: {
-    OUTPUT_FOLDER_ID: 'TU_ID_DE_CARPETA_AQUI',  // ← Cambiar
-    LOGO_FILE_ID: 'TU_ID_DE_LOGO_AQUI',         // ← Cambiar
-    // ...
-  },
-  // ...
-};
-```
+### 5. Reportes
 
-### Paso 5: Inicializar el Sistema
+Exportacion de reportes en XLSX:
+- Dashboard Ejecutivo
+- Saldos por asegurado
+- Vencidos +60 dias
+- Bitacora de gestiones
+- Progreso visual por pasos
 
-1. En Google Sheets, ir al menú: `EECC` → `Inicializar sistema`
-2. Autorizar permisos cuando se solicite
-3. Esperar confirmación de inicialización exitosa
+### 6. Conciliacion
 
-### Paso 6: Configurar Usuarios
+Cruce de datos entre BD y aseguradoras:
+- Stepper visual de 2 pasos
+- Carga de archivo de aseguradora
+- Motor de cruce automatico
+- Reporte de diferencias
 
-Editar usuarios en `gas/config.js`:
+### 7. Actualizar Base
 
-```javascript
-AUTH: {
-  BOOTSTRAP_USERS: [
-    { user: 'usuario1', password: 'Password123!' },
-    { user: 'usuario2', password: 'Password456!' },
-    // Agregar más usuarios aquí
-  ]
-}
-```
-
-Luego ejecutar desde Apps Script:
-
-```javascript
-function resetAndInitAuth() {
-  resetAuthSystem();
-  initAuthSystem();
-}
-```
-
-### Paso 7: Publicar como Web App (Opcional)
-
-1. En Apps Script: `Implementar` → `Nueva implementación`
-2. Tipo: `Aplicación web`
-3. Ejecutar como: `Usuario que accede a la aplicación web`
-4. Quién puede acceder: `Solo usuarios de la organización`
-5. Copiar la URL de la aplicación web
+Importacion de datos desde archivos Excel/CSV:
+- Procesadores por aseguradora (Rimac, Pacifico, Mapfre, etc.)
+- Validacion de formato
+- Eliminacion de duplicados
+- Log de importacion
 
 ---
 
-## 💼 Uso
+## Instalacion y Configuracion
 
-### Generar EECC desde Sheets
+### Requisitos
 
-1. Abrir el Google Sheet del portal
-2. Ir al menú: `EECC` → `Generar EECC`
-3. Seleccionar asegurado del dropdown
-4. Elegir formato (PDF, Excel, o ambos)
-5. Hacer clic en "Generar"
-6. Los archivos se guardan automáticamente en Drive
+- Node.js 18+
+- Cuenta Google Workspace
+- [clasp](https://github.com/google/clasp) instalado (`npm i -g @google/clasp`)
 
-### Enviar EECC por Correo
+### 1. Clonar y configurar BFF
 
-1. Ir al menú: `EECC` → `📧 Enviar EECC por Correo`
-2. Seleccionar destinatarios de la lista
-3. Previsualizar el correo (opcional)
-4. Hacer clic en "Enviar"
-5. El envío se registra automáticamente en la bitácora
+```bash
+git clone <repo-url>
+cd portal-cobranzas/web
+npm install
+```
 
-### Portal Web (si está publicado)
+Crear `web/.env.local`:
 
-1. Acceder a la URL de la aplicación web
-2. Iniciar sesión con usuario y contraseña
-3. Navegar por las opciones:
-   - Generar EECC
-   - Ver bitácora
-   - Enviar correos masivos
-   - Consultar historial
+```env
+GAS_BASE_URL=https://script.google.com/macros/s/{DEPLOYMENT_ID}/exec
+BFF_SHARED_SECRET=<32+ caracteres>
+SESSION_SECRET=<32+ caracteres>
+```
 
-### Importar Datos
+### 2. Configurar Google Apps Script
 
-1. Menú: `Actualizar base` → `Importar desde PC (Excel/CSV)`
-2. Seleccionar archivo
-3. Confirmar si tiene encabezados
-4. Esperar la importación
-5. Los duplicados se eliminan automáticamente
+```bash
+cd gas
+clasp login
+clasp clone <SCRIPT_ID>  # o crear .clasp.json manualmente
+```
 
-### Ver Bitácora de Gestiones
+Configurar Script Properties en GAS:
+- `BFF_SHARED_SECRET`: Debe coincidir con web/.env.local
+- `API_SECRET`: API key legacy
+- `BOOTSTRAP_USERS`: JSON array de usuarios iniciales
 
-1. Menú: `EECC` → `📊 Ver Bitácora de Gestiones`
-2. Se abre la hoja `Bitacora_Gestiones_EECC`
-3. Filtrar y analizar según necesidad
+### 3. Configurar config.js
 
----
+Actualizar IDs en `gas/config.js`:
+- `CONFIG.DRIVE.OUTPUT_FOLDER_ID`
+- `CONFIG.DRIVE.LOGO_FILE_ID`
+- Nombres de hojas en `CONFIG.SHEETS`
 
-## 📦 Módulos Principales
+### 4. Deploy
 
-### 1. `config.js` - Configuración Centralizada
+```bash
+# Apps Script
+cd gas && clasp push --force
 
-**Responsabilidad**: Gestión de toda la configuración del sistema
+# BFF (desarrollo)
+cd web && npm run dev
 
-**Componentes clave**:
-- `CONFIG.SHEETS`: Nombres de hojas
-- `CONFIG.BD`: Estructura de base de datos
-- `CONFIG.DRIVE`: Configuración de Drive
-- `CONFIG.EXPORT`: Opciones de exportación
-- `CONFIG.MAIL`: Configuración de correos
-- `CONFIG.BITACORA`: ⭐ Estados de gestión
-
-### 2. `auth.js` - Autenticación
-
-**Responsabilidad**: Sistema de autenticación seguro
-
-**Funciones principales**:
-- `AuthService.login(username, password)` → Login con validación
-- `AuthService.validateSession(token)` → Validar sesión activa
-- `AuthService.logout(token)` → Cerrar sesión
-- `AuthService.changePassword(...)` → Cambiar contraseña
-
-### 3. `eecc_core.js` - Generación de EECC
-
-**Responsabilidad**: Lógica central de generación de estados de cuenta
-
-**Funciones principales**:
-- `EECCCore.generateWithUI(asegurado, opts)` → Generación con interfaz
-- `EECCCore.generateHeadless(asegurado, opts)` → Generación sin interfaz
-
-### 4. `portal_api.js` - API Endpoints
-
-**Responsabilidad**: Endpoints para el portal web
-
-**Funciones principales**:
-- `loginPassword(username, password)` → Login API
-- `getAseguradosSafe(token)` → Lista de asegurados
-- `previewAsegurado(asegurado, maxRows, ...)` → Vista previa de datos
-- `generateForAsegurado_API(asegurado, opts, token)` → Generar EECC
-- `sendEmailsNow(items, token)` → Envío masivo de correos
-
-### 5. `bitacora.js` - Sistema de Bitácora ⭐
-
-**Responsabilidad**: Registro y seguimiento de gestiones de EECC
-
-**Funciones principales**:
-- `BitacoraService.initialize()` → Inicializar sistema
-- `BitacoraService.registrarGestion(datos)` → Registrar gestión
-- `BitacoraService.actualizarEstadoGestion(...)` → Actualizar estado
-- `BitacoraService.buscarGestionPorId(id)` → Buscar por ID
-- `BitacoraService.obtenerGestionesPorAsegurado(...)` → Consultar historial
-
-**Funciones API**:
-- `apiRegistrarGestion(datos, token)`
-- `apiActualizarEstadoGestion(id, estado, datos, token)`
-- `apiObtenerGestionesAsegurado(asegurado, filtros, token)`
-- `apiObtenerResumenEstados(filtros, token)`
-
-### 6. `mailer.js` - Servicio de Correos
-
-**Responsabilidad**: Envío de correos electrónicos
-
-**Funciones principales**:
-- `MailerService.sendEmail(params)` → Enviar correo
-- `MailerService.buildAttachments(aseguradoId, opts)` → Preparar adjuntos
-- `MailerService.sendTest(params)` → Enviar correo de prueba
-
-### 7. `logger.js` - Sistema de Logging
-
-**Responsabilidad**: Registro estructurado de eventos
-
-**Funciones principales**:
-- `Logger.debug(context, message, extra)`
-- `Logger.info(context, message, extra)`
-- `Logger.warn(context, message, extra)`
-- `Logger.error(context, message, errorObj, extra)`
+# BFF (produccion)
+cd web && npm run build && npm run start
+```
 
 ---
 
-## 📊 Sistema de Bitácora
+## Desarrollo
 
-El sistema de bitácora es la **funcionalidad estrella** de esta versión, diseñado para proporcionar trazabilidad completa de todas las gestiones de cobranza.
+### Comandos del BFF
 
-### ¿Qué Registra?
+```bash
+cd web
+npm run dev      # Servidor de desarrollo (localhost:3000)
+npm run build    # Build de produccion
+npm run start    # Servidor de produccion
+npm run lint     # ESLint
+```
 
-- ✅ Generación de EECC
-- ✅ Envío de correos
-- ✅ Actualización de estados
-- ✅ Compromisos de pago
-- ✅ Derivaciones a otras áreas
-- ✅ Cierre de gestiones
-- ✅ Errores y excepciones
+### Deploy GAS
 
-### Estados Disponibles
+```bash
+cd gas
+clasp push --force    # Subir cambios a Apps Script
+clasp open            # Abrir editor en navegador
+```
 
-| Estado | Descripción |
+### Feature Flags
+
+Controlados en `gas/config.js::CONFIG.FEATURES`:
+
+| Flag | Descripcion |
+|------|------------|
+| `MAIL_QUEUE_MODE` | Cola vs envio directo de emails |
+| `PIPELINE_ENABLED` | Pipeline de generacion EECC |
+| `DASHBOARD_STATS` | Metricas del dashboard |
+| `QUEUE_HEALTH_PANEL` | Panel de salud de la cola |
+
+---
+
+## Sistema de Bitacora
+
+### Estados de Gestion
+
+Agrupados en 3 categorias:
+
+**En gestion:**
+
+| Estado | Descripcion |
 |--------|-------------|
-| `ENVIADO` | EECC enviado exitosamente |
 | `SIN_RESPUESTA` | Cliente no ha respondido |
-| `COMPROMISO_PAGO` | Cliente comprometió fecha de pago |
-| `REPROGRAMADO` | Gestión reprogramada |
-| `DERIVADO_COMERCIAL` | Escalado al área Comercial |
+| `EN_SEGUIMIENTO` | En proceso de seguimiento |
+| `COMPROMISO_PAGO` | Cliente comprometio fecha de pago |
+| `REPROGRAMADO` | Gestion reprogramada a nueva fecha |
+
+**Derivados:**
+
+| Estado | Descripcion |
+|--------|-------------|
+| `DERIVADO_COMERCIAL` | Escalado al area Comercial |
 | `DERIVADO_RRHH` | Escalado a Gerencia de RRHH |
 | `DERIVADO_RIESGOS_GENERALES` | Escalado a Riesgos Generales |
-| `CERRADO_PAGADO` | Gestión cerrada - Pago realizado |
-| `ERROR` | Error en el proceso |
 
-### Ejemplo de Uso
+**Cerrados:**
 
-```javascript
-// Registrar una nueva gestión
-const resultado = await google.script.run
-  .apiRegistrarGestion({
-    asegurado: 'EMPRESA EJEMPLO S.A.',
-    poliza: 'POL-2024-001234',
-    estado: 'ENVIADO',
-    canal: 'EMAIL',
-    destinatarios: 'gerencia@empresa.com',
-    observaciones: 'Primera gestión del mes',
-    fechaTentativaPago: null,
-    montoGestionado: '15450.00',
-    moneda: 'S/.',
-    archivoGenerado: '',
-    messageId: '',
-    idGestionPadre: ''
-  }, token);
+| Estado | Descripcion |
+|--------|-------------|
+| `CERRADO_PAGADO` | Gestion cerrada - Pago realizado |
+| `NO_COBRABLE` | Deuda no recuperable |
+| `NO_CONTACTABLE` | Cliente no localizable |
 
-console.log('ID de gestión:', resultado.idGestion);
+### Acciones Rapidas
 
-// Actualizar estado
-await google.script.run
-  .apiActualizarEstadoGestion(
-    resultado.idGestion,
-    'COMPROMISO_PAGO',
-    {
-      observaciones: 'Cliente comprometió pago para el 20/01/2025',
-      fechaTentativaPago: new Date('2025-01-20')
-    },
-    token
-  );
-```
+El formulario incluye chips de accion rapida que pre-llenan los campos:
 
-### Conexión con Power BI
+- Sin respuesta, WhatsApp enviado, Correo enviado
+- Compromiso de pago, Reprogramado
+- Cerrado/Pagado, No contactable, No cobrable
 
-1. Abrir Power BI Desktop
-2. `Obtener datos` → `Google Sheets`
-3. Seleccionar la hoja `Bitacora_Gestiones_EECC`
-4. Crear medidas y visualizaciones
+### Campos del Formulario
 
-**Medidas DAX sugeridas**:
-
-```dax
-Total Gestiones = COUNTROWS('Bitacora_Gestiones_EECC')
-
-Tasa Respuesta = 
-DIVIDE(
-    CALCULATE(
-        COUNTROWS('Bitacora_Gestiones_EECC'),
-        'Bitacora_Gestiones_EECC'[ESTADO_GESTION] <> "SIN_RESPUESTA"
-    ),
-    COUNTROWS('Bitacora_Gestiones_EECC')
-)
-
-Tasa Cierre = 
-DIVIDE(
-    CALCULATE(
-        COUNTROWS('Bitacora_Gestiones_EECC'),
-        'Bitacora_Gestiones_EECC'[ESTADO_GESTION] = "CERRADO_PAGADO"
-    ),
-    COUNTROWS('Bitacora_Gestiones_EECC')
-)
-```
-
-Para más detalles, ver [`BITACORA_DOCUMENTACION.md`](./BITACORA_DOCUMENTACION.md).
+| Campo | Tipo | Obligatorio |
+|-------|------|:-----------:|
+| Asegurado/Cliente | Autocomplete | Si |
+| Tipo de Contacto | Select | Si |
+| Fecha y Hora | datetime-local | Si |
+| Responsable | Select (Pilar/Gladys) | Si |
+| Estado de Gestion | Select | Si |
+| Proxima Accion | Text + sugerencias | Si |
+| Fecha Compromiso | Date | Condicional |
+| Observaciones | Textarea | Condicional |
 
 ---
 
-## 📚 Documentación
+## Sistema de Correos
 
-### Documentos Disponibles
+### Cola de Correos (Mail Queue)
 
-1. **[BITACORA_DOCUMENTACION.md](./BITACORA_DOCUMENTACION.md)**
-   - Documentación completa del sistema de bitácora
-   - Guía de uso y extensión
-   - Ejemplos de integración con BI
-   - FAQ y troubleshooting
+- **Tabla**: `Mail_Queue` en Google Sheets
+- **Estados**: PENDING, PROCESSING, SENT, FAILED, RETRY
+- **Auto-recovery**: Items en PROCESSING por mas de 15 min se reencolan
+- **Monitoreo**: Panel de salud con alertas de cola atascada
 
-2. **[MEJORAS_CODIGO.md](./MEJORAS_CODIGO.md)**
-   - Resumen de todas las mejoras implementadas
-   - Buenas prácticas aplicadas
-   - Comparación antes/después
-   - Próximas mejoras recomendadas
+### Plantillas
 
-3. **Comentarios Inline**
-   - Cada archivo `.js` está completamente documentado
-   - Formato JSDoc para funciones principales
-   - Secciones claramente delimitadas
-
-### Diagramas
-
-Ver `MEJORAS_CODIGO.md` para diagramas de:
-- Arquitectura general
-- Flujo de generación de EECC
-- Flujo de envío de correos
-- Integración de la bitácora
+Gestionadas en `Mail_Templates` sheet y `TemplateService.js`. Soportan variables dinamicas del asegurado.
 
 ---
 
-## 🔧 Mantenimiento
+## Monitoreo
 
-### Tareas Diarias
+### Dashboard Stats (MonitoringService)
 
-- ✅ Verificar que los envíos se registren correctamente en la bitácora
-- ✅ Revisar la hoja `Debug_Log` en busca de errores
+- **Cache**: 60 segundos via CacheService
+- **Fuente EECC**: Audit_Log (ACTION = GENERATE_EECC)
+- **Fuente Queue**: Mail_Queue (estados PENDING/SENT/FAILED)
+- **Fuente Errores**: Debug_Log (LEVEL = ERROR/CRITICAL)
+- **Soft-fail**: Si una hoja no esta disponible, retorna `available: false`
 
-### Tareas Semanales
+### Hojas de Monitoreo
 
-- ✅ Revisar gestiones con estado `SIN_RESPUESTA` > 7 días
-- ✅ Verificar compromisos de pago próximos a vencer
-
-### Tareas Mensuales
-
-- ✅ Ejecutar archivado de gestiones antiguas (función `archivarGestionesAntiguas()`)
-- ✅ Revisar y ajustar configuraciones según necesidad
-
-### Tareas Trimestrales
-
-- ✅ Ejecutar verificación de integridad (`verificarIntegridadBitacora()`)
-- ✅ Analizar métricas y KPIs en Power BI/Looker
-- ✅ Revisar y optimizar triggers automáticos
-
-### Backup
-
-**IMPORTANTE**: Crear copias de seguridad periódicas de:
-
-1. **Google Sheet completo**: `Archivo` → `Hacer una copia`
-2. **Proyecto de Apps Script**: `Archivo` → `Crear versión`
-3. **Archivos en Drive**: Copiar carpeta `Cobranzas_Transperuana` a otra ubicación
-
-**Frecuencia recomendada**: Semanal
+| Hoja | Contenido |
+|------|-----------|
+| `Audit_Log` | Registro de acciones (generacion EECC, login, etc.) |
+| `Debug_Log` | Logs del sistema (info, warn, error, critical) |
+| `Mail_Queue` | Cola de correos pendientes |
+| `Mail_Log` | Historial de correos enviados |
+| `Portal_Accesos` | Registro de accesos al portal |
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
-### Error: "No se pudo inicializar la bitácora"
+### Autocomplete no muestra todos los clientes
 
-**Solución**:
-1. Verificar que el usuario tenga permisos de edición en el Sheet
-2. Ejecutar manualmente: `EECC` → `Inicializar sistema`
-3. Verificar logs en `Debug_Log`
+El autocomplete carga la lista completa de asegurados desde BD via `getClientesConCiclosActivos()`. Si solo muestra clientes con gestiones existentes, recargar la pagina para forzar la carga completa.
 
-### Error: "Session inválida o expirada"
+### Sesion invalida o expirada
 
-**Solución**:
-1. Cerrar sesión y volver a iniciar sesión
-2. Verificar que el token no haya expirado (TTL: 8 horas)
-3. Limpiar caché del navegador
+1. Cerrar sesion y volver a iniciar sesion
+2. Token TTL: 8 horas
+3. Limpiar cache del navegador si persiste
 
-### Error: "Rate limit exceeded"
+### Correos no se envian
 
-**Solución**:
-1. Esperar 15 minutos antes de intentar nuevamente
-2. Reducir número de correos enviados por lote
-3. Verificar que no haya múltiples usuarios enviando simultáneamente
+1. Verificar `Mail_Queue` para items con status FAILED
+2. Verificar trigger de cola activo
+3. Revisar `Mail_Log` para errores especificos
+4. Cuota Gmail: max 500 correos/dia (Workspace estandar)
 
-### Los correos no se envían
+### Metricas del dashboard en 0
 
-**Solución**:
-1. Verificar que la hoja `Mail_Contacts` tenga datos válidos
-2. Verificar que el trigger de cola esté activo: `EECC` → `Configurar triggers de cola`
-3. Revisar la hoja `Mail_Log` para ver el historial de envíos
-4. Verificar cuota de Gmail (máximo 500 correos/día para cuentas Workspace estándar)
+- Las metricas EECC vienen de `Audit_Log` (ACTION = GENERATE_EECC)
+- Cache de 60 segundos; esperar o limpiar cache
+- Verificar que la hoja `Audit_Log` exista y tenga datos
 
-### La bitácora no registra gestiones
+### Error de HMAC / firma invalida
 
-**Solución**:
-1. Verificar que la hoja `Bitacora_Gestiones_EECC` exista
-2. Ejecutar: `EECC` → `Inicializar sistema`
-3. Verificar logs en `Debug_Log` para ver errores específicos
-4. Verificar que `CONFIG.FEATURES.ENABLE_BITACORA` esté en `true` (si aplica)
+1. Verificar que `BFF_SHARED_SECRET` sea identico en web/.env.local y Script Properties
+2. Verificar que el timestamp no tenga mas de 5 minutos de diferencia
 
 ---
 
-## 🆘 Soporte
+## Changelog
 
-### Contacto
+### v4.0 (Marzo 2026)
 
-- **Equipo de Desarrollo**: dev@transperuana.com
-- **Área de Cobranzas**: cobranzas@transperuana.com
-- **Soporte Técnico**: soporte@transperuana.com
+- Arquitectura dual-stack con Next.js BFF y HMAC-SHA256
+- Dashboard con metricas en tiempo real y desglose por usuario
+- Bitacora v3 con KPIs por estado de gestion
+- Acciones rapidas alineadas con todos los estados
+- Campo Responsable como selector (Pilar/Gladys)
+- Formulario con sugerencias de proxima accion y historial del cliente
+- Indicador de progreso de campos obligatorios
+- Onboarding banner con acceso a los 6 modulos
+- Reportes con progreso visual por pasos y timestamps
+- Fix: autocomplete carga todos los asegurados desde BD
+- Conciliacion con stepper visual
+- Monitoreo de cola de correos con health check
+- 10 Laws of UX implementadas
 
-### Reportar Issues
+### v3.0 (2025)
 
-1. Describir el problema detalladamente
-2. Incluir capturas de pantalla si es posible
-3. Adjuntar logs relevantes de `Debug_Log`
-4. Indicar pasos para reproducir el error
+- Portal web como Google Apps Script Web App
+- Sistema de bitacora v1
+- Generacion y envio de EECC
+- Importacion de datos por aseguradora
+- Sistema de correos con cola
 
-### Solicitar Mejoras
+### v1.0 (Enero 2025)
 
-1. Describir la funcionalidad deseada
-2. Explicar el caso de uso
-3. Indicar prioridad (Alta, Media, Baja)
-4. Enviar a dev@transperuana.com
-
----
-
-## 📝 Changelog
-
-### Version 1.0.0 (2025-01-13)
-
-**Nuevas Funcionalidades**:
-- ⭐ Sistema completo de bitácora de gestiones
-- ⭐ API completa para portal web
-- ⭐ Integración con herramientas de BI
-
-**Mejoras**:
-- ✅ Código completamente refactorizado y documentado
-- ✅ Configuración centralizada
-- ✅ Logging estructurado
-- ✅ Manejo de errores robusto
-- ✅ Arquitectura modular
-
-**Documentación**:
-- 📚 BITACORA_DOCUMENTACION.md (completo)
-- 📝 MEJORAS_CODIGO.md (completo)
-- 📖 README.md (este archivo)
+- Version inicial
+- Generacion basica de EECC
+- Sistema de autenticacion
+- Bitacora basica
 
 ---
 
-## 📄 Licencia
+## Licencia
 
-Copyright © 2025 Transperuana Corredores de Seguros S.A.
+Copyright 2026 Transperuana Corredores de Seguros S.A.
 
-Todos los derechos reservados. Este sistema es de uso interno exclusivo de Transperuana Corredores de Seguros S.A.
-
----
-
-## 👥 Créditos
-
-**Desarrollado por**: Equipo de Desarrollo Transperuana  
-**Colaboradores**: Área de Cobranzas  
-**Última actualización**: 13 de Enero de 2025  
-**Versión**: 1.0.0
+Todos los derechos reservados. Sistema de uso interno exclusivo.
 
 ---
 
-<div align="center">
-
-**[⬆ Volver arriba](#-portal-de-cobranzas---transperuana)**
-
----
-
-Hecho con 💙 por Transperuana
-
-</div>
-
+**Desarrollado por**: Equipo de Desarrollo Transperuana
+**Version**: 4.0
