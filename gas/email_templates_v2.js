@@ -464,13 +464,13 @@ const EmailTemplateKit = {
 
     return `
       <td style="padding:6px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${sev.bg};border-radius:${this.DESIGN.BORDER.RADIUS_MD};border-left:3px solid ${sev.border};">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${sev.bg};border-radius:${this.DESIGN.BORDER.RADIUS_MD};border-left:3px solid ${sev.border};height:120px;">
           <tr>
-            <td style="padding:${padding};">
+            <td style="padding:${padding};vertical-align:top;height:120px;">
               <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.2;">
                 ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
               </div>
-              <div style="color:#666666;font-size:${labelSize};margin-top:4px;text-transform:uppercase;letter-spacing:0.3px;">${label}</div>
+              <div style="color:#666666;font-size:${labelSize};margin-top:6px;text-transform:uppercase;letter-spacing:0.3px;">${label}</div>
               ${deltaHtml}
               ${benchmarkHtml}
             </td>
