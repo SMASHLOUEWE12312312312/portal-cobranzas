@@ -91,40 +91,43 @@ const ReportScheduler = {
 
     _collectDailyData() {
         const today = new Date();
-        const data = { 
-            fecha: today.toISOString(), 
-            fechaFormateada: today.toLocaleDateString('es-PE'), 
-            gestionesHoy: 0, 
-            ptpsPendientes: 0, 
-            ptpsVencidos: 0, 
-            alertasCriticas: 0, 
-            alertasAltas: 0, 
-            dso: 0, 
-            porcentajeVencido: 0, 
-            topPendientes: [], 
-            ciclosActivos: 0 
+        const data = {
+            fecha: today.toISOString(),
+            fechaFormateada: today.toLocaleDateString('es-PE'),
+            gestionesAyer: 0,
+            ptpsPendientes: 0,
+            ptpsVencidos: 0,
+            alertasCriticas: 0,
+            alertasAltas: 0,
+            dso: 0,
+            porcentajeVencido: 0,
+            topPendientes: [],
+            ciclosActivos: 0,
+            byCurrency: null
         };
 
         if (typeof BitacoraService !== 'undefined') {
             try {
                 const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
-                
-                // Usar fecha local de Perú para comparación
-                const todayLocal = Utilities.formatDate(today, 'America/Lima', 'yyyy-MM-dd');
-                
-                data.gestionesHoy = gestiones.filter(g => { 
+
+                // Contar gestiones de AYER (el trigger corre a las 7AM, no hay data de hoy aún)
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayLocal = Utilities.formatDate(yesterday, 'America/Lima', 'yyyy-MM-dd');
+
+                data.gestionesAyer = gestiones.filter(g => {
                     if (!g.fechaRegistro) return false;
                     const fechaGestion = new Date(g.fechaRegistro);
                     const fechaLocal = Utilities.formatDate(fechaGestion, 'America/Lima', 'yyyy-MM-dd');
-                    return fechaLocal === todayLocal; 
+                    return fechaLocal === yesterdayLocal;
                 }).length;
-                
+
                 // También contar ciclos activos
                 const ciclosUnicos = new Set(gestiones.map(g => g.idCiclo).filter(Boolean));
                 data.ciclosActivos = ciclosUnicos.size;
-                
-            } catch (e) { 
-                Logger.warn('ReportScheduler._collectDailyData', 'Error en BitacoraService', e); 
+
+            } catch (e) {
+                Logger.warn('ReportScheduler._collectDailyData', 'Error en BitacoraService', e);
             }
         }
 
@@ -178,12 +181,13 @@ const ReportScheduler = {
         if (typeof KPIService !== 'undefined') {
             try {
                 const kpis = KPIService.getDashboardKPIs();
-                if (kpis.ok && kpis.available) { 
-                    data.dso = kpis.dso.value; 
-                    data.porcentajeVencido = kpis.summary.porcentajeVencido; 
+                if (kpis.ok && kpis.available) {
+                    data.dso = kpis.dso.value;
+                    data.porcentajeVencido = kpis.summary.porcentajeVencido;
+                    data.byCurrency = kpis.byCurrency;
                 }
-            } catch (e) { 
-                Logger.warn('ReportScheduler._collectDailyData', 'Error en KPIService', e); 
+            } catch (e) {
+                Logger.warn('ReportScheduler._collectDailyData', 'Error en KPIService', e);
             }
         }
 
@@ -602,7 +606,7 @@ const ReportScheduler = {
             sheet.getRange(1, 1, 1, 9).setValues([['Fecha', 'Gestiones', 'PTPs Pendientes', 'PTPs Vencidos', 'Alertas Críticas', 'Alertas Altas', 'DSO', '% Vencido', 'Ciclos Activos']]).setFontWeight('bold').setBackground('#e3f2fd');
             sheet.setFrozenRows(1);
         }
-        sheet.appendRow([data.fechaFormateada, data.gestionesHoy, data.ptpsPendientes, data.ptpsVencidos, data.alertasCriticas, data.alertasAltas, data.dso, data.porcentajeVencido, data.ciclosActivos]);
+        sheet.appendRow([data.fechaFormateada, data.gestionesAyer, data.ptpsPendientes, data.ptpsVencidos, data.alertasCriticas, data.alertasAltas, data.dso, data.porcentajeVencido, data.ciclosActivos]);
         this._trimSheet(sheet, 90);
         return `DAILY_${data.fechaFormateada}`;
     },
@@ -778,10 +782,10 @@ const ReportScheduler = {
             trend: data.tendenciaDSO
         });
 
-        // 3. Monto Recuperado
+        // 3. Monto Recuperado (mostrar moneda si se conoce)
         kpis.push({
             label: 'Monto Recuperado',
-            value: kit.formatCurrency(data.montoRecuperado),
+            value: data.montoRecuperado > 0 ? kit.formatCurrency(data.montoRecuperado) : 'S/. 0.00',
             severity: data.montoRecuperado > 0 ? 'OK' : 'NEUTRAL',
             icon: '💰'
         });
@@ -828,7 +832,7 @@ const ReportScheduler = {
     _buildAseguradorasSection(data, kit) {
         if (!data.topAseguradoras || data.topAseguradoras.length === 0) return '';
 
-        let html = kit.sectionTitle('Cartera por Aseguradora', '🏢', `Top ${data.topAseguradoras.length} con mayor vencimiento`);
+        let html = kit.sectionTitle('Cartera por Aseguradora', '🏢', `Top ${data.topAseguradoras.length} con mayor vencimiento (PEN+USD)`);
 
         const headers = [
             { label: 'Aseguradora', align: 'left' },
@@ -848,6 +852,25 @@ const ReportScheduler = {
         });
 
         html += kit.dataTable({ headers, rows, compact: true });
+
+        // Mostrar resumen por moneda si hay datos
+        if (data.byCurrency) {
+            const pen = data.byCurrency.PEN || {};
+            const usd = data.byCurrency.USD || {};
+            if ((pen.total || 0) > 0 || (usd.total || 0) > 0) {
+                html += `
+                    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;">
+                        <tr>
+                            <td style="font-size:11px;color:#757575;padding:4px 8px;">
+                                ${(pen.total || 0) > 0 ? `<span style="margin-right:16px;">🇵🇪 PEN: ${kit.formatCurrency(pen.total, 'PEN')} (vencido: ${kit.formatCurrency(pen.vencido, 'PEN')})</span>` : ''}
+                                ${(usd.total || 0) > 0 ? `<span>🇺🇸 USD: ${kit.formatCurrency(usd.total, 'USD')} (vencido: ${kit.formatCurrency(usd.vencido, 'USD')})</span>` : ''}
+                            </td>
+                        </tr>
+                    </table>
+                `;
+            }
+        }
+
         return html;
     },
 
@@ -1010,6 +1033,57 @@ function previewWeeklyEmail_API() {
         };
     } catch (error) {
         Logger.error(context, 'Error previsualizando email semanal', error);
+        return { ok: false, error: error.message };
+    }
+}
+
+/**
+ * TEST: Enviar reporte diario solo a mi correo
+ * Ejecutar manualmente desde el editor de Apps Script
+ */
+function TEST_sendDailyToMe() {
+    const myEmail = 'csarapura@transperuana.com.pe';
+    try {
+        const summaryData = ReportScheduler._collectDailyData();
+        const enrichedData = EmailAutomation._enrichDailyData(summaryData);
+        const html = EmailAutomation._buildDailySummaryEmailPro(enrichedData);
+
+        const fecha = new Date().toLocaleDateString('es-PE', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+        MailApp.sendEmail({
+            to: myEmail,
+            subject: `[TEST] Resumen Diario de Cobranzas - ${fecha}`,
+            htmlBody: html,
+            name: 'Portal de Cobranzas'
+        });
+
+        return { ok: true, sentTo: myEmail, sizeKB: (html.length / 1024).toFixed(2) };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+}
+
+/**
+ * TEST: Enviar reporte semanal solo a mi correo
+ * Ejecutar manualmente desde el editor de Apps Script
+ */
+function TEST_sendWeeklyToMe() {
+    const myEmail = 'csarapura@transperuana.com.pe';
+    try {
+        const weeklyData = ReportScheduler._collectWeeklyDataEnriched();
+        const html = ReportScheduler._buildWeeklyReportEmailPro(weeklyData);
+
+        MailApp.sendEmail({
+            to: myEmail,
+            subject: `[TEST] Reporte Semanal de Cobranzas - Semana ${weeklyData.semana} · ${weeklyData.year}`,
+            htmlBody: html,
+            name: 'Portal de Cobranzas'
+        });
+
+        return { ok: true, sentTo: myEmail, sizeKB: (html.length / 1024).toFixed(2) };
+    } catch (error) {
         return { ok: false, error: error.message };
     }
 }

@@ -213,9 +213,10 @@ const EmailAutomation = {
                     data.bucket90 = kpis.aging.buckets.find(b => b.id === 'BUCKET_90_PLUS') || {};
                     data.bucket6190 = kpis.aging.buckets.find(b => b.id === 'BUCKET_61_90') || {};
                     data.byCompany = kpis.byCompany;
+                    data.byCurrency = kpis.byCurrency;
                 }
-            } catch (e) { 
-                Logger.warn(context, 'Error obteniendo KPIs', e); 
+            } catch (e) {
+                Logger.warn(context, 'Error obteniendo KPIs', e);
             }
         }
 
@@ -303,19 +304,28 @@ const EmailAutomation = {
             }
         }
 
-        // Calcular recaudación del día (gestiones con estado CERRADO_PAGADO hoy)
-        data.recaudacionHoy = 0;
-        data.gestionesCerradasHoy = 0;
+        // Calcular recaudación de AYER (el trigger corre a las 7AM, no hay data de hoy aún)
+        data.recaudacionAyer = 0;
+        data.recaudacionAyerUSD = 0;
+        data.gestionesCerradasAyer = 0;
         if (typeof BitacoraService !== 'undefined') {
             try {
                 const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
-                const todayLocal = Utilities.formatDate(new Date(), 'America/Lima', 'yyyy-MM-dd');
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayLocal = Utilities.formatDate(yesterday, 'America/Lima', 'yyyy-MM-dd');
                 gestiones.forEach(g => {
                     if (!g.fechaRegistro) return;
                     const fechaLocal = Utilities.formatDate(new Date(g.fechaRegistro), 'America/Lima', 'yyyy-MM-dd');
-                    if (fechaLocal === todayLocal && g.estadoGestion === 'CERRADO_PAGADO') {
-                        data.gestionesCerradasHoy++;
-                        data.recaudacionHoy += (g.montoRecuperado || g.montoCompromiso || g.snapshotVencidoPEN || 0);
+                    if (fechaLocal === yesterdayLocal && g.estadoGestion === 'CERRADO_PAGADO') {
+                        data.gestionesCerradasAyer++;
+                        const monto = g.montoRecuperado || g.montoCompromiso || g.snapshotVencidoPEN || g.snapshotVencidoUSD || 0;
+                        const moneda = (g.moneda || '').toUpperCase();
+                        if (moneda.includes('USD') || moneda.includes('US$') || moneda.includes('DOLAR')) {
+                            data.recaudacionAyerUSD += monto;
+                        } else {
+                            data.recaudacionAyer += monto;
+                        }
                     }
                 });
             } catch (e) {
@@ -323,7 +333,7 @@ const EmailAutomation = {
             }
         }
 
-        // Aging distribution para mini-barra en diario
+        // Aging distribution para mini-barra en diario (usar % por monto)
         data.agingBucketsForBar = [];
         if (data.agingBuckets && data.agingBuckets.length > 0) {
             data.agingBucketsForBar = data.agingBuckets.map(b => ({
@@ -331,6 +341,7 @@ const EmailAutomation = {
                 label: b.label,
                 count: b.count,
                 percentage: b.percentage,
+                amountPercentage: b.amountPercentage || 0,
                 amount: b.amount,
                 color: b.color
             }));
@@ -612,15 +623,16 @@ const EmailAutomation = {
      * Construye las tarjetas de KPIs para el email diario
      */
     _buildDailyKPICards(data, kit) {
-        const yesterday = data.yesterday || {};
+        const yesterdayHist = data.yesterday || {};
         const kpis = [];
 
-        // 1. Gestiones Hoy
+        // 1. Gestiones Ayer (trigger corre a 7AM, no hay data del día actual)
+        const gestionesAyer = data.gestionesAyer || 0;
         kpis.push({
-            label: 'Gestiones Hoy',
-            value: kit.formatInt(data.gestionesHoy || 0),
-            delta: kit.getDeltaDisplay(data.gestionesHoy || 0, yesterday.Gestiones, { invertColors: true }),
-            severity: (data.gestionesHoy || 0) > 0 ? 'OK' : 'NEUTRAL',
+            label: 'Gestiones Ayer',
+            value: kit.formatInt(gestionesAyer),
+            delta: kit.getDeltaDisplay(gestionesAyer, yesterdayHist.Gestiones, { invertColors: true }),
+            severity: gestionesAyer > 0 ? 'OK' : 'NEUTRAL',
             icon: '📊'
         });
 
@@ -667,20 +679,26 @@ const EmailAutomation = {
         kpis.push({
             label: '% Cartera Vencida',
             value: kit.formatPct(data.porcentajeVencido || 0),
-            delta: kit.getDeltaDisplay(data.porcentajeVencido || 0, yesterday['% Vencido'], { format: 'pct' }),
+            delta: kit.getDeltaDisplay(data.porcentajeVencido || 0, yesterdayHist['% Vencido'], { format: 'pct' }),
             severity: vencidoSeverity,
             icon: '💰'
         });
 
-        // 6. Recaudación Hoy (más relevante que bucket 90+ que ya sale en mini-aging)
-        const recaudacion = data.recaudacionHoy || 0;
+        // 6. Recaudación Ayer (trigger corre a 7AM)
+        const recaudacionPEN = data.recaudacionAyer || 0;
+        const recaudacionUSD = data.recaudacionAyerUSD || 0;
+        const recaudacionLabel = [];
+        if (recaudacionPEN > 0) recaudacionLabel.push(kit.formatCurrency(recaudacionPEN, 'PEN'));
+        if (recaudacionUSD > 0) recaudacionLabel.push(kit.formatCurrency(recaudacionUSD, 'USD'));
+        const recaudacionDisplay = recaudacionLabel.length > 0 ? recaudacionLabel.join(' + ') : 'S/. 0';
+
         kpis.push({
-            label: 'Recaudación Hoy',
-            value: recaudacion > 0 ? kit.formatCurrency(recaudacion) : 'S/. 0',
-            delta: data.gestionesCerradasHoy > 0
-                ? `<span style="color:#2E7D32;font-size:11px;">${data.gestionesCerradasHoy} caso(s)</span>`
+            label: 'Recaudación Ayer',
+            value: recaudacionDisplay,
+            delta: data.gestionesCerradasAyer > 0
+                ? `<span style="color:#2E7D32;font-size:11px;">${data.gestionesCerradasAyer} caso(s)</span>`
                 : '',
-            severity: recaudacion > 0 ? 'OK' : 'NEUTRAL',
+            severity: (recaudacionPEN + recaudacionUSD) > 0 ? 'OK' : 'NEUTRAL',
             icon: '💵'
         });
 
@@ -701,16 +719,19 @@ const EmailAutomation = {
             'BUCKET_90_PLUS': '#F44336'
         };
 
-        // Construir barra segmentada
+        // Construir barra segmentada (usar % por monto si está disponible)
+        const useAmountPct = buckets.some(b => b.amountPercentage > 0);
         let barSegments = '';
         let legendItems = '';
         buckets.forEach(b => {
             const color = bucketColors[b.id] || '#9E9E9E';
-            const pct = Math.max(1, b.percentage || 0);
-            barSegments += `<td style="width:${pct}%;height:10px;background:${color};"></td>`;
+            const pctForBar = Math.max(1, useAmountPct ? (b.amountPercentage || 0) : (b.percentage || 0));
+            barSegments += `<td style="width:${pctForBar}%;height:10px;background:${color};"></td>`;
+            const countInfo = `${kit.formatInt(b.count)} docs (${kit.formatPct(b.percentage)})`;
+            const amountInfo = useAmountPct && b.amount > 0 ? ` · ${kit.formatPct(b.amountPercentage)} monto` : '';
             legendItems += `<span style="display:inline-block;margin-right:12px;font-size:11px;color:#616161;">
                 <span style="display:inline-block;width:8px;height:8px;background:${color};border-radius:2px;margin-right:3px;vertical-align:middle;"></span>
-                ${b.label}: ${kit.formatInt(b.count)} (${kit.formatPct(b.percentage)})
+                ${b.label}: ${countInfo}${amountInfo}
             </span>`;
         });
 
@@ -735,33 +756,60 @@ const EmailAutomation = {
      * Construye resumen de cartera con montos absolutos
      */
     _buildCarteraSummary(data, kit) {
+        const byCurrency = data.byCurrency;
+        const hasCurrencyData = byCurrency && ((byCurrency.PEN && byCurrency.PEN.total > 0) || (byCurrency.USD && byCurrency.USD.total > 0));
+        const recaudacionPEN = data.recaudacionAyer || 0;
+        const recaudacionUSD = data.recaudacionAyerUSD || 0;
         const totalMonto = data.totalMonto || 0;
         const totalVencido = data.totalVencido || 0;
-        const recaudacion = data.recaudacionHoy || 0;
 
-        if (totalMonto === 0 && recaudacion === 0) return '';
+        if (totalMonto === 0 && recaudacionPEN === 0 && recaudacionUSD === 0) return '';
 
         let items = '';
 
-        if (totalMonto > 0) {
+        // Cartera total con desglose por moneda
+        if (hasCurrencyData) {
+            const pen = byCurrency.PEN || {};
+            const usd = byCurrency.USD || {};
             items += `
                 <td style="padding:8px 12px;text-align:center;border-right:1px solid #EEEEEE;">
                     <div style="font-size:11px;color:#757575;text-transform:uppercase;">Cartera Total</div>
-                    <div style="font-size:16px;font-weight:700;color:#212121;margin-top:2px;">${kit.formatCurrency(totalMonto)}</div>
+                    ${(pen.total || 0) > 0 ? `<div style="font-size:14px;font-weight:700;color:#212121;margin-top:2px;">${kit.formatCurrency(pen.total, 'PEN')}</div>` : ''}
+                    ${(usd.total || 0) > 0 ? `<div style="font-size:14px;font-weight:700;color:#212121;margin-top:1px;">${kit.formatCurrency(usd.total, 'USD')}</div>` : ''}
                 </td>`;
-        }
-        if (totalVencido > 0) {
             items += `
                 <td style="padding:8px 12px;text-align:center;border-right:1px solid #EEEEEE;">
                     <div style="font-size:11px;color:#757575;text-transform:uppercase;">Monto Vencido</div>
-                    <div style="font-size:16px;font-weight:700;color:#C62828;margin-top:2px;">${kit.formatCurrency(totalVencido)}</div>
+                    ${(pen.vencido || 0) > 0 ? `<div style="font-size:14px;font-weight:700;color:#C62828;margin-top:2px;">${kit.formatCurrency(pen.vencido, 'PEN')}</div>` : ''}
+                    ${(usd.vencido || 0) > 0 ? `<div style="font-size:14px;font-weight:700;color:#C62828;margin-top:1px;">${kit.formatCurrency(usd.vencido, 'USD')}</div>` : ''}
+                    ${(pen.vencido || 0) === 0 && (usd.vencido || 0) === 0 ? `<div style="font-size:14px;font-weight:700;color:#9E9E9E;margin-top:2px;">S/. 0</div>` : ''}
                 </td>`;
+        } else {
+            if (totalMonto > 0) {
+                items += `
+                    <td style="padding:8px 12px;text-align:center;border-right:1px solid #EEEEEE;">
+                        <div style="font-size:11px;color:#757575;text-transform:uppercase;">Cartera Total</div>
+                        <div style="font-size:16px;font-weight:700;color:#212121;margin-top:2px;">${kit.formatCurrency(totalMonto)}</div>
+                    </td>`;
+            }
+            if (totalVencido > 0) {
+                items += `
+                    <td style="padding:8px 12px;text-align:center;border-right:1px solid #EEEEEE;">
+                        <div style="font-size:11px;color:#757575;text-transform:uppercase;">Monto Vencido</div>
+                        <div style="font-size:16px;font-weight:700;color:#C62828;margin-top:2px;">${kit.formatCurrency(totalVencido)}</div>
+                    </td>`;
+            }
         }
+
+        // Recaudación Ayer con desglose por moneda
+        const hasRecaudacion = recaudacionPEN > 0 || recaudacionUSD > 0;
         items += `
             <td style="padding:8px 12px;text-align:center;">
-                <div style="font-size:11px;color:#757575;text-transform:uppercase;">Recaudación Hoy</div>
-                <div style="font-size:16px;font-weight:700;color:${recaudacion > 0 ? '#2E7D32' : '#9E9E9E'};margin-top:2px;">${kit.formatCurrency(recaudacion)}</div>
-                ${data.gestionesCerradasHoy > 0 ? `<div style="font-size:10px;color:#757575;">${data.gestionesCerradasHoy} caso(s) cerrado(s)</div>` : ''}
+                <div style="font-size:11px;color:#757575;text-transform:uppercase;">Recaudación Ayer</div>
+                ${recaudacionPEN > 0 ? `<div style="font-size:14px;font-weight:700;color:#2E7D32;margin-top:2px;">${kit.formatCurrency(recaudacionPEN, 'PEN')}</div>` : ''}
+                ${recaudacionUSD > 0 ? `<div style="font-size:14px;font-weight:700;color:#2E7D32;margin-top:1px;">${kit.formatCurrency(recaudacionUSD, 'USD')}</div>` : ''}
+                ${!hasRecaudacion ? `<div style="font-size:14px;font-weight:700;color:#9E9E9E;margin-top:2px;">S/. 0</div>` : ''}
+                ${data.gestionesCerradasAyer > 0 ? `<div style="font-size:10px;color:#757575;">${data.gestionesCerradasAyer} caso(s) cerrado(s)</div>` : ''}
             </td>`;
 
         return `
@@ -792,7 +840,7 @@ const EmailAutomation = {
             ];
         });
 
-        let html = kit.sectionTitle('Top Aseguradoras con Mayor Vencimiento', '🏢', `Top ${data.topDeudores.length} por monto vencido`);
+        let html = kit.sectionTitle('Top Aseguradoras con Mayor Vencimiento', '🏢', `Top ${data.topDeudores.length} por monto vencido (PEN+USD)`);
         html += kit.dataTable({ headers, rows, compact: true });
         return html;
     },
@@ -802,7 +850,7 @@ const EmailAutomation = {
      */
     _buildDailyPreheader(data) {
         const parts = [];
-        if (data.gestionesHoy) parts.push(`${data.gestionesHoy} gestiones`);
+        if (data.gestionesAyer) parts.push(`${data.gestionesAyer} gestiones ayer`);
         if (data.ptpsPendientes) parts.push(`${data.ptpsPendientes} PTPs`);
         if (data.alertasCriticas) parts.push(`${data.alertasCriticas} alertas críticas`);
         if (data.dso) parts.push(`DSO: ${data.dso}d`);
@@ -1036,7 +1084,7 @@ function previewDailyEmail_API() {
         // Recolectar datos reales
         const data = typeof ReportScheduler !== 'undefined' 
             ? ReportScheduler._collectDailyData() 
-            : { gestionesHoy: 0, ptpsPendientes: 0, alertasCriticas: 0, dso: 0 };
+            : { gestionesAyer: 0, ptpsPendientes: 0, alertasCriticas: 0, dso: 0 };
         
         const enrichedData = EmailAutomation._enrichDailyData(data);
         const html = EmailAutomation._buildDailySummaryEmailPro(enrichedData);

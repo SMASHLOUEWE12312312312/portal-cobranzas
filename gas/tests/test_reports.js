@@ -56,13 +56,16 @@ var MailApp = { sendEmail: (opts) => { MailApp._lastEmail = opts; }, _lastEmail:
 var BitacoraService = {
   obtenerGestiones: () => {
     const today = new Date();
+    const yesterdayDate = new Date(today.getTime() - 86400000);
+    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
     const todayStr = today.toISOString().split('T')[0];
     return [
-      { fechaRegistro: todayStr + 'T10:00:00', asegurado: 'CLIENTE A', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C1' },
-      { fechaRegistro: todayStr + 'T11:00:00', asegurado: 'CLIENTE B', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C2', montoRecuperado: 5000, snapshotVencidoPEN: 5000 },
-      { fechaRegistro: todayStr + 'T12:00:00', asegurado: 'CLIENTE C', estadoGestion: 'COMPROMISO_PAGO', idCiclo: 'C3' },
-      { fechaRegistro: new Date(today - 86400000*2).toISOString(), asegurado: 'CLIENTE D', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C4' },
-      { fechaRegistro: new Date(today - 86400000*3).toISOString(), asegurado: 'CLIENTE E', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C5', montoRecuperado: 3000 },
+      { fechaRegistro: yesterdayStr + 'T10:00:00', asegurado: 'CLIENTE A', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C1' },
+      { fechaRegistro: yesterdayStr + 'T11:00:00', asegurado: 'CLIENTE B', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C2', montoRecuperado: 5000, snapshotVencidoPEN: 5000, moneda: 'PEN' },
+      { fechaRegistro: yesterdayStr + 'T12:00:00', asegurado: 'CLIENTE C', estadoGestion: 'COMPROMISO_PAGO', idCiclo: 'C3' },
+      { fechaRegistro: yesterdayStr + 'T14:00:00', asegurado: 'CLIENTE F', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C6', montoRecuperado: 2000, moneda: 'USD' },
+      { fechaRegistro: new Date(today.getTime() - 86400000*2).toISOString(), asegurado: 'CLIENTE D', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C4' },
+      { fechaRegistro: new Date(today.getTime() - 86400000*3).toISOString(), asegurado: 'CLIENTE E', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C5', montoRecuperado: 3000 },
     ];
   },
   obtenerCompromisosActivos: () => {
@@ -82,10 +85,10 @@ var KPIService = {
     summary: { porcentajeVencido: 22.4, totalMonto: 6500000, totalVencido: 1456000 },
     aging: {
       buckets: [
-        { id: 'CURRENT', label: 'Corriente (0-30)', count: 3361, percentage: 78.2, amount: 4879064.54, color: '#4CAF50', severity: 'OK' },
-        { id: 'BUCKET_31_60', label: '31-60 días', count: 377, percentage: 8.8, amount: 489092.14, color: '#FFC107', severity: 'WARN' },
-        { id: 'BUCKET_61_90', label: '61-90 días', count: 114, percentage: 2.7, amount: 250108.95, color: '#FF9800', severity: 'WARN' },
-        { id: 'BUCKET_90_PLUS', label: '90+ días', count: 448, percentage: 10.4, amount: 68827.60, color: '#F44336', severity: 'CRITICAL' }
+        { id: 'CURRENT', label: 'Corriente (0-30)', count: 3361, percentage: 78.2, amountPercentage: 85.9, amount: 4879064.54, color: '#4CAF50', severity: 'OK' },
+        { id: 'BUCKET_31_60', label: '31-60 días', count: 377, percentage: 8.8, amountPercentage: 8.6, amount: 489092.14, color: '#FFC107', severity: 'WARN' },
+        { id: 'BUCKET_61_90', label: '61-90 días', count: 114, percentage: 2.7, amountPercentage: 4.4, amount: 250108.95, color: '#FF9800', severity: 'WARN' },
+        { id: 'BUCKET_90_PLUS', label: '90+ días', count: 448, percentage: 10.4, amountPercentage: 1.2, amount: 68827.60, color: '#F44336', severity: 'CRITICAL' }
       ]
     },
     byCompany: [
@@ -95,7 +98,7 @@ var KPIService = {
       { name: 'LA POSITIVA', total: 800000, vencido: 120000, vencidoPct: 15, count: 60 },
       { name: 'INTERSEGURO', total: 500000, vencido: 75000, vencidoPct: 15, count: 40 }
     ],
-    byCurrency: { PEN: { total: 5000000 }, USD: { total: 500000 } }
+    byCurrency: { PEN: { count: 4000, total: 5000000, vencido: 1200000 }, USD: { count: 300, total: 1500000, vencido: 256000 } }
   })
 };
 
@@ -185,16 +188,16 @@ console.log('\n📋 Test 2: Enriquecimiento de datos diarios');
 {
   const baseData = {
     fecha: new Date().toISOString(),
-    gestionesHoy: 3, ptpsPendientes: 0, ptpsVencidos: 0,
+    gestionesAyer: 3, ptpsPendientes: 0, ptpsVencidos: 0,
     alertasCriticas: 0, alertasAltas: 0, dso: 0, porcentajeVencido: 0,
     topPendientes: [], ciclosActivos: 0
   };
 
   const enriched = EmailAutomation._enrichDailyData(baseData);
 
-  assert(enriched.recaudacionHoy !== undefined, 'recaudacionHoy existe');
-  assert(typeof enriched.recaudacionHoy === 'number', 'recaudacionHoy es número');
-  assert(enriched.gestionesCerradasHoy !== undefined, 'gestionesCerradasHoy existe');
+  assert(enriched.recaudacionAyer !== undefined, 'recaudacionAyer existe');
+  assert(typeof enriched.recaudacionAyer === 'number', 'recaudacionAyer es número');
+  assert(enriched.gestionesCerradasAyer !== undefined, 'gestionesCerradasAyer existe');
   assert(Array.isArray(enriched.agingBucketsForBar), 'agingBucketsForBar es array');
   assert(Array.isArray(enriched.topDeudores), 'topDeudores es array');
   assert(enriched.priorities !== undefined, 'priorities existe');
@@ -204,6 +207,9 @@ console.log('\n📋 Test 2: Enriquecimiento de datos diarios');
   assert(enriched.totalVencido > 0, 'totalVencido enriquecido');
   assert(enriched.agingBuckets && enriched.agingBuckets.length > 0, 'agingBuckets cargados');
   assert(enriched.byCompany && enriched.byCompany.length > 0, 'byCompany cargado');
+  assert(enriched.byCurrency !== undefined, 'byCurrency enriquecido desde KPIService');
+  assert(enriched.byCurrency.PEN.total > 0, 'byCurrency PEN total > 0');
+  assert(enriched.byCurrency.USD.total > 0, 'byCurrency USD total > 0');
 }
 
 // --- Test 3: PTPs con montos en fallback ---
@@ -211,7 +217,7 @@ console.log('\n📋 Test 3: PTPs con montos (fallback BitacoraService)');
 {
   const baseData = {
     fecha: new Date().toISOString(),
-    gestionesHoy: 0, ptpsPendientes: 0, ptpsVencidos: 0,
+    gestionesAyer: 0, ptpsPendientes: 0, ptpsVencidos: 0,
     alertasCriticas: 0, alertasAltas: 0, dso: 0, porcentajeVencido: 0
   };
   const enriched = EmailAutomation._enrichDailyData(baseData);
@@ -247,7 +253,7 @@ console.log('\n📋 Test 5: HTML email diario completo');
 {
   const baseData = {
     fecha: new Date().toISOString(),
-    gestionesHoy: 3, ptpsPendientes: 3, ptpsVencidos: 1,
+    gestionesAyer: 3, ptpsPendientes: 3, ptpsVencidos: 1,
     alertasCriticas: 1, alertasAltas: 3, dso: 12, porcentajeVencido: 22.4
   };
   const enriched = EmailAutomation._enrichDailyData(baseData);
@@ -256,21 +262,23 @@ console.log('\n📋 Test 5: HTML email diario completo');
   assert(html.length > 0, 'HTML generado');
   assertContains(html, '<!DOCTYPE html>', 'HTML válido con DOCTYPE');
   assertContains(html, 'Resumen Diario de Cobranzas', 'Título');
-  assertContains(html, 'Gestiones Hoy', 'KPI Gestiones');
+  assertContains(html, 'Gestiones Ayer', 'KPI Gestiones Ayer (fix 7AM)');
   assertContains(html, 'PTPs Pendientes', 'KPI PTPs');
   assertContains(html, 'DSO', 'KPI DSO');
   assertContains(html, 'Cartera Vencida', 'KPI % Cartera Vencida');
-  assertContains(html, 'Recaudación Hoy', 'NUEVO: KPI Recaudación');
-  assertContains(html, 'Distribución de Cartera', 'NUEVO: Mini barra aging');
-  assertContains(html, 'Cartera Total', 'NUEVO: Monto total cartera');
-  assertContains(html, 'Monto Vencido', 'NUEVO: Monto vencido absoluto');
+  assertContains(html, 'Recaudación Ayer', 'KPI Recaudación Ayer (fix 7AM)');
+  assertContains(html, 'Distribución de Cartera', 'Mini barra aging');
+  assertContains(html, 'Cartera Total', 'Monto total cartera');
+  assertContains(html, 'Monto Vencido', 'Monto vencido absoluto');
   assertContains(html, 'Top Prioridades de Hoy', 'Prioridades');
-  assertContains(html, 'Top Aseguradoras', 'NUEVO: Top deudores');
+  assertContains(html, 'Top Aseguradoras', 'Top deudores');
+  assertContains(html, 'PEN+USD', 'FIX: Nota moneda mixta en deudores');
   assertContains(html, 'Próximos Vencimientos', 'PTPs próximos');
   assertContains(html, 'Abrir Portal de Cobranzas', 'CTA principal');
-  assertContains(html, 'Metodología', 'NUEVO: Footer mejorado');
+  assertContains(html, 'Metodología', 'Footer mejorado');
+  assertContains(html, 'Moneda', 'FIX: Footer incluye nota de moneda');
   assertNotContains(html, 'Meta: Meta:', 'FIX: Sin doble Meta');
-  assertContains(html, '@media only screen', 'NUEVO: CSS responsive');
+  assertContains(html, '@media only screen', 'CSS responsive');
 
   const sizeKB = (html.length / 1024).toFixed(1);
   console.log(`  📏 Tamaño: ${sizeKB} KB`);
@@ -319,9 +327,10 @@ console.log('\n📋 Test 8: HTML email semanal completo');
   assertContains(html, 'DSO Promedio', 'KPI DSO');
   assertContains(html, 'Monto Recuperado', 'KPI Monto Recuperado');
   assertContains(html, 'Distribución por Antigüedad', 'Aging table');
-  assertContains(html, 'Cartera por Aseguradora', 'NUEVO: Sección aseguradoras');
+  assertContains(html, 'Cartera por Aseguradora', 'Sección aseguradoras');
+  assertContains(html, 'PEN+USD', 'FIX: Nota moneda mixta en aseguradoras');
   assertContains(html, 'RIMAC', 'Datos aseguradora');
-  assertContains(html, 'Eficiencia Operativa', 'NUEVO: Sección cobertura');
+  assertContains(html, 'Eficiencia Operativa', 'Sección cobertura');
   assertContains(html, 'Cobertura de Gestión', 'NUEVO: Métrica cobertura');
   assertContains(html, 'Intensidad', 'NUEVO: Métrica intensidad');
   assertContains(html, 'Cuentas Gestionadas', 'NUEVO: Cuentas gestionadas');
@@ -449,33 +458,46 @@ console.log('\n📋 Test 14: PTP card con montos');
   assertContains(card3, 'Vencido hace 2', 'PTP muestra vencido');
 }
 
-// --- Test 15: Mini aging bar ---
-console.log('\n📋 Test 15: Mini aging bar');
+// --- Test 15: Mini aging bar con % por monto ---
+console.log('\n📋 Test 15: Mini aging bar con % por monto');
 {
   const kit = EmailTemplateKit;
   const html = EmailAutomation._buildMiniAgingBar({
     agingBucketsForBar: [
-      { id: 'CURRENT', label: 'Corriente (0-30)', count: 3361, percentage: 78.2 },
-      { id: 'BUCKET_90_PLUS', label: '90+ días', count: 448, percentage: 10.4 }
+      { id: 'CURRENT', label: 'Corriente (0-30)', count: 3361, percentage: 78.2, amountPercentage: 85.9, amount: 4879064 },
+      { id: 'BUCKET_90_PLUS', label: '90+ días', count: 448, percentage: 10.4, amountPercentage: 1.2, amount: 68827 }
     ]
   }, kit);
   assertContains(html, 'Distribución de Cartera', 'Título');
   assertContains(html, '#4CAF50', 'Color verde');
   assertContains(html, '#F44336', 'Color rojo');
+  assertContains(html, 'monto', 'FIX: Muestra % por monto');
+  assertContains(html, 'docs', 'Muestra docs count');
 }
 
-// --- Test 16: Cartera summary ---
-console.log('\n📋 Test 16: Cartera summary (montos absolutos)');
+// --- Test 16: Cartera summary con moneda ---
+console.log('\n📋 Test 16: Cartera summary con desglose PEN/USD');
 {
   const kit = EmailTemplateKit;
+  // Test con byCurrency (escenario principal)
   const html = EmailAutomation._buildCarteraSummary({
     totalMonto: 6500000, totalVencido: 1456000,
-    recaudacionHoy: 5000, gestionesCerradasHoy: 1
+    byCurrency: { PEN: { total: 5000000, vencido: 1200000 }, USD: { total: 1500000, vencido: 256000 } },
+    recaudacionAyer: 5000, recaudacionAyerUSD: 2000, gestionesCerradasAyer: 2
   }, kit);
   assertContains(html, 'Cartera Total', 'Etiqueta cartera');
   assertContains(html, 'Monto Vencido', 'Etiqueta vencido');
-  assertContains(html, 'Recaudación Hoy', 'Etiqueta recaudación');
-  assertContains(html, '1 caso(s) cerrado(s)', 'Casos cerrados');
+  assertContains(html, 'Recaudación Ayer', 'Etiqueta recaudación ayer');
+  assertContains(html, 'S/.', 'Muestra moneda PEN');
+  assertContains(html, 'US$', 'FIX: Muestra moneda USD');
+  assertContains(html, '2 caso(s) cerrado(s)', 'Casos cerrados');
+
+  // Test sin byCurrency (fallback)
+  const html2 = EmailAutomation._buildCarteraSummary({
+    totalMonto: 6500000, totalVencido: 1456000,
+    recaudacionAyer: 0, recaudacionAyerUSD: 0, gestionesCerradasAyer: 0
+  }, kit);
+  assertContains(html2, 'Cartera Total', 'Fallback: muestra cartera');
 }
 
 // --- Test 17: Top deudores section ---
@@ -536,7 +558,7 @@ console.log('\n📋 Test 21: Validación de tamaño');
 {
   const baseData = {
     fecha: new Date().toISOString(),
-    gestionesHoy: 3, ptpsPendientes: 3, ptpsVencidos: 1,
+    gestionesAyer: 3, ptpsPendientes: 3, ptpsVencidos: 1,
     alertasCriticas: 1, alertasAltas: 3, dso: 12, porcentajeVencido: 22.4
   };
   const dailyHtml = EmailAutomation._buildDailySummaryEmailPro(EmailAutomation._enrichDailyData(baseData));
@@ -548,6 +570,61 @@ console.log('\n📋 Test 21: Validación de tamaño');
   const weeklyKB = weeklyHtml.length / 1024;
   assert(weeklyKB < 150, `Email semanal < 150KB (${weeklyKB.toFixed(1)}KB)`);
   assert(weeklyKB > 5, `Email semanal > 5KB (${weeklyKB.toFixed(1)}KB)`);
+}
+
+// --- Test 22: Manejo de moneda ---
+console.log('\n📋 Test 22: Manejo de moneda PEN/USD');
+{
+  const kit = EmailTemplateKit;
+  assert(kit.formatCurrency(1000, 'PEN') === 'S/. 1,000.00' || kit.formatCurrency(1000, 'PEN').includes('S/.'), 'formatCurrency PEN');
+  assert(kit.formatCurrency(1000, 'USD').includes('US$'), 'formatCurrency USD');
+  assert(kit.formatCurrency(1000).includes('S/.'), 'formatCurrency default es PEN');
+
+  // Test que _collectDailyData incluye byCurrency
+  const dailyData = ReportScheduler._collectDailyData();
+  assert(dailyData.byCurrency !== undefined, 'collectDailyData incluye byCurrency');
+  assert(dailyData.byCurrency.PEN.total > 0, 'byCurrency PEN total');
+  assert(dailyData.byCurrency.USD.total > 0, 'byCurrency USD total');
+
+  // Test que _collectWeeklyDataEnriched incluye byCurrency
+  const weeklyData = ReportScheduler._collectWeeklyDataEnriched();
+  assert(weeklyData.byCurrency !== undefined, 'collectWeeklyData incluye byCurrency');
+
+  // Test aging con amountPercentage en semanal
+  assert(weeklyData.agingDistribution[0].amountPercentage !== undefined, 'agingDistribution incluye amountPercentage');
+
+  // Test recaudación separada PEN/USD
+  const enriched = EmailAutomation._enrichDailyData(dailyData);
+  assert(enriched.recaudacionAyer !== undefined, 'recaudacionAyer PEN');
+  assert(enriched.recaudacionAyerUSD !== undefined, 'recaudacionAyerUSD');
+  assert(typeof enriched.recaudacionAyer === 'number', 'recaudacionAyer es number');
+  assert(typeof enriched.recaudacionAyerUSD === 'number', 'recaudacionAyerUSD es number');
+
+  // Verificar que gestiones ayer funciona (no hoy)
+  assert(dailyData.gestionesAyer !== undefined, 'gestionesAyer existe en dailyData');
+  assert(dailyData.gestionesAyer > 0, 'gestionesAyer > 0 con mock de ayer');
+}
+
+// --- Test 23: Aging table con amountPercentage ---
+console.log('\n📋 Test 23: Aging table muestra % por monto');
+{
+  const kit = EmailTemplateKit;
+  const html = kit.agingTable([
+    { id: 'CURRENT', label: 'Corriente (0-30)', count: 3361, percentage: 78.2, amountPercentage: 85.9, amount: 4879064 },
+    { id: 'BUCKET_90_PLUS', label: '90+ días', count: 448, percentage: 10.4, amountPercentage: 1.2, amount: 68827 }
+  ]);
+  assertContains(html, 'del monto', 'Aging table muestra % del monto');
+}
+
+// --- Test 24: Weekly aseguradoras con nota de moneda ---
+console.log('\n📋 Test 24: Aseguradoras semanal con resumen moneda');
+{
+  const kit = EmailTemplateKit;
+  const data = ReportScheduler._collectWeeklyDataEnriched();
+  const html = ReportScheduler._buildAseguradorasSection(data, kit);
+  assertContains(html, 'PEN+USD', 'Nota moneda mixta en subtítulo');
+  assertContains(html, 'PEN:', 'Resumen moneda PEN');
+  assertContains(html, 'USD:', 'Resumen moneda USD');
 }
 
 // ==================== RESULTADO ====================

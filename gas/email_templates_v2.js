@@ -373,10 +373,11 @@ const EmailTemplateKit = {
             <strong>Metodología</strong><br>
             <span style="color:#9E9E9E;font-size:11px;">
               <strong>DSO:</strong> Promedio ponderado por monto de días desde vencimiento.
-              <strong>Aging:</strong> Clasificación por días de mora (0-30, 31-60, 61-90, 90+).
+              <strong>Aging:</strong> Clasificación por días de mora (0-30, 31-60, 61-90, 90+); % por cantidad y por monto.
               <strong>Cobertura:</strong> % de cuentas vencidas con al menos 1 gestión en el periodo.
               <strong>Deltas:</strong> Variación vs periodo anterior (↑ sube, ↓ baja).
               <strong>Tasa cumplimiento:</strong> PTPs pagados / (pagados + incumplidos).
+              <strong>Moneda:</strong> Cartera incluye PEN y USD; montos se muestran separados donde es posible. Totales mixtos se indican con (PEN+USD).
             </span>
           </td>
         </tr>
@@ -953,7 +954,9 @@ const EmailTemplateKit = {
               ${showAmount ? `
               <tr>
                 <td></td>
-                <td colspan="3" style="padding-top:2px;font-size:11px;color:#9E9E9E;">${this.formatCurrency(bucket.amount)}</td>
+                <td colspan="3" style="padding-top:2px;font-size:11px;color:#9E9E9E;">
+                  ${this.formatCurrency(bucket.amount)}${bucket.amountPercentage ? ` (${this.formatPct(bucket.amountPercentage)} del monto)` : ''}
+                </td>
               </tr>
               ` : ''}
             </table>
