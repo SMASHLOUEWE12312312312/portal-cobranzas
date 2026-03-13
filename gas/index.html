@@ -7092,10 +7092,11 @@
             }
 
             // ═══ ACTUALIZAR AUTOCOMPLETE del formulario de registro ═══
-            if (BITACORA_DATA.length > 0) {
+            // FIX BUG: NO sobreescribir si ya se cargó la lista completa desde BD
+            if (BITACORA_DATA.length > 0 && !window._AUTOCOMPLETE_FULL_LOADED) {
                 const aseguradosUnicos = [...new Set(BITACORA_DATA.map(g => g.asegurado))].filter(Boolean).sort();
                 AUTOCOMPLETE_EMB_OPTIONS = aseguradosUnicos;
-                _log('[populateFiltrosEmb] ✅ Autocomplete registro actualizado con', aseguradosUnicos.length, 'asegurados');
+                _log('[populateFiltrosEmb] ⚠️ Autocomplete parcial con', aseguradosUnicos.length, 'asegurados (esperando BD completa)');
             }
         }
 
@@ -7613,6 +7614,7 @@
         let AUTOCOMPLETE_EMB_OPTIONS = [];
         let AUTOCOMPLETE_EMB_FILTERED = [];
         let AUTOCOMPLETE_EMB_INDEX = -1;
+        window._AUTOCOMPLETE_FULL_LOADED = false; // Flag: lista completa de BD cargada
 
         /**
          * Cargar opciones de clientes para el autocomplete embebido
@@ -7678,6 +7680,7 @@
                         // Actualizar ALL_CLIENTES para futuras referencias
                         ALL_CLIENTES = result.data;
                         AUTOCOMPLETE_EMB_OPTIONS = [...result.data].sort();
+                        window._AUTOCOMPLETE_FULL_LOADED = true;
                         _log('[loadClientesAutocompleteEmb] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' clientes cargados desde backend (BD completa)');
                     } else {
                         console.warn('[loadClientesAutocompleteEmb] Backend no devolvió datos:', result);
@@ -7744,6 +7747,7 @@
             const clientesDisponibles = ASEGURADOS_DS.items.length > 0 ? ASEGURADOS_DS.items : ALL_CLIENTES;
             if (clientesDisponibles && clientesDisponibles.length > 0) {
                 AUTOCOMPLETE_EMB_OPTIONS = [...clientesDisponibles].sort();
+                window._AUTOCOMPLETE_FULL_LOADED = true;
                 _log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes disponibles (BD completa)');
                 renderizarOpcionesEmb();
                 return;
@@ -7769,7 +7773,8 @@
                     if (!ASEGURADOS_DS.loading && ASEGURADOS_DS.items.length > 0) {
                         clearInterval(checkInterval);
                         AUTOCOMPLETE_EMB_OPTIONS = [...ASEGURADOS_DS.items].sort();
-                        ALL_CLIENTES = ASEGURADOS_DS.items; // Actualizar también ALL_CLIENTES
+                        ALL_CLIENTES = ASEGURADOS_DS.items;
+                        window._AUTOCOMPLETE_FULL_LOADED = true;
                         renderizarOpcionesEmb();
                         _log('[loadClientesAutocompleteEmbSafe] ✅ Carga completada:', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes');
                     }
@@ -7789,6 +7794,7 @@
                     if (result && result.ok && result.data && result.data.length > 0) {
                         ALL_CLIENTES = result.data;
                         AUTOCOMPLETE_EMB_OPTIONS = [...result.data].sort();
+                        window._AUTOCOMPLETE_FULL_LOADED = true;
                         _log('[loadClientesAutocompleteEmbSafe] ✅', AUTOCOMPLETE_EMB_OPTIONS.length, 'clientes cargados (BD completa)');
                         renderizarOpcionesEmb();
                     } else {
@@ -8364,6 +8370,7 @@
                         // Actualizar TODAS las variables globales
                         ALL_CLIENTES = result.data;
                         AUTOCOMPLETE_EMB_OPTIONS = [...result.data].sort();
+                        window._AUTOCOMPLETE_FULL_LOADED = true;
 
                         _log('[inicializarFormularioEmbedded] ✅ ' + AUTOCOMPLETE_EMB_OPTIONS.length + ' asegurados cargados desde BD');
 
@@ -8621,8 +8628,8 @@
                 if (estadoBtn) { estadoBtn.style.color = 'var(--tp-text-secondary)'; estadoBtn.style.borderBottom = 'none'; estadoBtn.style.fontWeight = '500'; }
                 if (registrarBtn) { registrarBtn.style.color = 'var(--tp-primary)'; registrarBtn.style.borderBottom = '3px solid var(--tp-primary)'; registrarBtn.style.fontWeight = '600'; }
 
-                // ════ OPTIMIZADO: Solo cargar opciones si están vacías ════
-                if (AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
+                // ════ FIX: Cargar lista completa si aún no se ha cargado desde BD ════
+                if (!window._AUTOCOMPLETE_FULL_LOADED || AUTOCOMPLETE_EMB_OPTIONS.length === 0) {
                     loadClientesAutocompleteEmbSafe();
                 }
             }
