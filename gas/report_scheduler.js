@@ -342,12 +342,14 @@ const ReportScheduler = {
                     data.porcentajeVencido = kpis.summary.porcentajeVencido;
                     data.totalMonto = kpis.summary.totalMonto;
                     data.totalVencido = kpis.summary.totalVencido;
-                    data.agingDistribution = kpis.aging.buckets.map(b => ({ 
+                    data.agingDistribution = kpis.aging.buckets.map(b => ({
                         id: b.id,
-                        label: b.label,   // Corregido: era "bucket", template espera "label"
-                        count: b.count, 
+                        label: b.label,
+                        count: b.count,
                         percentage: b.percentage,
                         amount: b.amount,
+                        amountPEN: b.amountPEN || 0,
+                        amountUSD: b.amountUSD || 0,
                         amountPercentage: b.amountPercentage,
                         color: b.color,
                         severity: b.severity
