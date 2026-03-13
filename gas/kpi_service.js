@@ -155,12 +155,17 @@ const KPIService = {
 
             let sumDiasMora = 0;
             let sumImportes = 0;
+            let validRowCount = 0;
 
             bdData.rows.forEach(row => {
+                const importe = this._parseNumber(row[importeIdx]);
+                // Ignorar registros con importe <= 0 o vacío
+                if (!importe || importe <= 0) return;
+
                 const asegurado = String(row[aseguradoIdx] || '').trim();
                 if (asegurado) aseguradosSet.add(asegurado);
 
-                const importe = this._parseNumber(row[importeIdx]);
+                validRowCount++;
                 kpis.summary.totalMonto += importe;
 
                 const moneda = String(row[monIdx] || 'PEN').toUpperCase();
@@ -196,10 +201,8 @@ const KPIService = {
                     diasMora = Math.floor((today - fecVenc) / (1000 * 60 * 60 * 24));
                     isVencido = diasMora > 0;
 
-                    if (importe > 0) {
-                        sumDiasMora += Math.max(0, diasMora) * importe;
-                        sumImportes += importe;
-                    }
+                    sumDiasMora += Math.max(0, diasMora) * importe;
+                    sumImportes += importe;
                 }
 
                 if (isVencido) {
@@ -220,6 +223,7 @@ const KPIService = {
                 bucketAmounts[bucket.id] += importe;
             });
 
+            kpis.summary.totalRegistros = validRowCount;
             kpis.summary.totalAsegurados = aseguradosSet.size;
             kpis.summary.porcentajeVencido = kpis.summary.totalMonto > 0
                 ? parseFloat((kpis.summary.totalVencido / kpis.summary.totalMonto * 100).toFixed(2))
