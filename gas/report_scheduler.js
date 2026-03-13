@@ -534,7 +534,7 @@ const ReportScheduler = {
             const recParts = [];
             if ((data.montoRecuperadoPEN || 0) > 0) recParts.push(kit.formatCurrency(data.montoRecuperadoPEN, 'PEN'));
             if ((data.montoRecuperadoUSD || 0) > 0) recParts.push(kit.formatCurrency(data.montoRecuperadoUSD, 'USD'));
-            const recDisplay = recParts.length > 0 ? recParts.join(' + ') : kit.formatCurrency(data.montoRecuperado);
+            const recDisplay = recParts.length > 0 ? recParts.join('<br>') : kit.formatCurrency(data.montoRecuperado);
             improvements.push(`Se recuperaron ${recDisplay}`);
         }
         
@@ -872,7 +872,7 @@ const ReportScheduler = {
         if (recUSD > 0) recParts.push(kit.formatCurrency(recUSD, 'USD'));
         kpis.push({
             label: 'Monto Recuperado',
-            value: recParts.length > 0 ? recParts.join(' + ') : 'S/. 0',
+            value: recParts.length > 0 ? recParts.join('<br>') : 'S/. 0',
             severity: (recPEN + recUSD) > 0 ? 'OK' : 'NEUTRAL',
             icon: '💰'
         });

@@ -428,7 +428,7 @@ const EmailTemplateKit = {
   /**
    * Tarjeta de KPI con delta y severidad
    */
-  kpiCard(options) {
+  kpiCard(options, colWidth) {
     const {
       label,
       value,
@@ -443,15 +443,14 @@ const EmailTemplateKit = {
     } = options;
 
     const sev = this.DESIGN.SEVERITY[severity] || this.DESIGN.SEVERITY.NEUTRAL;
-    const padding = small ? '12px 14px' : '16px 18px';
     const valueSize = small ? this.DESIGN.FONT.SIZE_LG : this.DESIGN.FONT.SIZE_XL;
     const labelSize = small ? this.DESIGN.FONT.SIZE_XS : this.DESIGN.FONT.SIZE_SM;
-    
+
     let trendHtml = '';
     if (trend) {
       trendHtml = this.trendArrow(trend, invertTrendColors);
     }
-    
+
     let deltaHtml = '';
     if (delta !== undefined && delta !== null && delta !== '') {
       deltaHtml = `<div style="font-size:11px;color:${sev.text};margin-top:4px;">${deltaLabel || ''} ${delta}</div>`;
@@ -462,10 +461,11 @@ const EmailTemplateKit = {
       benchmarkHtml = `<div style="font-size:10px;color:#9E9E9E;margin-top:2px;">Meta: ${benchmark}</div>`;
     }
 
-    // Estilo directo en el <td> — se estira al alto de la fila automáticamente
+    const widthStyle = colWidth ? `width:${colWidth};` : '';
+
     return `
-      <td style="background:#FFFFFF;border:1px solid #E0E0E0;border-left:4px solid ${sev.border};padding:14px 16px;vertical-align:top;">
-        <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.3;">
+      <td style="${widthStyle}background:#FFFFFF;border:1px solid #E0E0E0;border-left:4px solid ${sev.border};padding:14px 16px;vertical-align:top;">
+        <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.3;word-break:break-word;">
           ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
         </div>
         <div style="color:#757575;font-size:${labelSize};margin-top:6px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">${label}</div>
@@ -479,13 +479,13 @@ const EmailTemplateKit = {
    * Grid de KPIs (scoreboard)
    */
   kpiGrid(kpis, columns = 4) {
-    // border-spacing crea el gap entre celdas, y cada td tiene su propio fondo
-    let html = '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-spacing:6px;border-collapse:separate;">';
+    const colWidth = Math.floor(100 / columns) + '%';
+    let html = '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-spacing:6px;border-collapse:separate;table-layout:fixed;">';
 
     for (let i = 0; i < kpis.length; i += columns) {
       html += '<tr>';
       for (let j = 0; j < columns && (i + j) < kpis.length; j++) {
-        html += this.kpiCard(kpis[i + j]);
+        html += this.kpiCard(kpis[i + j], colWidth);
       }
       const remaining = columns - Math.min(columns, kpis.length - i);
       if (remaining > 0 && remaining < columns) {

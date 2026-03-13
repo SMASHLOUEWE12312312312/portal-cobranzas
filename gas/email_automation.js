@@ -731,10 +731,10 @@ const EmailAutomation = {
         // 6. Recaudación Semanal (bitácora se registra semanalmente)
         const recaudacionPEN = data.recaudacionSemanalPEN || 0;
         const recaudacionUSD = data.recaudacionSemanalUSD || 0;
-        const recaudacionLabel = [];
-        if (recaudacionPEN > 0) recaudacionLabel.push(kit.formatCurrency(recaudacionPEN, 'PEN'));
-        if (recaudacionUSD > 0) recaudacionLabel.push(kit.formatCurrency(recaudacionUSD, 'USD'));
-        const recaudacionDisplay = recaudacionLabel.length > 0 ? recaudacionLabel.join(' + ') : 'S/. 0';
+        const recaudacionLines = [];
+        if (recaudacionPEN > 0) recaudacionLines.push(kit.formatCurrency(recaudacionPEN, 'PEN'));
+        if (recaudacionUSD > 0) recaudacionLines.push(kit.formatCurrency(recaudacionUSD, 'USD'));
+        const recaudacionDisplay = recaudacionLines.length > 0 ? recaudacionLines.join('<br>') : 'S/. 0';
 
         const recaudacionDeltaParts = [];
         if (data.gestionesCerradasSemana > 0) recaudacionDeltaParts.push(`${data.gestionesCerradasSemana} cerrado(s)`);
