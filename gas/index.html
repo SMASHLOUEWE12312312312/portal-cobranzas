@@ -1068,6 +1068,20 @@
                                     transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
                                 "><span style="font-size: 1rem;">✅</span> Compromiso de pago</button>
 
+                                <button type="button" class="quick-chip" onclick="applyQuickActionV4('reprogramado')" style="
+                                    display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+                                    background: white; border: 2px solid #FFB74D; border-radius: 24px;
+                                    font-size: 0.8125rem; font-weight: 500; color: #E65100; cursor: pointer;
+                                    transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+                                "><span style="font-size: 1rem;">🔄</span> Reprogramado</button>
+
+                                <button type="button" class="quick-chip" onclick="applyQuickActionV4('cerrado_pagado')" style="
+                                    display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+                                    background: white; border: 2px solid #A5D6A7; border-radius: 24px;
+                                    font-size: 0.8125rem; font-weight: 500; color: #1B5E20; cursor: pointer;
+                                    transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+                                "><span style="font-size: 1rem;">💰</span> Cerrado/Pagado</button>
+
                                 <button type="button" class="quick-chip" onclick="applyQuickActionV4('no_contactable')"
                                     style="
                                     display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
@@ -1075,6 +1089,13 @@
                                     font-size: 0.8125rem; font-weight: 500; color: #616161; cursor: pointer;
                                     transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
                                 "><span style="font-size: 1rem;">❌</span> No contactable</button>
+
+                                <button type="button" class="quick-chip" onclick="applyQuickActionV4('no_cobrable')" style="
+                                    display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+                                    background: white; border: 2px solid #EF9A9A; border-radius: 24px;
+                                    font-size: 0.8125rem; font-weight: 500; color: #C62828; cursor: pointer;
+                                    transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+                                "><span style="font-size: 1rem;">🚫</span> No cobrable</button>
                             </div>
                         </div>
 
@@ -11601,11 +11622,29 @@
                 proximaAccion: 'Verificar pago en fecha comprometida',
                 chipSelector: 3
             },
+            reprogramado: {
+                tipoGestion: 'LLAMADA',
+                estadoGestion: 'REPROGRAMADO',
+                proximaAccion: 'Contactar en nueva fecha acordada',
+                chipSelector: 4
+            },
+            cerrado_pagado: {
+                tipoGestion: 'LLAMADA',
+                estadoGestion: 'CERRADO_PAGADO',
+                proximaAccion: 'Verificar acreditación del pago',
+                chipSelector: 5
+            },
             no_contactable: {
                 tipoGestion: 'LLAMADA',
                 estadoGestion: 'NO_CONTACTABLE',
                 proximaAccion: 'Buscar contacto alternativo',
-                chipSelector: 4
+                chipSelector: 6
+            },
+            no_cobrable: {
+                tipoGestion: 'OTRO',
+                estadoGestion: 'NO_COBRABLE',
+                proximaAccion: 'Documentar motivo y cerrar caso',
+                chipSelector: 7
             }
         };
 
