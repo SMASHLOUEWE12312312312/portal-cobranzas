@@ -205,8 +205,11 @@ const KPIService = {
                     diasMora = Math.floor((today - fecVenc) / (1000 * 60 * 60 * 24));
                     isVencido = diasMora > 0;
 
-                    sumDiasMora += Math.max(0, diasMora) * importe;
-                    sumImportes += importe;
+                    // DSO solo sobre documentos vencidos
+                    if (isVencido) {
+                        sumDiasMora += diasMora * importe;
+                        sumImportes += importe;
+                    }
                 }
 
                 if (isVencido) {
