@@ -276,7 +276,7 @@ const ReportScheduler = {
                     let pendientes = 0, vencidos = 0, montoComprometidoTotal = 0;
                     compromisos.forEach(c => {
                         const monto = c.montoCompromiso || c.montoComprometido || c.snapshotVencidoPEN || c.montoPEN || c.monto || 0;
-                        montoComprometidoTotal += monto;
+                        if (monto > 0) montoComprometidoTotal += monto;
                         if (c.fechaCompromiso) {
                             const fechaComp = new Date(c.fechaCompromiso);
                             if (fechaComp < todayMid) {
@@ -303,7 +303,8 @@ const ReportScheduler = {
                     const fecha = new Date(g.fechaRegistro);
                     if (fecha >= weekStartDate) {
                         casosCerradosSemana++;
-                        montoRecuperadoSemana += (g.montoRecuperado || g.montoCompromiso || g.montoComprometido || g.snapshotVencidoPEN || g.montoPEN || 0);
+                        const montoRec = g.montoRecuperado || g.montoCompromiso || g.montoComprometido || g.snapshotVencidoPEN || g.montoPEN || 0;
+                        if (montoRec > 0) montoRecuperadoSemana += montoRec;
                     }
                 });
 
