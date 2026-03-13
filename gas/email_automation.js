@@ -1130,8 +1130,87 @@ function sendDailySummary_API(data) {
     return EmailAutomation.sendDailySummaryEmail(data); 
 }
 
-function testEmailTemplate_API(type) { 
-    return { ok: true, message: 'Use sendPTPReminders_API or sendAgingAlerts_API' }; 
+function testEmailTemplate_API(type) {
+    return { ok: true, message: 'Use sendPTPReminders_API or sendAgingAlerts_API' };
+}
+
+/**
+ * Diagnóstico: Ver detalle de recaudación semanal (pagos totales + parciales)
+ * Ejecutar desde Apps Script editor para ver qué datos detecta
+ */
+function diagnosticoRecaudacion_API() {
+    const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - mondayOffset);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStartLocal = Utilities.formatDate(weekStart, 'America/Lima', 'yyyy-MM-dd');
+
+    const cicloMap = {};
+    gestiones.forEach(g => {
+        if (!g.idCiclo || !g.fechaRegistro) return;
+        if (!cicloMap[g.idCiclo]) cicloMap[g.idCiclo] = [];
+        cicloMap[g.idCiclo].push(g);
+    });
+
+    const resultado = {
+        semanaDesde: weekStartLocal,
+        totalCiclos: Object.keys(cicloMap).length,
+        cerradosPagados: [],
+        pagosParciales: [],
+        sinCambio: [],
+        ciclosSinAnterior: []
+    };
+
+    Object.entries(cicloMap).forEach(([idCiclo, gestionesCiclo]) => {
+        gestionesCiclo.sort((a, b) => new Date(a.fechaRegistro) - new Date(b.fechaRegistro));
+
+        const anteriores = [];
+        const estaSemana = [];
+        gestionesCiclo.forEach(g => {
+            const fechaLocal = Utilities.formatDate(new Date(g.fechaRegistro), 'America/Lima', 'yyyy-MM-dd');
+            if (fechaLocal < weekStartLocal) anteriores.push(g);
+            else estaSemana.push(g);
+        });
+
+        if (estaSemana.length === 0) return;
+
+        const gReciente = estaSemana[estaSemana.length - 1];
+        const penActual = parseFloat(gReciente.snapshotVencidoPEN) || 0;
+        const usdActual = parseFloat(gReciente.snapshotVencidoUSD) || 0;
+        const info = {
+            idCiclo,
+            asegurado: gReciente.asegurado,
+            estado: gReciente.estadoGestion,
+            penActual, usdActual,
+            gestionesEstaSemana: estaSemana.length,
+            gestionesAnteriores: anteriores.length
+        };
+
+        if (gReciente.estadoGestion === 'CERRADO_PAGADO') {
+            resultado.cerradosPagados.push(info);
+        } else if (anteriores.length > 0) {
+            const gAnterior = anteriores[anteriores.length - 1];
+            const penPrev = parseFloat(gAnterior.snapshotVencidoPEN) || 0;
+            const usdPrev = parseFloat(gAnterior.snapshotVencidoUSD) || 0;
+            info.penAnterior = penPrev;
+            info.usdAnterior = usdPrev;
+            info.deltaPEN = penPrev - penActual;
+            info.deltaUSD = usdPrev - usdActual;
+
+            if (info.deltaPEN > 0 || info.deltaUSD > 0) {
+                resultado.pagosParciales.push(info);
+            } else {
+                resultado.sinCambio.push(info);
+            }
+        } else {
+            resultado.ciclosSinAnterior.push(info);
+        }
+    });
+
+    return { ok: true, data: resultado };
 }
 
 /**
