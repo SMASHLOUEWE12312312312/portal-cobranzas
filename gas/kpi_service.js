@@ -252,22 +252,37 @@ const KPIService = {
                     : 0;
             });
 
-            kpis.aging.buckets = this.AGING_BUCKETS.map(b => ({
-                ...b,
-                count: bucketCounts[b.id],
-                amount: bucketAmounts[b.id],
-                amountPEN: bucketAmountsPEN[b.id],
-                amountUSD: bucketAmountsUSD[b.id],
-                percentage: kpis.summary.totalRegistros > 0
-                    ? parseFloat((bucketCounts[b.id] / kpis.summary.totalRegistros * 100).toFixed(1))
-                    : 0,
-                amountPercentage: kpis.summary.totalMonto > 0
-                    ? parseFloat((bucketAmounts[b.id] / kpis.summary.totalMonto * 100).toFixed(1))
-                    : 0
-            }));
+            const totalPEN = kpis.byCurrency.PEN.total;
+            const totalUSD = kpis.byCurrency.USD.total;
 
-            const criticalPct = kpis.aging.buckets.find(b => b.id === 'BUCKET_90_PLUS')?.amountPercentage || 0;
-            const warnPct = kpis.aging.buckets.find(b => b.id === 'BUCKET_61_90')?.amountPercentage || 0;
+            kpis.aging.buckets = this.AGING_BUCKETS.map(b => {
+                const pctPEN = totalPEN > 0
+                    ? parseFloat((bucketAmountsPEN[b.id] / totalPEN * 100).toFixed(1))
+                    : 0;
+                const pctUSD = totalUSD > 0
+                    ? parseFloat((bucketAmountsUSD[b.id] / totalUSD * 100).toFixed(1))
+                    : 0;
+                return {
+                    ...b,
+                    count: bucketCounts[b.id],
+                    amount: bucketAmounts[b.id],
+                    amountPEN: bucketAmountsPEN[b.id],
+                    amountUSD: bucketAmountsUSD[b.id],
+                    percentage: kpis.summary.totalRegistros > 0
+                        ? parseFloat((bucketCounts[b.id] / kpis.summary.totalRegistros * 100).toFixed(1))
+                        : 0,
+                    amountPercentage: kpis.summary.totalMonto > 0
+                        ? parseFloat((bucketAmounts[b.id] / kpis.summary.totalMonto * 100).toFixed(1))
+                        : 0,
+                    amountPercentagePEN: pctPEN,
+                    amountPercentageUSD: pctUSD
+                };
+            });
+
+            const bucket90Data = kpis.aging.buckets.find(b => b.id === 'BUCKET_90_PLUS');
+            const bucket6190Data = kpis.aging.buckets.find(b => b.id === 'BUCKET_61_90');
+            const criticalPct = Math.max(bucket90Data?.amountPercentagePEN || 0, bucket90Data?.amountPercentageUSD || 0);
+            const warnPct = Math.max(bucket6190Data?.amountPercentagePEN || 0, bucket6190Data?.amountPercentageUSD || 0);
             if (criticalPct > 10) {
                 kpis.aging.healthStatus = 'CRITICAL';
                 kpis.alerts.push({ type: 'AGING', severity: 'CRITICAL', message: `${criticalPct}% del monto en 90+ días` });
