@@ -313,7 +313,7 @@ const EmailAutomation = {
         }
 
         // Calcular recaudación SEMANAL (lunes a hoy)
-        // Incluye: CERRADO_PAGADO (pago total) + pagos parciales (delta negativo en snapshots)
+        // Incluye: CERRADO_PAGADO (pago total) + pagos parciales (delta negativo en snapshots vs semana anterior)
         data.recaudacionSemanalPEN = 0;
         data.recaudacionSemanalUSD = 0;
         data.gestionesCerradasSemana = 0;
@@ -329,7 +329,7 @@ const EmailAutomation = {
                 weekStart.setHours(0, 0, 0, 0);
                 const weekStartLocal = Utilities.formatDate(weekStart, 'America/Lima', 'yyyy-MM-dd');
 
-                // Agrupar gestiones por ciclo, ordenadas por fecha
+                // Agrupar gestiones por ciclo, ordenadas por fecha ascendente
                 const cicloMap = {};
                 gestiones.forEach(g => {
                     if (!g.idCiclo || !g.fechaRegistro) return;
@@ -337,41 +337,50 @@ const EmailAutomation = {
                     cicloMap[g.idCiclo].push(g);
                 });
 
-                // Para cada ciclo, detectar pagos totales y parciales en la semana
+                // Para cada ciclo, detectar pagos totales y parciales
                 Object.values(cicloMap).forEach(gestionesCiclo => {
-                    // Ordenar por fecha ascendente
                     gestionesCiclo.sort((a, b) => new Date(a.fechaRegistro) - new Date(b.fechaRegistro));
 
-                    for (let i = 0; i < gestionesCiclo.length; i++) {
-                        const g = gestionesCiclo[i];
+                    // Separar: gestiones anteriores a esta semana vs esta semana
+                    const anteriores = [];
+                    const estaSemana = [];
+                    gestionesCiclo.forEach(g => {
                         const fechaLocal = Utilities.formatDate(new Date(g.fechaRegistro), 'America/Lima', 'yyyy-MM-dd');
-                        if (fechaLocal < weekStartLocal) continue;
+                        if (fechaLocal < weekStartLocal) {
+                            anteriores.push(g);
+                        } else {
+                            estaSemana.push(g);
+                        }
+                    });
 
-                        const penActual = parseFloat(g.snapshotVencidoPEN) || 0;
-                        const usdActual = parseFloat(g.snapshotVencidoUSD) || 0;
+                    if (estaSemana.length === 0) return;
 
-                        if (g.estadoGestion === 'CERRADO_PAGADO') {
-                            // Pago total: el snapshot completo es recaudación
-                            data.gestionesCerradasSemana++;
-                            if (penActual > 0) data.recaudacionSemanalPEN += penActual;
-                            if (usdActual > 0) data.recaudacionSemanalUSD += usdActual;
-                        } else if (i > 0) {
-                            // Pago parcial: comparar con gestión anterior del mismo ciclo
-                            const prev = gestionesCiclo[i - 1];
-                            const penPrev = parseFloat(prev.snapshotVencidoPEN) || 0;
-                            const usdPrev = parseFloat(prev.snapshotVencidoUSD) || 0;
+                    // Gestión más reciente de esta semana
+                    const gReciente = estaSemana[estaSemana.length - 1];
+                    const penActual = parseFloat(gReciente.snapshotVencidoPEN) || 0;
+                    const usdActual = parseFloat(gReciente.snapshotVencidoUSD) || 0;
 
-                            const deltaPEN = penPrev - penActual;
-                            const deltaUSD = usdPrev - usdActual;
+                    if (gReciente.estadoGestion === 'CERRADO_PAGADO') {
+                        // Pago total: el snapshot completo es recaudación
+                        data.gestionesCerradasSemana++;
+                        if (penActual > 0) data.recaudacionSemanalPEN += penActual;
+                        if (usdActual > 0) data.recaudacionSemanalUSD += usdActual;
+                    } else if (anteriores.length > 0) {
+                        // Pago parcial: comparar snapshot actual vs última gestión de semana anterior
+                        const gAnterior = anteriores[anteriores.length - 1];
+                        const penPrev = parseFloat(gAnterior.snapshotVencidoPEN) || 0;
+                        const usdPrev = parseFloat(gAnterior.snapshotVencidoUSD) || 0;
 
-                            if (deltaPEN > 0) {
-                                data.recaudacionSemanalPEN += deltaPEN;
-                                data.pagosParciales++;
-                            }
-                            if (deltaUSD > 0) {
-                                data.recaudacionSemanalUSD += deltaUSD;
-                                data.pagosParciales++;
-                            }
+                        const deltaPEN = penPrev - penActual;
+                        const deltaUSD = usdPrev - usdActual;
+
+                        if (deltaPEN > 0) {
+                            data.recaudacionSemanalPEN += deltaPEN;
+                            data.pagosParciales++;
+                        }
+                        if (deltaUSD > 0) {
+                            data.recaudacionSemanalUSD += deltaUSD;
+                            data.pagosParciales++;
                         }
                     }
                 });

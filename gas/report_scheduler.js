@@ -312,7 +312,7 @@ const ReportScheduler = {
                     data.compromisosDetalle = compromisosDetalle;
                 }
 
-                // Recaudación semanal: CERRADO_PAGADO + pagos parciales (delta negativo en snapshots)
+                // Recaudación semanal: CERRADO_PAGADO + pagos parciales (delta snapshot vs semana anterior)
                 const weekStartDate = new Date();
                 weekStartDate.setHours(0, 0, 0, 0);
                 weekStartDate.setDate(weekStartDate.getDate() - 7);
@@ -321,7 +321,7 @@ const ReportScheduler = {
                 let casosCerradosSemana = 0;
                 let pagosParciales = 0;
 
-                // Agrupar gestiones por ciclo para detectar pagos parciales
+                // Agrupar gestiones por ciclo
                 const cicloMap = {};
                 gestiones.forEach(g => {
                     if (!g.idCiclo || !g.fechaRegistro) return;
@@ -332,30 +332,39 @@ const ReportScheduler = {
                 Object.values(cicloMap).forEach(gestionesCiclo => {
                     gestionesCiclo.sort((a, b) => new Date(a.fechaRegistro) - new Date(b.fechaRegistro));
 
-                    for (let i = 0; i < gestionesCiclo.length; i++) {
-                        const g = gestionesCiclo[i];
+                    // Separar: anteriores a esta semana vs esta semana
+                    const anteriores = [];
+                    const estaSemana = [];
+                    gestionesCiclo.forEach(g => {
                         const fecha = new Date(g.fechaRegistro);
-                        if (fecha < weekStartDate) continue;
-
-                        const penActual = parseFloat(g.snapshotVencidoPEN) || 0;
-                        const usdActual = parseFloat(g.snapshotVencidoUSD) || 0;
-
-                        if (g.estadoGestion === 'CERRADO_PAGADO') {
-                            casosCerradosSemana++;
-                            if (penActual > 0) montoRecuperadoPEN += penActual;
-                            if (usdActual > 0) montoRecuperadoUSD += usdActual;
-                        } else if (i > 0) {
-                            // Pago parcial: snapshot bajó respecto a gestión anterior
-                            const prev = gestionesCiclo[i - 1];
-                            const penPrev = parseFloat(prev.snapshotVencidoPEN) || 0;
-                            const usdPrev = parseFloat(prev.snapshotVencidoUSD) || 0;
-
-                            const deltaPEN = penPrev - penActual;
-                            const deltaUSD = usdPrev - usdActual;
-
-                            if (deltaPEN > 0) { montoRecuperadoPEN += deltaPEN; pagosParciales++; }
-                            if (deltaUSD > 0) { montoRecuperadoUSD += deltaUSD; pagosParciales++; }
+                        if (fecha < weekStartDate) {
+                            anteriores.push(g);
+                        } else {
+                            estaSemana.push(g);
                         }
+                    });
+
+                    if (estaSemana.length === 0) return;
+
+                    const gReciente = estaSemana[estaSemana.length - 1];
+                    const penActual = parseFloat(gReciente.snapshotVencidoPEN) || 0;
+                    const usdActual = parseFloat(gReciente.snapshotVencidoUSD) || 0;
+
+                    if (gReciente.estadoGestion === 'CERRADO_PAGADO') {
+                        casosCerradosSemana++;
+                        if (penActual > 0) montoRecuperadoPEN += penActual;
+                        if (usdActual > 0) montoRecuperadoUSD += usdActual;
+                    } else if (anteriores.length > 0) {
+                        // Pago parcial: comparar con última gestión de semana anterior
+                        const gAnterior = anteriores[anteriores.length - 1];
+                        const penPrev = parseFloat(gAnterior.snapshotVencidoPEN) || 0;
+                        const usdPrev = parseFloat(gAnterior.snapshotVencidoUSD) || 0;
+
+                        const deltaPEN = penPrev - penActual;
+                        const deltaUSD = usdPrev - usdActual;
+
+                        if (deltaPEN > 0) { montoRecuperadoPEN += deltaPEN; pagosParciales++; }
+                        if (deltaUSD > 0) { montoRecuperadoUSD += deltaUSD; pagosParciales++; }
                     }
                 });
 
