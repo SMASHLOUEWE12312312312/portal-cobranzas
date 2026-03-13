@@ -1005,7 +1005,7 @@
                                             Completado</div>
                                         <div id="completitudCampos"
                                             style="font-size: 0.75rem; font-weight: 600; color: var(--tp-text-primary);">
-                                            0 de 4</div>
+                                            0 de 5</div>
                                     </div>
                                 </div>
                             </div>
@@ -1180,6 +1180,13 @@
                                             </div>
                                             <input type="hidden" id="gestionAseguradoValueEmb" name="asegurado"
                                                 required />
+                                            <!-- Mini historial del cliente -->
+                                            <div id="clienteHistorialEmb" style="display: none; margin-top: 0.625rem; padding: 0.75rem; background: linear-gradient(135deg, #F3E5F5 0%, #EDE7F6 100%); border: 1px solid #CE93D8; border-radius: 8px; font-size: 0.75rem; animation: fadeIn 0.2s ease;">
+                                                <div style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-weight: 600; color: #6A1B9A;">
+                                                    <span style="font-size: 0.875rem;">📋</span> Última gestión registrada
+                                                </div>
+                                                <div id="clienteHistorialContent" style="color: #4A148C; line-height: 1.5;"></div>
+                                            </div>
                                         </div>
 
                                         <!-- Campo: Tipo de Gestión -->
@@ -1310,9 +1317,24 @@
                                             </label>
                                             <input type="text" id="gestionProximaAccionEmb" required
                                                 oninput="validateFormV4()"
+                                                list="sugerenciasProximaAccion"
                                                 placeholder="Ej: Llamar si no paga el 20/01, Enviar recordatorio..."
                                                 maxlength="200"
                                                 style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; transition: border-color 0.15s ease;">
+                                            <datalist id="sugerenciasProximaAccion">
+                                                <option value="Llamar para seguimiento de pago">
+                                                <option value="Enviar recordatorio por WhatsApp">
+                                                <option value="Enviar recordatorio por correo">
+                                                <option value="Esperar fecha de compromiso de pago">
+                                                <option value="Verificar acreditación del pago">
+                                                <option value="Reagendar llamada con cliente">
+                                                <option value="Coordinar reunión con área comercial">
+                                                <option value="Escalar caso a supervisión">
+                                                <option value="Enviar estado de cuenta actualizado">
+                                                <option value="Contactar en nueva fecha acordada">
+                                                <option value="Documentar motivo y cerrar caso">
+                                                <option value="Derivar a área correspondiente">
+                                            </datalist>
                                             <p
                                                 style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--tp-text-tertiary);">
                                                 Define qué hacer después de esta gestión</p>
@@ -6146,6 +6168,9 @@
                 // Establecer fecha de gestión como HOY
                 setFechaGestionHoyEmb();
 
+                // Mostrar historial del cliente
+                mostrarHistorialCliente(asegurado);
+
                 _log('[preseleccionarAseguradoEmb] ✅ Asegurado preseleccionado:', asegurado);
             }
         }
@@ -8183,6 +8208,9 @@
             // Establecer fecha de gestión como HOY
             setFechaGestionHoyEmb();
 
+            // Mostrar historial del cliente
+            mostrarHistorialCliente(opcion);
+
             _log('[seleccionarOpcionEmb] Seleccionado:', opcion);
         }
 
@@ -8249,6 +8277,63 @@
             // Limpiar también la fecha de envío
             const inputFechaEnvio = document.getElementById('gestionFechaEnvioEECCEmb');
             if (inputFechaEnvio) inputFechaEnvio.value = '';
+
+            // Ocultar historial del cliente
+            const historial = document.getElementById('clienteHistorialEmb');
+            if (historial) historial.style.display = 'none';
+        }
+
+        /**
+         * Muestra mini-resumen de la última gestión del cliente seleccionado
+         */
+        function mostrarHistorialCliente(asegurado) {
+            const container = document.getElementById('clienteHistorialEmb');
+            const content = document.getElementById('clienteHistorialContent');
+            if (!container || !content) return;
+
+            // Buscar gestiones del cliente en BITACORA_DATA
+            if (!window.BITACORA_DATA || BITACORA_DATA.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            const gestiones = BITACORA_DATA.filter(g =>
+                g.asegurado && g.asegurado.toUpperCase() === asegurado.toUpperCase()
+            ).sort((a, b) => {
+                const da = new Date(a.fechaRegistro || 0);
+                const db = new Date(b.fechaRegistro || 0);
+                return db - da;
+            });
+
+            if (gestiones.length === 0) {
+                content.innerHTML = '<span style="color: #7B1FA2;">Primera gestión para este cliente. Sin historial previo.</span>';
+                container.style.display = 'block';
+                return;
+            }
+
+            const ultima = gestiones[0];
+            const fecha = ultima.fechaRegistro ? new Date(ultima.fechaRegistro).toLocaleDateString('es-PE', {day:'2-digit', month:'short', year:'numeric'}) : '-';
+            const estadoMap = {
+                'SIN_RESPUESTA': '❌ Sin respuesta', 'EN_SEGUIMIENTO': '👁️ En seguimiento',
+                'COMPROMISO_PAGO': '🤝 Compromiso de pago', 'REPROGRAMADO': '📅 Reprogramado',
+                'DERIVADO_COMERCIAL': '↗️ Derivado Comercial', 'DERIVADO_RRHH': '↗️ Derivado RRHH',
+                'DERIVADO_RIESGOS_GENERALES': '↗️ Derivado Riesgos', 'CERRADO_PAGADO': '✅ Cerrado/Pagado',
+                'NO_COBRABLE': '🚫 No cobrable', 'NO_CONTACTABLE': '❌ No contactable'
+            };
+            const estado = estadoMap[ultima.estadoGestion] || ultima.estadoGestion || '-';
+            const resp = ultima.responsable ? escapeHtml(ultima.responsable.replace(/@.*/, '')) : '-';
+            const totalGestiones = gestiones.length;
+
+            content.innerHTML =
+                '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem 1rem;">' +
+                    '<div><strong>Fecha:</strong> ' + fecha + '</div>' +
+                    '<div><strong>Estado:</strong> ' + estado + '</div>' +
+                    '<div><strong>Responsable:</strong> ' + resp + '</div>' +
+                    '<div><strong>Total gestiones:</strong> ' + totalGestiones + '</div>' +
+                '</div>' +
+                (ultima.proximaAccion ? '<div style="margin-top: 0.375rem; padding-top: 0.375rem; border-top: 1px solid rgba(106,27,154,0.2);"><strong>Próx. acción:</strong> ' + escapeHtml(ultima.proximaAccion.substring(0, 80)) + '</div>' : '');
+
+            container.style.display = 'block';
         }
 
         /**
@@ -11723,18 +11808,20 @@
             const tipoGestion = document.getElementById('gestionTipoEmb')?.value;
             const estadoGestion = document.getElementById('gestionEstadoEmb')?.value;
             const proximaAccion = document.getElementById('gestionProximaAccionEmb')?.value?.trim();
+            const responsable = document.getElementById('gestionResponsableEmb')?.value;
             const fechaGestion = document.getElementById('gestionFechaGestionEmb')?.value;
             const fechaCompromiso = document.getElementById('gestionFechaCompromisoEmb')?.value;
             const observaciones = document.getElementById('gestionObservacionesEmb')?.value?.trim();
 
-            // Campos obligatorios base
-            let requiredFields = 4;
+            // Campos obligatorios base (5: asegurado, tipo, estado, próxima acción, responsable)
+            let requiredFields = 5;
             let completedFields = 0;
 
             if (asegurado) completedFields++;
             if (tipoGestion) completedFields++;
             if (estadoGestion) completedFields++;
             if (proximaAccion) completedFields++;
+            if (responsable) completedFields++;
 
             // Campos condicionales
             const needsFechaCompromiso = ['COMPROMISO_PAGO', 'REPROGRAMADO'].includes(estadoGestion);
