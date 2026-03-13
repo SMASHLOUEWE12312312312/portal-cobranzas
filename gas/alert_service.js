@@ -284,20 +284,21 @@ const AlertService = {
             const kpis = KPIService.getDashboardKPIs();
             if (!kpis.ok || !kpis.available) return alerts;
 
-            // Alertas por bucket de aging crítico (90+)
+            // Alertas por bucket de aging crítico (90+) - basado en % de MONTO
             const bucket90 = kpis.aging.buckets.find(b => b.id === 'BUCKET_90_PLUS');
             if (bucket90 && bucket90.count > 0) {
                 const umbralCritico = getConfig('ALERTS.AGING_CRITICO_THRESHOLD', 5);
+                const pctMonto = bucket90.amountPercentage || 0;
 
-                if (bucket90.percentage > umbralCritico) {
+                if (pctMonto > umbralCritico) {
                     alerts.push({
                         id: `AGING_CRITICO_${Date.now()}`,
                         type: this.ALERT_TYPE.AGING_CRITICO,
                         severity: this.SEVERITY.CRITICAL,
-                        titulo: `Cartera crítica: ${bucket90.percentage}% en 90+ días`,
-                        mensaje: `${bucket90.count} registros con más de 90 días de antigüedad. Requiere acción inmediata.`,
+                        titulo: `Cartera crítica: ${pctMonto}% del monto en 90+ días`,
+                        mensaje: `${bucket90.count} registros (${pctMonto}% del monto total) con más de 90 días de antigüedad. Requiere acción inmediata.`,
                         count: bucket90.count,
-                        percentage: bucket90.percentage,
+                        percentage: pctMonto,
                         amount: bucket90.amount,
                         acciones: [
                             { id: 'ver_detalle', label: 'Ver Detalle' },
@@ -308,20 +309,21 @@ const AlertService = {
                 }
             }
 
-            // Alertas por bucket alto (61-90)
+            // Alertas por bucket alto (61-90) - basado en % de MONTO
             const bucket6190 = kpis.aging.buckets.find(b => b.id === 'BUCKET_61_90');
             if (bucket6190 && bucket6190.count > 0) {
                 const umbralAlto = getConfig('ALERTS.AGING_ALTO_THRESHOLD', 10);
+                const pctMonto = bucket6190.amountPercentage || 0;
 
-                if (bucket6190.percentage > umbralAlto) {
+                if (pctMonto > umbralAlto) {
                     alerts.push({
                         id: `AGING_ALTO_${Date.now()}`,
                         type: this.ALERT_TYPE.AGING_ALTO,
                         severity: this.SEVERITY.HIGH,
-                        titulo: `Cartera en riesgo: ${bucket6190.percentage}% en 61-90 días`,
-                        mensaje: `${bucket6190.count} registros próximos a volverse críticos.`,
+                        titulo: `Cartera en riesgo: ${pctMonto}% del monto en 61-90 días`,
+                        mensaje: `${bucket6190.count} registros (${pctMonto}% del monto total) próximos a volverse críticos.`,
                         count: bucket6190.count,
-                        percentage: bucket6190.percentage,
+                        percentage: pctMonto,
                         amount: bucket6190.amount,
                         acciones: [
                             { id: 'ver_detalle', label: 'Ver Detalle' }

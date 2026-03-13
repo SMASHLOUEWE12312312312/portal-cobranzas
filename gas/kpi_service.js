@@ -266,14 +266,14 @@ const KPIService = {
                     : 0
             }));
 
-            const criticalPct = kpis.aging.buckets.find(b => b.id === 'BUCKET_90_PLUS')?.percentage || 0;
-            const warnPct = kpis.aging.buckets.find(b => b.id === 'BUCKET_61_90')?.percentage || 0;
+            const criticalPct = kpis.aging.buckets.find(b => b.id === 'BUCKET_90_PLUS')?.amountPercentage || 0;
+            const warnPct = kpis.aging.buckets.find(b => b.id === 'BUCKET_61_90')?.amountPercentage || 0;
             if (criticalPct > 10) {
                 kpis.aging.healthStatus = 'CRITICAL';
-                kpis.alerts.push({ type: 'AGING', severity: 'CRITICAL', message: `${criticalPct}% de cartera en 90+ días` });
+                kpis.alerts.push({ type: 'AGING', severity: 'CRITICAL', message: `${criticalPct}% del monto en 90+ días` });
             } else if (warnPct > 15 || criticalPct > 5) {
                 kpis.aging.healthStatus = 'WARN';
-                kpis.alerts.push({ type: 'AGING', severity: 'WARN', message: 'Incremento en cartera vencida' });
+                kpis.alerts.push({ type: 'AGING', severity: 'WARN', message: 'Incremento en monto de cartera vencida' });
             }
 
             kpis.byCompany = Object.keys(ciaMap)
