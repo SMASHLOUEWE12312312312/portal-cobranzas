@@ -346,6 +346,8 @@ const EmailAutomation = {
                 percentage: b.percentage,
                 amountPercentage: b.amountPercentage || 0,
                 amount: b.amount,
+                amountPEN: b.amountPEN || 0,
+                amountUSD: b.amountUSD || 0,
                 color: b.color
             }));
         }
