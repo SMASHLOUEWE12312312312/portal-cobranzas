@@ -59,13 +59,19 @@ var BitacoraService = {
     const yesterdayDate = new Date(today.getTime() - 86400000);
     const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
     const todayStr = today.toISOString().split('T')[0];
+    const twoWeeksAgo = new Date(today.getTime() - 86400000*14).toISOString();
     return [
+      // Gestiones anteriores (para calcular deltas)
+      { fechaRegistro: twoWeeksAgo, asegurado: 'CLIENTE B', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C2', snapshotVencidoPEN: 5000, snapshotVencidoUSD: 0 },
+      { fechaRegistro: twoWeeksAgo, asegurado: 'CLIENTE F', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C6', snapshotVencidoPEN: 0, snapshotVencidoUSD: 2000 },
+      { fechaRegistro: twoWeeksAgo, asegurado: 'CLIENTE D', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C4', snapshotVencidoPEN: 10000, snapshotVencidoUSD: 0 },
+      // Gestiones esta semana
       { fechaRegistro: yesterdayStr + 'T10:00:00', asegurado: 'CLIENTE A', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C1' },
-      { fechaRegistro: yesterdayStr + 'T11:00:00', asegurado: 'CLIENTE B', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C2', montoRecuperado: 5000, snapshotVencidoPEN: 5000, moneda: 'PEN' },
+      { fechaRegistro: yesterdayStr + 'T11:00:00', asegurado: 'CLIENTE B', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C2', snapshotVencidoPEN: 0, snapshotVencidoUSD: 0 },
       { fechaRegistro: yesterdayStr + 'T12:00:00', asegurado: 'CLIENTE C', estadoGestion: 'COMPROMISO_PAGO', idCiclo: 'C3' },
-      { fechaRegistro: yesterdayStr + 'T14:00:00', asegurado: 'CLIENTE F', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C6', montoRecuperado: 2000, moneda: 'USD' },
-      { fechaRegistro: new Date(today.getTime() - 86400000*2).toISOString(), asegurado: 'CLIENTE D', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C4' },
-      { fechaRegistro: new Date(today.getTime() - 86400000*3).toISOString(), asegurado: 'CLIENTE E', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C5', montoRecuperado: 3000 },
+      { fechaRegistro: yesterdayStr + 'T14:00:00', asegurado: 'CLIENTE F', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C6', snapshotVencidoPEN: 0, snapshotVencidoUSD: 0 },
+      { fechaRegistro: new Date(today.getTime() - 86400000*2).toISOString(), asegurado: 'CLIENTE D', estadoGestion: 'EN_SEGUIMIENTO', idCiclo: 'C4', snapshotVencidoPEN: 7000, snapshotVencidoUSD: 0 },
+      { fechaRegistro: new Date(today.getTime() - 86400000*3).toISOString(), asegurado: 'CLIENTE E', estadoGestion: 'CERRADO_PAGADO', idCiclo: 'C5' },
     ];
   },
   obtenerCompromisosActivos: () => {

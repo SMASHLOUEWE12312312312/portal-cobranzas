@@ -312,7 +312,7 @@ const ReportScheduler = {
                     data.compromisosDetalle = compromisosDetalle;
                 }
 
-                // Recaudación semanal: CERRADO_PAGADO + pagos parciales (delta snapshot vs semana anterior)
+                // Recaudación: comparar gestión más reciente vs anterior por ASEGURADO
                 const weekStartDate = new Date();
                 weekStartDate.setHours(0, 0, 0, 0);
                 weekStartDate.setDate(weekStartDate.getDate() - 7);
@@ -321,50 +321,39 @@ const ReportScheduler = {
                 let casosCerradosSemana = 0;
                 let pagosParciales = 0;
 
-                // Agrupar gestiones por ciclo
-                const cicloMap = {};
+                // Agrupar por asegurado (misma lógica que portal bitacora_v3.js)
+                const aseguradoMap = {};
                 gestiones.forEach(g => {
-                    if (!g.idCiclo || !g.fechaRegistro) return;
-                    if (!cicloMap[g.idCiclo]) cicloMap[g.idCiclo] = [];
-                    cicloMap[g.idCiclo].push(g);
+                    if (!g.asegurado || !g.fechaRegistro) return;
+                    const key = String(g.asegurado).trim().toUpperCase();
+                    if (!aseguradoMap[key]) aseguradoMap[key] = [];
+                    aseguradoMap[key].push(g);
                 });
 
-                Object.values(cicloMap).forEach(gestionesCiclo => {
-                    gestionesCiclo.sort((a, b) => new Date(a.fechaRegistro) - new Date(b.fechaRegistro));
+                Object.values(aseguradoMap).forEach(gestionesAseg => {
+                    gestionesAseg.sort((a, b) => new Date(b.fechaRegistro) - new Date(a.fechaRegistro));
 
-                    // Separar: anteriores a esta semana vs esta semana
-                    const anteriores = [];
-                    const estaSemana = [];
-                    gestionesCiclo.forEach(g => {
-                        const fecha = new Date(g.fechaRegistro);
-                        if (fecha < weekStartDate) {
-                            anteriores.push(g);
-                        } else {
-                            estaSemana.push(g);
-                        }
-                    });
+                    const ultima = gestionesAseg[0];
+                    const fechaUltima = new Date(ultima.fechaRegistro);
+                    if (fechaUltima < weekStartDate) return;
 
-                    if (estaSemana.length === 0) return;
+                    const penActual = parseFloat(ultima.snapshotVencidoPEN) || 0;
+                    const usdActual = parseFloat(ultima.snapshotVencidoUSD) || 0;
 
-                    const gReciente = estaSemana[estaSemana.length - 1];
-                    const penActual = parseFloat(gReciente.snapshotVencidoPEN) || 0;
-                    const usdActual = parseFloat(gReciente.snapshotVencidoUSD) || 0;
-
-                    if (gReciente.estadoGestion === 'CERRADO_PAGADO') {
+                    if (ultima.estadoGestion === 'CERRADO_PAGADO') {
                         casosCerradosSemana++;
-                        if (penActual > 0) montoRecuperadoPEN += penActual;
-                        if (usdActual > 0) montoRecuperadoUSD += usdActual;
-                    } else if (anteriores.length > 0) {
-                        // Pago parcial: comparar con última gestión de semana anterior
-                        const gAnterior = anteriores[anteriores.length - 1];
-                        const penPrev = parseFloat(gAnterior.snapshotVencidoPEN) || 0;
-                        const usdPrev = parseFloat(gAnterior.snapshotVencidoUSD) || 0;
+                    }
+
+                    if (gestionesAseg.length > 1) {
+                        const anterior = gestionesAseg[1];
+                        const penPrev = parseFloat(anterior.snapshotVencidoPEN) || 0;
+                        const usdPrev = parseFloat(anterior.snapshotVencidoUSD) || 0;
 
                         const deltaPEN = penPrev - penActual;
                         const deltaUSD = usdPrev - usdActual;
 
-                        if (deltaPEN > 0) { montoRecuperadoPEN += deltaPEN; pagosParciales++; }
-                        if (deltaUSD > 0) { montoRecuperadoUSD += deltaUSD; pagosParciales++; }
+                        if (deltaPEN > 0) { montoRecuperadoPEN += deltaPEN; if (ultima.estadoGestion !== 'CERRADO_PAGADO') pagosParciales++; }
+                        if (deltaUSD > 0) { montoRecuperadoUSD += deltaUSD; if (ultima.estadoGestion !== 'CERRADO_PAGADO') pagosParciales++; }
                     }
                 });
 
