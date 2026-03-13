@@ -312,27 +312,55 @@ const ReportScheduler = {
                     data.compromisosDetalle = compromisosDetalle;
                 }
 
-                // Casos cerrados pagados en la semana (métrica de gestión, NO de PTP)
+                // Recaudación semanal: CERRADO_PAGADO + pagos parciales (delta negativo en snapshots)
                 const weekStartDate = new Date();
                 weekStartDate.setHours(0, 0, 0, 0);
                 weekStartDate.setDate(weekStartDate.getDate() - 7);
                 let montoRecuperadoPEN = 0;
                 let montoRecuperadoUSD = 0;
                 let casosCerradosSemana = 0;
+                let pagosParciales = 0;
+
+                // Agrupar gestiones por ciclo para detectar pagos parciales
+                const cicloMap = {};
                 gestiones.forEach(g => {
-                    if (g.estadoGestion !== 'CERRADO_PAGADO') return;
-                    const fecha = new Date(g.fechaRegistro);
-                    if (fecha >= weekStartDate) {
-                        casosCerradosSemana++;
-                        // Usar snapshots PEN y USD directamente
-                        const penAmt = parseFloat(g.snapshotVencidoPEN) || 0;
-                        const usdAmt = parseFloat(g.snapshotVencidoUSD) || 0;
-                        if (penAmt > 0) montoRecuperadoPEN += penAmt;
-                        if (usdAmt > 0) montoRecuperadoUSD += usdAmt;
+                    if (!g.idCiclo || !g.fechaRegistro) return;
+                    if (!cicloMap[g.idCiclo]) cicloMap[g.idCiclo] = [];
+                    cicloMap[g.idCiclo].push(g);
+                });
+
+                Object.values(cicloMap).forEach(gestionesCiclo => {
+                    gestionesCiclo.sort((a, b) => new Date(a.fechaRegistro) - new Date(b.fechaRegistro));
+
+                    for (let i = 0; i < gestionesCiclo.length; i++) {
+                        const g = gestionesCiclo[i];
+                        const fecha = new Date(g.fechaRegistro);
+                        if (fecha < weekStartDate) continue;
+
+                        const penActual = parseFloat(g.snapshotVencidoPEN) || 0;
+                        const usdActual = parseFloat(g.snapshotVencidoUSD) || 0;
+
+                        if (g.estadoGestion === 'CERRADO_PAGADO') {
+                            casosCerradosSemana++;
+                            if (penActual > 0) montoRecuperadoPEN += penActual;
+                            if (usdActual > 0) montoRecuperadoUSD += usdActual;
+                        } else if (i > 0) {
+                            // Pago parcial: snapshot bajó respecto a gestión anterior
+                            const prev = gestionesCiclo[i - 1];
+                            const penPrev = parseFloat(prev.snapshotVencidoPEN) || 0;
+                            const usdPrev = parseFloat(prev.snapshotVencidoUSD) || 0;
+
+                            const deltaPEN = penPrev - penActual;
+                            const deltaUSD = usdPrev - usdActual;
+
+                            if (deltaPEN > 0) { montoRecuperadoPEN += deltaPEN; pagosParciales++; }
+                            if (deltaUSD > 0) { montoRecuperadoUSD += deltaUSD; pagosParciales++; }
+                        }
                     }
                 });
 
                 data.casosCerradosPagados = casosCerradosSemana;
+                data.pagosParciales = pagosParciales;
                 data.montoRecuperado = montoRecuperadoPEN + montoRecuperadoUSD;
                 data.montoRecuperadoPEN = montoRecuperadoPEN;
                 data.montoRecuperadoUSD = montoRecuperadoUSD;
@@ -810,13 +838,17 @@ const ReportScheduler = {
         } else {
             // Sin PTPService: mostrar casos cerrados pagados (dato real de Bitácora)
             const cerrados = data.casosCerradosPagados || 0;
+            const parciales = data.pagosParciales || 0;
+            const casosDeltaParts = [];
+            if (cerrados > 0) casosDeltaParts.push(`${cerrados} cerrado(s)`);
+            if (parciales > 0) casosDeltaParts.push(`${parciales} parcial(es)`);
             kpis.push({
                 label: 'Casos Pagados',
-                value: kit.formatInt(cerrados),
-                delta: cerrados > 0
-                    ? `<span style="color:#2E7D32;font-size:11px;">esta semana</span>`
+                value: kit.formatInt(cerrados + parciales),
+                delta: casosDeltaParts.length > 0
+                    ? `<span style="color:#2E7D32;font-size:11px;">${casosDeltaParts.join(' + ')}</span>`
                     : '',
-                severity: cerrados > 0 ? 'OK' : 'NEUTRAL',
+                severity: (cerrados + parciales) > 0 ? 'OK' : 'NEUTRAL',
                 icon: '✅'
             });
         }

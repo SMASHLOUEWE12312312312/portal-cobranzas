@@ -511,7 +511,7 @@ console.log('\n📋 Test 16: Cartera summary con desglose PEN/USD');
   assertContains(html, 'Recaudación Semanal', 'Etiqueta recaudación semanal');
   assertContains(html, 'S/.', 'Muestra moneda PEN');
   assertContains(html, 'US$', 'FIX: Muestra moneda USD');
-  assertContains(html, '2 caso(s) cerrado(s)', 'Casos cerrados');
+  assertContains(html, '2 cerrado(s)', 'Casos cerrados');
 
   // Test sin byCurrency (fallback)
   const html2 = EmailAutomation._buildCarteraSummary({

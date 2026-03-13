@@ -312,31 +312,67 @@ const EmailAutomation = {
             }
         }
 
-        // Calcular recaudación SEMANAL (lunes a hoy - bitácora se registra semanalmente los martes)
+        // Calcular recaudación SEMANAL (lunes a hoy)
+        // Incluye: CERRADO_PAGADO (pago total) + pagos parciales (delta negativo en snapshots)
         data.recaudacionSemanalPEN = 0;
         data.recaudacionSemanalUSD = 0;
         data.gestionesCerradasSemana = 0;
+        data.pagosParciales = 0;
         if (typeof BitacoraService !== 'undefined') {
             try {
                 const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
-                // Calcular inicio de semana (lunes)
                 const today = new Date();
-                const dayOfWeek = today.getDay(); // 0=Dom, 1=Lun...
+                const dayOfWeek = today.getDay();
                 const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                 const weekStart = new Date(today);
                 weekStart.setDate(today.getDate() - mondayOffset);
                 weekStart.setHours(0, 0, 0, 0);
                 const weekStartLocal = Utilities.formatDate(weekStart, 'America/Lima', 'yyyy-MM-dd');
 
+                // Agrupar gestiones por ciclo, ordenadas por fecha
+                const cicloMap = {};
                 gestiones.forEach(g => {
-                    if (!g.fechaRegistro) return;
-                    const fechaLocal = Utilities.formatDate(new Date(g.fechaRegistro), 'America/Lima', 'yyyy-MM-dd');
-                    if (fechaLocal >= weekStartLocal && g.estadoGestion === 'CERRADO_PAGADO') {
-                        data.gestionesCerradasSemana++;
-                        const penAmt = parseFloat(g.snapshotVencidoPEN) || 0;
-                        const usdAmt = parseFloat(g.snapshotVencidoUSD) || 0;
-                        if (penAmt > 0) data.recaudacionSemanalPEN += penAmt;
-                        if (usdAmt > 0) data.recaudacionSemanalUSD += usdAmt;
+                    if (!g.idCiclo || !g.fechaRegistro) return;
+                    if (!cicloMap[g.idCiclo]) cicloMap[g.idCiclo] = [];
+                    cicloMap[g.idCiclo].push(g);
+                });
+
+                // Para cada ciclo, detectar pagos totales y parciales en la semana
+                Object.values(cicloMap).forEach(gestionesCiclo => {
+                    // Ordenar por fecha ascendente
+                    gestionesCiclo.sort((a, b) => new Date(a.fechaRegistro) - new Date(b.fechaRegistro));
+
+                    for (let i = 0; i < gestionesCiclo.length; i++) {
+                        const g = gestionesCiclo[i];
+                        const fechaLocal = Utilities.formatDate(new Date(g.fechaRegistro), 'America/Lima', 'yyyy-MM-dd');
+                        if (fechaLocal < weekStartLocal) continue;
+
+                        const penActual = parseFloat(g.snapshotVencidoPEN) || 0;
+                        const usdActual = parseFloat(g.snapshotVencidoUSD) || 0;
+
+                        if (g.estadoGestion === 'CERRADO_PAGADO') {
+                            // Pago total: el snapshot completo es recaudación
+                            data.gestionesCerradasSemana++;
+                            if (penActual > 0) data.recaudacionSemanalPEN += penActual;
+                            if (usdActual > 0) data.recaudacionSemanalUSD += usdActual;
+                        } else if (i > 0) {
+                            // Pago parcial: comparar con gestión anterior del mismo ciclo
+                            const prev = gestionesCiclo[i - 1];
+                            const penPrev = parseFloat(prev.snapshotVencidoPEN) || 0;
+                            const usdPrev = parseFloat(prev.snapshotVencidoUSD) || 0;
+
+                            const deltaPEN = penPrev - penActual;
+                            const deltaUSD = usdPrev - usdActual;
+
+                            if (deltaPEN > 0) {
+                                data.recaudacionSemanalPEN += deltaPEN;
+                                data.pagosParciales++;
+                            }
+                            if (deltaUSD > 0) {
+                                data.recaudacionSemanalUSD += deltaUSD;
+                                data.pagosParciales++;
+                            }
+                        }
                     }
                 });
             } catch (e) {
@@ -698,11 +734,15 @@ const EmailAutomation = {
         if (recaudacionUSD > 0) recaudacionLabel.push(kit.formatCurrency(recaudacionUSD, 'USD'));
         const recaudacionDisplay = recaudacionLabel.length > 0 ? recaudacionLabel.join(' + ') : 'S/. 0';
 
+        const recaudacionDeltaParts = [];
+        if (data.gestionesCerradasSemana > 0) recaudacionDeltaParts.push(`${data.gestionesCerradasSemana} cerrado(s)`);
+        if (data.pagosParciales > 0) recaudacionDeltaParts.push(`${data.pagosParciales} parcial(es)`);
+
         kpis.push({
             label: 'Recaudación Semanal',
             value: recaudacionDisplay,
-            delta: data.gestionesCerradasSemana > 0
-                ? `<span style="color:#2E7D32;font-size:11px;">${data.gestionesCerradasSemana} caso(s)</span>`
+            delta: recaudacionDeltaParts.length > 0
+                ? `<span style="color:#2E7D32;font-size:11px;">${recaudacionDeltaParts.join(' + ')}</span>`
                 : '',
             severity: (recaudacionPEN + recaudacionUSD) > 0 ? 'OK' : 'NEUTRAL',
             icon: '💵'
@@ -815,7 +855,8 @@ const EmailAutomation = {
                 ${recaudacionPEN > 0 ? `<div style="font-size:14px;font-weight:700;color:#2E7D32;margin-top:2px;">${kit.formatCurrency(recaudacionPEN, 'PEN')}</div>` : ''}
                 ${recaudacionUSD > 0 ? `<div style="font-size:14px;font-weight:700;color:#2E7D32;margin-top:1px;">${kit.formatCurrency(recaudacionUSD, 'USD')}</div>` : ''}
                 ${!hasRecaudacion ? `<div style="font-size:14px;font-weight:700;color:#9E9E9E;margin-top:2px;">S/. 0</div>` : ''}
-                ${data.gestionesCerradasSemana > 0 ? `<div style="font-size:10px;color:#757575;">${data.gestionesCerradasSemana} caso(s) cerrado(s)</div>` : ''}
+                ${data.gestionesCerradasSemana > 0 ? `<div style="font-size:10px;color:#757575;">${data.gestionesCerradasSemana} cerrado(s)</div>` : ''}
+                ${data.pagosParciales > 0 ? `<div style="font-size:10px;color:#757575;">${data.pagosParciales} parcial(es)</div>` : ''}
             </td>`;
 
         return `
