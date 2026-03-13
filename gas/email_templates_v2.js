@@ -276,6 +276,13 @@ const EmailTemplateKit = {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>${title}</title>
+  <style type="text/css">
+    @media only screen and (max-width: 600px) {
+      .kpi-grid td { display: block !important; width: 100% !important; }
+      .email-wrapper { padding: 12px 8px !important; }
+      .content-padding { padding: 16px !important; }
+    }
+  </style>
   <!--[if mso]>
   <noscript>
     <xml>
@@ -363,10 +370,13 @@ const EmailTemplateKit = {
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
         <tr>
           <td style="color:#757575;font-size:12px;">
-            <strong>¿Cómo se calcula?</strong><br>
+            <strong>Metodología</strong><br>
             <span style="color:#9E9E9E;font-size:11px;">
-              Datos en tiempo real del sistema. DSO: promedio ponderado por monto.
-              Aging: días desde vencimiento. Deltas vs período anterior.
+              <strong>DSO:</strong> Promedio ponderado por monto de días desde vencimiento.
+              <strong>Aging:</strong> Clasificación por días de mora (0-30, 31-60, 61-90, 90+).
+              <strong>Cobertura:</strong> % de cuentas vencidas con al menos 1 gestión en el periodo.
+              <strong>Deltas:</strong> Variación vs periodo anterior (↑ sube, ↓ baja).
+              <strong>Tasa cumplimiento:</strong> PTPs pagados / (pagados + incumplidos).
             </span>
           </td>
         </tr>
@@ -447,7 +457,7 @@ const EmailTemplateKit = {
     }
     
     let benchmarkHtml = '';
-    if (benchmark !== undefined) {
+    if (benchmark !== undefined && benchmark !== null) {
       benchmarkHtml = `<div style="font-size:10px;color:#9E9E9E;margin-top:2px;">Meta: ${benchmark}</div>`;
     }
 
@@ -833,11 +843,16 @@ const EmailTemplateKit = {
     const {
       asegurado,
       monto,
+      montoComprometido,
       moneda = 'PEN',
       fechaCompromiso,
       diasRestantes,
-      vencido
+      vencido,
+      responsable
     } = ptp;
+
+    // Usar monto o montoComprometido (lo que esté disponible)
+    const montoDisplay = monto || montoComprometido || 0;
 
     let statusColor, statusText, statusBg;
     if (vencido) {
@@ -863,11 +878,14 @@ const EmailTemplateKit = {
                 <div style="font-size:13px;font-weight:500;color:#212121;">${asegurado}</div>
                 <div style="font-size:11px;color:#757575;margin-top:2px;">${this.formatDate(fechaCompromiso)}</div>
               </td>
-              <td align="center" width="120">
+              <td align="center" width="110">
                 <span style="display:inline-block;background:${statusBg};color:${statusColor};padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">${statusText}</span>
               </td>
-              <td align="right" width="100">
-                <div style="font-size:14px;font-weight:600;color:#212121;">${this.formatCurrency(monto, moneda)}</div>
+              <td align="right" width="110">
+                ${montoDisplay > 0
+                  ? `<div style="font-size:14px;font-weight:600;color:#212121;">${this.formatCurrency(montoDisplay, moneda)}</div>`
+                  : `<div style="font-size:12px;color:#9E9E9E;">—</div>`
+                }
               </td>
             </tr>
           </table>
@@ -1019,6 +1037,91 @@ const EmailTemplateKit = {
 
     html += this.dataTable({ headers, rows, compact: true });
     return html;
+  },
+
+  /**
+   * Indicador de tendencia textual (mini sparkline)
+   * Genera texto como "↑↑→↓↑" basado en valores históricos
+   */
+  trendIndicator(values, options = {}) {
+    const { invertColors = false } = options;
+    if (!values || values.length < 2) return '';
+
+    const indicators = [];
+    for (let i = 1; i < values.length; i++) {
+      const diff = values[i] - values[i - 1];
+      if (diff > 0) {
+        const color = invertColors ? this.DESIGN.TREND.UP_GOOD : this.DESIGN.TREND.UP;
+        indicators.push(`<span style="color:${color};">↑</span>`);
+      } else if (diff < 0) {
+        const color = invertColors ? this.DESIGN.TREND.DOWN_BAD : this.DESIGN.TREND.DOWN;
+        indicators.push(`<span style="color:${color};">↓</span>`);
+      } else {
+        indicators.push(`<span style="color:${this.DESIGN.TREND.STABLE};">→</span>`);
+      }
+    }
+
+    return `<span style="font-size:12px;letter-spacing:2px;font-weight:600;">${indicators.join('')}</span>`;
+  },
+
+  /**
+   * Barra de meta mensual (progress bar con objetivo)
+   */
+  goalProgressBar(current, target, options = {}) {
+    const { label = 'Avance Mensual', currency = true, color = '#2E7D32' } = options;
+    if (!target || target <= 0) return '';
+
+    const pct = Math.min(100, Math.max(0, (current / target) * 100));
+    const pctColor = pct >= 80 ? '#2E7D32' : pct >= 50 ? '#FF9800' : '#C62828';
+    const currentStr = currency ? this.formatCurrency(current) : this.formatInt(current);
+    const targetStr = currency ? this.formatCurrency(target) : this.formatInt(target);
+
+    return `
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:12px 0;">
+        <tr>
+          <td>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:600;color:#424242;">${label}</span>
+              <span style="font-size:12px;color:${pctColor};font-weight:700;">${pct.toFixed(0)}%</span>
+            </div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#EEEEEE;border-radius:6px;overflow:hidden;">
+              <tr>
+                <td style="width:${pct}%;height:12px;background:${pctColor};border-radius:6px;"></td>
+                <td></td>
+              </tr>
+            </table>
+            <div style="margin-top:4px;font-size:11px;color:#757575;">
+              ${currentStr} de ${targetStr}
+            </div>
+          </td>
+        </tr>
+      </table>
+    `;
+  },
+
+  /**
+   * Tarjeta de resumen compacta (para info en fila)
+   */
+  compactSummaryRow(items) {
+    if (!items || items.length === 0) return '';
+
+    let cells = '';
+    items.forEach((item, idx) => {
+      const borderRight = idx < items.length - 1 ? 'border-right:1px solid #EEEEEE;' : '';
+      cells += `
+        <td style="padding:12px 16px;text-align:center;${borderRight}" width="${Math.floor(100/items.length)}%">
+          <div style="font-size:22px;font-weight:700;color:${item.color || '#212121'};">${item.value}</div>
+          <div style="font-size:11px;color:#757575;text-transform:uppercase;margin-top:4px;">${item.label}</div>
+          ${item.sublabel ? `<div style="font-size:10px;color:#9E9E9E;margin-top:2px;">${item.sublabel}</div>` : ''}
+        </td>
+      `;
+    });
+
+    return `
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#FAFAFA;border-radius:8px;border:1px solid #EEEEEE;margin:12px 0;">
+        <tr>${cells}</tr>
+      </table>
+    `;
   },
 
   /**

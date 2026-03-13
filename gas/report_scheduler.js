@@ -277,23 +277,42 @@ const ReportScheduler = {
                         }
                     });
                     
-                    // Contar cerrados/pagados en la semana (aproximación)
+                    // Contar cerrados/pagados en la semana y sumar montos recuperados
                     const weekStart = new Date(today);
                     weekStart.setDate(weekStart.getDate() - 7);
+                    let montoRecuperadoSemana = 0;
                     const cerradosPagados = gestiones.filter(g => {
                         if (g.estadoGestion !== 'CERRADO_PAGADO') return false;
                         const fecha = new Date(g.fechaRegistro);
-                        return fecha >= weekStart && fecha <= today;
+                        const enSemana = fecha >= weekStart && fecha <= today;
+                        if (enSemana) {
+                            // Sumar monto recuperado de múltiples campos posibles
+                            montoRecuperadoSemana += (g.montoRecuperado || g.montoCompromiso || g.montoComprometido || g.snapshotVencidoPEN || g.montoPEN || 0);
+                        }
+                        return enSemana;
                     }).length;
-                    
+
+                    // Sumar montos comprometidos activos
+                    let montoComprometidoTotal = 0;
+                    compromisos.forEach(c => {
+                        montoComprometidoTotal += (c.montoCompromiso || c.montoComprometido || c.snapshotVencidoPEN || c.montoPEN || c.monto || 0);
+                    });
+
                     data.ptpsPendientes = pendientes;
                     data.ptpsIncumplidos = vencidos;
                     data.ptpsCumplidos = cerradosPagados;
-                    
+                    data.montoRecuperado = montoRecuperadoSemana;
+                    data.montoComprometido = montoComprometidoTotal;
+
                     // Calcular tasa de cumplimiento
                     const totalProcessed = data.ptpsCumplidos + data.ptpsIncumplidos;
-                    data.tasaCumplimiento = totalProcessed > 0 
+                    data.tasaCumplimiento = totalProcessed > 0
                         ? parseFloat(((data.ptpsCumplidos / totalProcessed) * 100).toFixed(1))
+                        : 0;
+
+                    // Calcular tasa de recuperación
+                    data.tasaRecuperacion = data.montoComprometido > 0
+                        ? parseFloat(((data.montoRecuperado / data.montoComprometido) * 100).toFixed(1))
                         : 0;
                     
                     Logger.info('ReportScheduler._collectWeeklyDataEnriched', 'PTPs obtenidos de BitacoraService', {
@@ -363,6 +382,59 @@ const ReportScheduler = {
             } catch (e) {
                 Logger.warn('ReportScheduler._collectWeeklyDataEnriched', 'Error en AnalyticsService', e);
             }
+        }
+
+        // Cobertura de gestión: % de cuentas vencidas que fueron gestionadas
+        data.coberturaGestion = 0;
+        if (typeof BitacoraService !== 'undefined' && data.agingDistribution.length > 0) {
+            try {
+                const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
+                const weekStartStr = weekAgo.toISOString().split('T')[0];
+                const weekEndStr = today.toISOString().split('T')[0];
+
+                // Cuentas únicas gestionadas esta semana
+                const cuentasGestionadas = new Set();
+                gestiones.forEach(g => {
+                    if (!g.fechaRegistro) return;
+                    const fecha = new Date(g.fechaRegistro).toISOString().split('T')[0];
+                    if (fecha >= weekStartStr && fecha <= weekEndStr && g.asegurado) {
+                        cuentasGestionadas.add(g.asegurado);
+                    }
+                });
+                data.cuentasGestionadasSemana = cuentasGestionadas.size;
+
+                // Total de cuentas vencidas (31+ días)
+                const totalVencidas = data.agingDistribution
+                    .filter(b => b.id !== 'CURRENT')
+                    .reduce((sum, b) => sum + (b.count || 0), 0);
+                data.totalCuentasVencidas = totalVencidas;
+                data.coberturaGestion = totalVencidas > 0
+                    ? parseFloat(((cuentasGestionadas.size / totalVencidas) * 100).toFixed(1))
+                    : 0;
+
+                // Intensidad de gestión: gestiones/cuenta
+                data.intensidadGestion = cuentasGestionadas.size > 0
+                    ? parseFloat((data.totalGestiones / cuentasGestionadas.size).toFixed(1))
+                    : 0;
+            } catch (e) {
+                Logger.warn('ReportScheduler._collectWeeklyDataEnriched', 'Error calculando cobertura', e);
+            }
+        }
+
+        // Cartera por aseguradora (top 5 con mayor vencido)
+        data.topAseguradoras = [];
+        if (data.byCompany && data.byCompany.length > 0) {
+            data.topAseguradoras = data.byCompany
+                .filter(c => (c.vencido || 0) > 0)
+                .sort((a, b) => (b.vencido || 0) - (a.vencido || 0))
+                .slice(0, 5)
+                .map(c => ({
+                    nombre: c.name,
+                    totalCartera: c.total || 0,
+                    montoVencido: c.vencido || 0,
+                    porcentajeVencido: c.vencidoPct || 0,
+                    cuentas: c.count || 0
+                }));
         }
 
         // Generar Executive Summary
@@ -447,6 +519,14 @@ const ReportScheduler = {
             summary.push({
                 type: 'neutral',
                 text: `${data.ptpsPendientes} PTPs pendientes de seguimiento`
+            });
+        }
+
+        // Agregar indicador de cobertura si es bajo
+        if (summary.length < 3 && data.coberturaGestion > 0 && data.coberturaGestion < 50) {
+            summary.push({
+                type: 'negative',
+                text: `Cobertura de gestión baja: solo ${data.coberturaGestion}% de cuentas vencidas fueron gestionadas`
             });
         }
 
@@ -612,15 +692,21 @@ const ReportScheduler = {
             ? kit.performanceTable(data.performanceByResponsable, { showTop: 5 })
             : '';
 
-        // 5. Pipeline & Forecast (simplificado)
+        // 5. Cartera por Aseguradora (top 5)
+        const aseguradorasHtml = this._buildAseguradorasSection(data, kit);
+
+        // 6. Cobertura e intensidad de gestión
+        const coberturaHtml = this._buildCoberturaSection(data, kit);
+
+        // 7. Pipeline & Forecast mejorado
         const pipelineHtml = this._buildPipelineSection(data, kit);
 
-        // 6. Acciones recomendadas
+        // 8. Acciones recomendadas
         const actionsHtml = data.recommendedActions && data.recommendedActions.length > 0
             ? kit.recommendedActions(data.recommendedActions)
             : '';
 
-        // 7. CTAs
+        // 9. CTAs
         const portalUrl = getConfig('PORTAL.BASE_URL', '');
         const ctasHtml = portalUrl ? kit.ctaGroup([
             { text: 'Ver Dashboard Completo', url: portalUrl + getConfig('PORTAL.ROUTES.DASHBOARD', ''), options: { primary: true, icon: '📊' } },
@@ -635,7 +721,10 @@ const ReportScheduler = {
             ${kit.divider('24px')}
             ${agingHtml}
             ${kit.divider('16px')}
+            ${aseguradorasHtml}
+            ${kit.divider('16px')}
             ${performanceHtml}
+            ${coberturaHtml}
             ${pipelineHtml}
             ${kit.divider('24px')}
             ${actionsHtml}
@@ -646,7 +735,7 @@ const ReportScheduler = {
         const periodoStr = `${kit.formatDate(data.fechaInicio)} - ${kit.formatDate(data.fechaFin)}`;
 
         // Preheader
-        const preheader = `Semana ${data.semana}: Tasa ${data.tasaCumplimiento}%, DSO ${data.dsoPromedio}d, ${data.totalGestiones} gestiones`;
+        const preheader = `Semana ${data.semana}: Tasa ${data.tasaCumplimiento}%, DSO ${data.dsoPromedio}d, ${data.totalGestiones} gestiones, Cobertura ${data.coberturaGestion || 0}%`;
 
         return kit.buildLayout({
             brandColor: '#2E7D32',
@@ -685,7 +774,7 @@ const ReportScheduler = {
             value: `${data.dsoPromedio} días`,
             delta: kit.getDeltaDisplay(data.dsoPromedio, dsoLastWeek, { format: 'number' }),
             severity: dsoSeverity,
-            benchmark: `Meta: ${data.dsoBenchmark}d`,
+            benchmark: `${data.dsoBenchmark}d`,
             trend: data.tendenciaDSO
         });
 
@@ -734,33 +823,131 @@ const ReportScheduler = {
     },
 
     /**
-     * Construye sección de Pipeline & Forecast
+     * Construye sección de Cartera por Aseguradora
+     */
+    _buildAseguradorasSection(data, kit) {
+        if (!data.topAseguradoras || data.topAseguradoras.length === 0) return '';
+
+        let html = kit.sectionTitle('Cartera por Aseguradora', '🏢', `Top ${data.topAseguradoras.length} con mayor vencimiento`);
+
+        const headers = [
+            { label: 'Aseguradora', align: 'left' },
+            { label: 'Cartera Total', align: 'right', width: '110px' },
+            { label: 'Monto Vencido', align: 'right', width: '110px' },
+            { label: '% Vencido', align: 'center', width: '80px' }
+        ];
+
+        const rows = data.topAseguradoras.map(a => {
+            const pctColor = a.porcentajeVencido > 30 ? '#C62828' : a.porcentajeVencido > 15 ? '#E65100' : '#2E7D32';
+            return [
+                `<strong>${a.nombre}</strong>`,
+                kit.formatCurrency(a.totalCartera),
+                `<span style="color:#C62828;font-weight:600;">${kit.formatCurrency(a.montoVencido)}</span>`,
+                `<span style="display:inline-block;background:${a.porcentajeVencido > 30 ? '#FFEBEE' : a.porcentajeVencido > 15 ? '#FFF3E0' : '#E8F5E9'};color:${pctColor};padding:2px 8px;border-radius:4px;font-weight:600;font-size:12px;">${kit.formatPct(a.porcentajeVencido)}</span>`
+            ];
+        });
+
+        html += kit.dataTable({ headers, rows, compact: true });
+        return html;
+    },
+
+    /**
+     * Construye sección de Cobertura e Intensidad de Gestión
+     */
+    _buildCoberturaSection(data, kit) {
+        if (!data.coberturaGestion && !data.intensidadGestion) return '';
+
+        const coberturaColor = data.coberturaGestion >= 80 ? '#2E7D32' :
+                              data.coberturaGestion >= 50 ? '#E65100' : '#C62828';
+        const coberturaLabel = data.coberturaGestion >= 80 ? 'Excelente' :
+                              data.coberturaGestion >= 50 ? 'Mejorable' : 'Insuficiente';
+
+        return `
+            ${kit.sectionTitle('Eficiencia Operativa', '⚡', 'Cobertura e intensidad de gestión semanal')}
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#FAFAFA;border-radius:8px;border:1px solid #EEEEEE;">
+                <tr>
+                    <td style="padding:16px;text-align:center;border-right:1px solid #EEEEEE;" width="33%">
+                        <div style="font-size:24px;font-weight:700;color:${coberturaColor};">${kit.formatPct(data.coberturaGestion)}</div>
+                        <div style="font-size:11px;color:#757575;text-transform:uppercase;margin-top:4px;">Cobertura de Gestión</div>
+                        <div style="font-size:10px;color:${coberturaColor};margin-top:2px;">${coberturaLabel}</div>
+                    </td>
+                    <td style="padding:16px;text-align:center;border-right:1px solid #EEEEEE;" width="33%">
+                        <div style="font-size:24px;font-weight:700;color:#1565C0;">${data.intensidadGestion || 0}x</div>
+                        <div style="font-size:11px;color:#757575;text-transform:uppercase;margin-top:4px;">Intensidad</div>
+                        <div style="font-size:10px;color:#9E9E9E;margin-top:2px;">Gestiones/cuenta</div>
+                    </td>
+                    <td style="padding:16px;text-align:center;" width="33%">
+                        <div style="font-size:24px;font-weight:700;color:#424242;">${kit.formatInt(data.cuentasGestionadasSemana || 0)}<span style="font-size:14px;color:#9E9E9E;">/${kit.formatInt(data.totalCuentasVencidas || 0)}</span></div>
+                        <div style="font-size:11px;color:#757575;text-transform:uppercase;margin-top:4px;">Cuentas Gestionadas</div>
+                        <div style="font-size:10px;color:#9E9E9E;margin-top:2px;">de cuentas vencidas</div>
+                    </td>
+                </tr>
+            </table>
+        `;
+    },
+
+    /**
+     * Construye sección de Pipeline & Forecast mejorado
      */
     _buildPipelineSection(data, kit) {
         if (!data.ptpsPendientes && !data.montoComprometido) return '';
 
-        const pipelineInfo = [];
-        
+        const pipelineItems = [];
+
         if (data.ptpsPendientes > 0) {
-            pipelineInfo.push(`<strong>${data.ptpsPendientes}</strong> PTPs pendientes de resolución`);
+            pipelineItems.push({
+                label: 'PTPs Pendientes',
+                value: data.ptpsPendientes,
+                detail: 'compromisos activos'
+            });
         }
         if (data.montoComprometido > 0) {
-            pipelineInfo.push(`<strong>${kit.formatCurrency(data.montoComprometido)}</strong> en compromisos activos`);
-        }
-        if (data.tasaRecuperacion > 0) {
-            pipelineInfo.push(`Tasa de recuperación histórica: <strong>${kit.formatPct(data.tasaRecuperacion)}</strong>`);
+            pipelineItems.push({
+                label: 'Monto Comprometido',
+                value: kit.formatCurrency(data.montoComprometido),
+                detail: 'en PTPs activos'
+            });
         }
 
-        if (pipelineInfo.length === 0) return '';
+        // Proyección de cobro basada en tasa de recuperación
+        let proyeccionHtml = '';
+        if (data.montoComprometido > 0 && data.tasaRecuperacion > 0) {
+            const proyeccion = data.montoComprometido * (data.tasaRecuperacion / 100);
+            proyeccionHtml = `
+                <tr>
+                    <td style="padding:12px 16px;background:#E8F5E9;border-radius:0 0 8px 8px;border-top:1px dashed #4CAF50;">
+                        <div style="font-size:12px;color:#2E7D32;">
+                            <strong>📊 Proyección:</strong> Con tasa histórica de ${kit.formatPct(data.tasaRecuperacion)}, se estima recuperar
+                            <strong>${kit.formatCurrency(proyeccion)}</strong> de los compromisos activos.
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else if (data.tasaRecuperacion > 0) {
+             proyeccionHtml = `
+                <tr>
+                    <td style="padding:12px 16px;background:#F5F5F5;border-radius:0 0 8px 8px;border-top:1px solid #EEEEEE;">
+                        <div style="font-size:12px;color:#616161;">
+                            Tasa de recuperación histórica: <strong>${kit.formatPct(data.tasaRecuperacion)}</strong>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
 
         return `
             ${kit.sectionTitle('Pipeline de Cobranza', '🔄', 'Estado actual y proyección')}
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#F5F5F5;border-radius:8px;">
                 <tr>
                     <td style="padding:16px;">
-                        ${pipelineInfo.map(info => `<div style="margin-bottom:8px;font-size:14px;color:#424242;">${info}</div>`).join('')}
+                        ${pipelineItems.map(item => `
+                            <div style="margin-bottom:8px;font-size:14px;color:#424242;">
+                                <strong>${item.value}</strong> ${item.detail}
+                            </div>
+                        `).join('')}
                     </td>
                 </tr>
+                ${proyeccionHtml}
             </table>
         `;
     },

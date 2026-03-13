@@ -199,7 +199,7 @@ const EmailAutomation = {
         // Obtener KPIs completos
         if (typeof KPIService !== 'undefined') {
             try {
-                const kpis = KPIService.getDashboardKPIs();
+                const kpis = KPIService.getDashboardKPIs({ forceRefresh: true });
                 if (kpis.ok && kpis.available) {
                     data.kpis = kpis;
                     data.dso = kpis.dso.value;
@@ -249,12 +249,15 @@ const EmailAutomation = {
                     const ptpsFromBitacora = compromisos.map(c => {
                         const fechaComp = c.fechaCompromiso ? new Date(c.fechaCompromiso) : null;
                         const diasRestantes = fechaComp ? Math.floor((fechaComp - today) / (1000 * 60 * 60 * 24)) : 999;
+                        // Buscar monto en múltiples campos posibles
+                        const monto = c.montoCompromiso || c.montoComprometido || c.snapshotVencidoPEN || c.montoPEN || c.monto || 0;
                         return {
                             asegurado: c.asegurado,
                             ruc: c.ruc,
                             fechaCompromiso: c.fechaCompromiso,
-                            montoComprometido: c.snapshotVencidoPEN || 0,
-                            moneda: 'PEN',
+                            montoComprometido: monto,
+                            monto: monto,
+                            moneda: c.moneda || 'PEN',
                             responsable: c.responsable,
                             estado: c.estadoGestion,
                             diasRestantes: diasRestantes,
@@ -299,6 +302,42 @@ const EmailAutomation = {
                 Logger.warn(context, 'Error obteniendo alertas', e); 
             }
         }
+
+        // Calcular recaudación del día (gestiones con estado CERRADO_PAGADO hoy)
+        data.recaudacionHoy = 0;
+        data.gestionesCerradasHoy = 0;
+        if (typeof BitacoraService !== 'undefined') {
+            try {
+                const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
+                const todayLocal = Utilities.formatDate(new Date(), 'America/Lima', 'yyyy-MM-dd');
+                gestiones.forEach(g => {
+                    if (!g.fechaRegistro) return;
+                    const fechaLocal = Utilities.formatDate(new Date(g.fechaRegistro), 'America/Lima', 'yyyy-MM-dd');
+                    if (fechaLocal === todayLocal && g.estadoGestion === 'CERRADO_PAGADO') {
+                        data.gestionesCerradasHoy++;
+                        data.recaudacionHoy += (g.montoRecuperado || g.montoCompromiso || g.snapshotVencidoPEN || 0);
+                    }
+                });
+            } catch (e) {
+                Logger.warn(context, 'Error calculando recaudación diaria', e);
+            }
+        }
+
+        // Aging distribution para mini-barra en diario
+        data.agingBucketsForBar = [];
+        if (data.agingBuckets && data.agingBuckets.length > 0) {
+            data.agingBucketsForBar = data.agingBuckets.map(b => ({
+                id: b.id,
+                label: b.label,
+                count: b.count,
+                percentage: b.percentage,
+                amount: b.amount,
+                color: b.color
+            }));
+        }
+
+        // Top deudores por monto (de alertas + KPIs)
+        data.topDeudores = this._generateTopDeudores(data);
 
         // Determinar estado del día
         data.dayStatus = this._determineDayStatus(data);
@@ -466,6 +505,32 @@ const EmailAutomation = {
     },
 
     /**
+     * Genera lista de top deudores por monto para el email diario
+     */
+    _generateTopDeudores(data) {
+        const deudores = [];
+
+        // Extraer de byCompany (aseguradoras con mayor vencido)
+        if (data.byCompany && data.byCompany.length > 0) {
+            data.byCompany
+                .filter(c => c.vencido > 0)
+                .sort((a, b) => (b.vencido || 0) - (a.vencido || 0))
+                .slice(0, 5)
+                .forEach(c => {
+                    deudores.push({
+                        nombre: c.name,
+                        montoVencido: c.vencido || 0,
+                        moneda: 'PEN',
+                        porcentajeVencido: c.vencidoPct || 0,
+                        totalCartera: c.total || 0
+                    });
+                });
+        }
+
+        return deudores.slice(0, 5);
+    },
+
+    /**
      * Sugiere acción basada en tipo de alerta
      */
     _suggestAction(alert) {
@@ -488,20 +553,24 @@ const EmailAutomation = {
      */
     _buildDailySummaryEmailPro(data) {
         const kit = typeof EmailTemplateKit !== 'undefined' ? EmailTemplateKit : getEmailTemplateKit();
-        
+
         // Construir scoreboard de KPIs
         const kpis = this._buildDailyKPICards(data, kit);
         const scoreboardHtml = kit.kpiGrid(kpis, 3);
+
+        // Mini barra de aging horizontal (resumen visual rápido)
+        const miniAgingHtml = this._buildMiniAgingBar(data, kit);
+
+        // Sección de resumen de cartera (montos absolutos)
+        const carteraSummaryHtml = this._buildCarteraSummary(data, kit);
 
         // Sección de prioridades
         const prioritiesHtml = data.priorities && data.priorities.length > 0
             ? kit.priorityList(data.priorities, 'Top Prioridades de Hoy', '🎯')
             : '';
 
-        // Sección de cuentas en riesgo
-        const riskAccountsHtml = data.riskAccounts && data.riskAccounts.length > 0
-            ? kit.riskAccountList(data.riskAccounts, 'Cuentas que Requieren Atención', '⚠️')
-            : '';
+        // Top deudores por monto
+        const topDeudoresHtml = this._buildTopDeudoresSection(data, kit);
 
         // Sección de PTPs próximos
         const ptpsHtml = data.topPtpsProximos && data.topPtpsProximos.length > 0
@@ -518,9 +587,11 @@ const EmailAutomation = {
         // Ensamblar contenido
         const contentHtml = `
             ${scoreboardHtml}
+            ${miniAgingHtml}
+            ${carteraSummaryHtml}
             ${kit.divider('24px')}
             ${prioritiesHtml}
-            ${riskAccountsHtml}
+            ${topDeudoresHtml}
             ${ptpsHtml}
             ${ctasHtml}
         `;
@@ -583,7 +654,7 @@ const EmailAutomation = {
             label: 'DSO',
             value: `${data.dso || 0} días`,
             severity: dsoSeverity,
-            benchmark: `Meta: ${dsoBenchmark}d`,
+            benchmark: `${dsoBenchmark}d`,
             trend: data.dsoTrend || 'stable',
             icon: '📈'
         });
@@ -601,21 +672,129 @@ const EmailAutomation = {
             icon: '💰'
         });
 
-        // 6. Bucket 90+ días
-        const bucket90Warn = getConfig('KPI.BUCKET_90_WARN', 5);
-        const bucket90Critical = getConfig('KPI.BUCKET_90_CRITICAL', 10);
-        const bucket90Pct = data.bucket90?.percentage || 0;
-        const bucket90Severity = bucket90Pct > bucket90Critical ? 'CRITICAL' :
-                                bucket90Pct > bucket90Warn ? 'WARN' : 'OK';
+        // 6. Recaudación Hoy (más relevante que bucket 90+ que ya sale en mini-aging)
+        const recaudacion = data.recaudacionHoy || 0;
         kpis.push({
-            label: 'Bucket 90+ días',
-            value: kit.formatInt(data.bucket90?.count || 0),
-            delta: `<span style="font-size:11px;color:#757575;">${kit.formatPct(bucket90Pct)}</span>`,
-            severity: bucket90Severity,
-            icon: '🔴'
+            label: 'Recaudación Hoy',
+            value: recaudacion > 0 ? kit.formatCurrency(recaudacion) : 'S/. 0',
+            delta: data.gestionesCerradasHoy > 0
+                ? `<span style="color:#2E7D32;font-size:11px;">${data.gestionesCerradasHoy} caso(s)</span>`
+                : '',
+            severity: recaudacion > 0 ? 'OK' : 'NEUTRAL',
+            icon: '💵'
         });
 
         return kpis;
+    },
+
+    /**
+     * Construye mini barra de aging horizontal para el diario
+     */
+    _buildMiniAgingBar(data, kit) {
+        const buckets = data.agingBucketsForBar || data.agingBuckets;
+        if (!buckets || buckets.length === 0) return '';
+
+        const bucketColors = {
+            'CURRENT': '#4CAF50',
+            'BUCKET_31_60': '#FFC107',
+            'BUCKET_61_90': '#FF9800',
+            'BUCKET_90_PLUS': '#F44336'
+        };
+
+        // Construir barra segmentada
+        let barSegments = '';
+        let legendItems = '';
+        buckets.forEach(b => {
+            const color = bucketColors[b.id] || '#9E9E9E';
+            const pct = Math.max(1, b.percentage || 0);
+            barSegments += `<td style="width:${pct}%;height:10px;background:${color};"></td>`;
+            legendItems += `<span style="display:inline-block;margin-right:12px;font-size:11px;color:#616161;">
+                <span style="display:inline-block;width:8px;height:8px;background:${color};border-radius:2px;margin-right:3px;vertical-align:middle;"></span>
+                ${b.label}: ${kit.formatInt(b.count)} (${kit.formatPct(b.percentage)})
+            </span>`;
+        });
+
+        return `
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:16px 0 8px;">
+                <tr>
+                    <td style="padding-bottom:6px;">
+                        <div style="font-size:11px;font-weight:600;color:#424242;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px;">Distribución de Cartera</div>
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-radius:6px;overflow:hidden;">
+                            <tr>${barSegments}</tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-top:4px;">${legendItems}</td>
+                </tr>
+            </table>
+        `;
+    },
+
+    /**
+     * Construye resumen de cartera con montos absolutos
+     */
+    _buildCarteraSummary(data, kit) {
+        const totalMonto = data.totalMonto || 0;
+        const totalVencido = data.totalVencido || 0;
+        const recaudacion = data.recaudacionHoy || 0;
+
+        if (totalMonto === 0 && recaudacion === 0) return '';
+
+        let items = '';
+
+        if (totalMonto > 0) {
+            items += `
+                <td style="padding:8px 12px;text-align:center;border-right:1px solid #EEEEEE;">
+                    <div style="font-size:11px;color:#757575;text-transform:uppercase;">Cartera Total</div>
+                    <div style="font-size:16px;font-weight:700;color:#212121;margin-top:2px;">${kit.formatCurrency(totalMonto)}</div>
+                </td>`;
+        }
+        if (totalVencido > 0) {
+            items += `
+                <td style="padding:8px 12px;text-align:center;border-right:1px solid #EEEEEE;">
+                    <div style="font-size:11px;color:#757575;text-transform:uppercase;">Monto Vencido</div>
+                    <div style="font-size:16px;font-weight:700;color:#C62828;margin-top:2px;">${kit.formatCurrency(totalVencido)}</div>
+                </td>`;
+        }
+        items += `
+            <td style="padding:8px 12px;text-align:center;">
+                <div style="font-size:11px;color:#757575;text-transform:uppercase;">Recaudación Hoy</div>
+                <div style="font-size:16px;font-weight:700;color:${recaudacion > 0 ? '#2E7D32' : '#9E9E9E'};margin-top:2px;">${kit.formatCurrency(recaudacion)}</div>
+                ${data.gestionesCerradasHoy > 0 ? `<div style="font-size:10px;color:#757575;">${data.gestionesCerradasHoy} caso(s) cerrado(s)</div>` : ''}
+            </td>`;
+
+        return `
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#FAFAFA;border-radius:8px;margin:12px 0;border:1px solid #EEEEEE;">
+                <tr>${items}</tr>
+            </table>
+        `;
+    },
+
+    /**
+     * Construye sección de Top Deudores
+     */
+    _buildTopDeudoresSection(data, kit) {
+        if (!data.topDeudores || data.topDeudores.length === 0) return '';
+
+        const headers = [
+            { label: 'Aseguradora', align: 'left' },
+            { label: 'Monto Vencido', align: 'right', width: '120px' },
+            { label: '% Vencido', align: 'center', width: '80px' }
+        ];
+
+        const rows = data.topDeudores.map(d => {
+            const pctColor = d.porcentajeVencido > 30 ? '#C62828' : d.porcentajeVencido > 15 ? '#E65100' : '#424242';
+            return [
+                d.nombre,
+                `<strong>${kit.formatCurrency(d.montoVencido, d.moneda)}</strong>`,
+                `<span style="color:${pctColor};font-weight:600;">${kit.formatPct(d.porcentajeVencido)}</span>`
+            ];
+        });
+
+        let html = kit.sectionTitle('Top Aseguradoras con Mayor Vencimiento', '🏢', `Top ${data.topDeudores.length} por monto vencido`);
+        html += kit.dataTable({ headers, rows, compact: true });
+        return html;
     },
 
     /**
