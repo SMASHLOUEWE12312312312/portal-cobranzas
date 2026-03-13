@@ -250,16 +250,22 @@ const EmailAutomation = {
                     const ptpsFromBitacora = compromisos.map(c => {
                         const fechaComp = c.fechaCompromiso ? new Date(c.fechaCompromiso) : null;
                         const diasRestantes = fechaComp ? Math.floor((fechaComp - today) / (1000 * 60 * 60 * 24)) : 999;
-                        // Buscar monto en múltiples campos posibles (solo positivos)
-                        const montoRaw = c.montoCompromiso || c.montoComprometido || c.snapshotVencidoPEN || c.montoPEN || c.monto || 0;
-                        const monto = montoRaw > 0 ? montoRaw : 0;
+                        // Usar snapshots PEN y USD directamente (solo positivos)
+                        const penAmt = parseFloat(c.snapshotVencidoPEN) || 0;
+                        const usdAmt = parseFloat(c.snapshotVencidoUSD) || 0;
+                        const montoTotal = (penAmt > 0 ? penAmt : 0) + (usdAmt > 0 ? usdAmt : 0);
+                        // Determinar moneda predominante para display
+                        const moneda = usdAmt > 0 && penAmt === 0 ? 'USD' : penAmt > 0 && usdAmt === 0 ? 'PEN' : 'PEN';
+                        const montoDisplay = moneda === 'USD' ? usdAmt : penAmt;
                         return {
                             asegurado: c.asegurado,
                             ruc: c.ruc,
                             fechaCompromiso: c.fechaCompromiso,
-                            montoComprometido: monto,
-                            monto: monto,
-                            moneda: c.moneda || 'PEN',
+                            montoComprometido: montoTotal,
+                            monto: montoDisplay,
+                            montoPEN: penAmt > 0 ? penAmt : 0,
+                            montoUSD: usdAmt > 0 ? usdAmt : 0,
+                            moneda: moneda,
                             responsable: c.responsable,
                             estado: c.estadoGestion,
                             diasRestantes: diasRestantes,
@@ -320,15 +326,11 @@ const EmailAutomation = {
                     const fechaLocal = Utilities.formatDate(new Date(g.fechaRegistro), 'America/Lima', 'yyyy-MM-dd');
                     if (fechaLocal === yesterdayLocal && g.estadoGestion === 'CERRADO_PAGADO') {
                         data.gestionesCerradasAyer++;
-                        const monto = g.montoRecuperado || g.montoCompromiso || g.snapshotVencidoPEN || g.snapshotVencidoUSD || 0;
-                        if (monto > 0) {
-                            const moneda = (g.moneda || '').toUpperCase();
-                            if (moneda.includes('USD') || moneda.includes('US$') || moneda.includes('DOLAR')) {
-                                data.recaudacionAyerUSD += monto;
-                            } else {
-                                data.recaudacionAyer += monto;
-                            }
-                        }
+                        // Usar snapshots PEN y USD directamente (bitácora no tiene campo moneda)
+                        const penAmt = parseFloat(g.snapshotVencidoPEN) || 0;
+                        const usdAmt = parseFloat(g.snapshotVencidoUSD) || 0;
+                        if (penAmt > 0) data.recaudacionAyer += penAmt;
+                        if (usdAmt > 0) data.recaudacionAyerUSD += usdAmt;
                     }
                 });
             } catch (e) {

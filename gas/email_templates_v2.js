@@ -466,7 +466,7 @@ const EmailTemplateKit = {
       <td style="padding:6px;vertical-align:top;">
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${sev.bg};border-radius:${this.DESIGN.BORDER.RADIUS_MD};border-left:3px solid ${sev.border};">
           <tr>
-            <td height="118" style="padding:${padding};vertical-align:top;">
+            <td style="padding:${padding};vertical-align:top;">
               <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.2;">
                 ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
               </div>
@@ -474,6 +474,7 @@ const EmailTemplateKit = {
               ${deltaHtml}
               ${benchmarkHtml}
             </td>
+            <td width="1" style="padding:0;"><div style="width:1px;height:118px;font-size:1px;line-height:118px;">&nbsp;</div></td>
           </tr>
         </table>
       </td>

@@ -71,9 +71,9 @@ var BitacoraService = {
   obtenerCompromisosActivos: () => {
     const today = new Date();
     return [
-      { asegurado: 'HUAMAN OBREGON PATRICIA', fechaCompromiso: new Date(today.getTime() + 3*86400000).toISOString(), montoCompromiso: 1500, responsable: 'test@test.com', estadoGestion: 'COMPROMISO_PAGO' },
-      { asegurado: 'YURIKO GENESIS PALOMINO', fechaCompromiso: new Date(today.getTime() + 3*86400000).toISOString(), montoCompromiso: 2300, responsable: 'test@test.com', estadoGestion: 'COMPROMISO_PAGO' },
-      { asegurado: 'LUCARBAL RENT A CAR', fechaCompromiso: new Date(today.getTime() - 2*86400000).toISOString(), montoCompromiso: 800, responsable: 'test@test.com', estadoGestion: 'COMPROMISO_PAGO' },
+      { asegurado: 'HUAMAN OBREGON PATRICIA', fechaCompromiso: new Date(today.getTime() + 3*86400000).toISOString(), snapshotVencidoPEN: 1500, snapshotVencidoUSD: 0, responsable: 'test@test.com', estadoGestion: 'COMPROMISO_PAGO' },
+      { asegurado: 'YURIKO GENESIS PALOMINO', fechaCompromiso: new Date(today.getTime() + 3*86400000).toISOString(), snapshotVencidoPEN: 0, snapshotVencidoUSD: 2300, responsable: 'test@test.com', estadoGestion: 'COMPROMISO_PAGO' },
+      { asegurado: 'LUCARBAL RENT A CAR', fechaCompromiso: new Date(today.getTime() - 2*86400000).toISOString(), snapshotVencidoPEN: 800, snapshotVencidoUSD: 0, responsable: 'test@test.com', estadoGestion: 'COMPROMISO_PAGO' },
     ];
   }
 };

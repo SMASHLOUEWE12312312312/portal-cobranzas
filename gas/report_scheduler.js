@@ -275,15 +275,11 @@ const ReportScheduler = {
 
                     let pendientes = 0, vencidos = 0, montoComprometidoPEN = 0, montoComprometidoUSD = 0;
                     compromisos.forEach(c => {
-                        const monto = c.montoCompromiso || c.montoComprometido || c.snapshotVencidoPEN || c.montoPEN || c.monto || 0;
-                        if (monto > 0) {
-                            const moneda = (c.moneda || '').toUpperCase();
-                            if (moneda.includes('USD') || moneda.includes('US$') || moneda.includes('DOLAR')) {
-                                montoComprometidoUSD += monto;
-                            } else {
-                                montoComprometidoPEN += monto;
-                            }
-                        }
+                        // Usar snapshots PEN y USD directamente (bitácora tiene ambos campos)
+                        const penAmt = parseFloat(c.snapshotVencidoPEN) || 0;
+                        const usdAmt = parseFloat(c.snapshotVencidoUSD) || 0;
+                        if (penAmt > 0) montoComprometidoPEN += penAmt;
+                        if (usdAmt > 0) montoComprometidoUSD += usdAmt;
                         if (c.fechaCompromiso) {
                             const fechaComp = new Date(c.fechaCompromiso);
                             if (fechaComp < todayMid) {
@@ -313,15 +309,11 @@ const ReportScheduler = {
                     const fecha = new Date(g.fechaRegistro);
                     if (fecha >= weekStartDate) {
                         casosCerradosSemana++;
-                        const montoRec = g.montoRecuperado || g.montoCompromiso || g.montoComprometido || g.snapshotVencidoPEN || g.montoPEN || 0;
-                        if (montoRec > 0) {
-                            const moneda = (g.moneda || '').toUpperCase();
-                            if (moneda.includes('USD') || moneda.includes('US$') || moneda.includes('DOLAR')) {
-                                montoRecuperadoUSD += montoRec;
-                            } else {
-                                montoRecuperadoPEN += montoRec;
-                            }
-                        }
+                        // Usar snapshots PEN y USD directamente
+                        const penAmt = parseFloat(g.snapshotVencidoPEN) || 0;
+                        const usdAmt = parseFloat(g.snapshotVencidoUSD) || 0;
+                        if (penAmt > 0) montoRecuperadoPEN += penAmt;
+                        if (usdAmt > 0) montoRecuperadoUSD += usdAmt;
                     }
                 });
 
