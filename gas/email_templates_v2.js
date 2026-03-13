@@ -82,7 +82,7 @@ const EmailTemplateKit = {
   formatCurrency(amount, currency = 'PEN') {
     if (amount === null || amount === undefined || isNaN(amount)) return '—';
     const symbol = currency === 'USD' ? 'US$' : 'S/.';
-    return `${symbol} ${this.formatNumber(amount)}`;
+    return `${symbol} ${this.formatNumber(amount, 0)}`;
   },
 
   /**
