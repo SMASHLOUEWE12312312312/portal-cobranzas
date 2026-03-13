@@ -354,7 +354,8 @@ const CONFIG = {
     ADMIN_EMAILS: [
       'csarapura@transperuana.com.pe',
       'cobranzas@transperuana.com.pe',
-      'cobranzas1@transperuana.com.pe'
+      'cobranzas1@transperuana.com.pe',
+      'rcarbajal@transperuana.com.pe'
     ],  // Emails de administradores para reportes
     REPLY_TO_EMAIL: '',                // Email de respuesta (opcional)
     DAILY_SUMMARY_HOUR: 7,             // Hora para resumen diario (7 AM)
