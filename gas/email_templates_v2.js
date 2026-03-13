@@ -452,28 +452,26 @@ const EmailTemplateKit = {
       trendHtml = this.trendArrow(trend, invertTrendColors);
     }
     
-    // Siempre generar 2 líneas debajo del label para uniformidad
-    const deltaContent = (delta !== undefined && delta !== null && delta !== '')
-      ? `${deltaLabel || ''} ${delta}`.trim()
-      : '&mdash;';
-    const benchmarkContent = (benchmark !== undefined && benchmark !== null)
-      ? `Meta: ${benchmark}`
-      : '';
+    let deltaHtml = '';
+    if (delta !== undefined && delta !== null && delta !== '') {
+      deltaHtml = `<div style="font-size:11px;color:${sev.text};margin-top:4px;opacity:0.85;">${deltaLabel || ''} ${delta}</div>`;
+    }
+
+    let benchmarkHtml = '';
+    if (benchmark !== undefined && benchmark !== null) {
+      benchmarkHtml = `<div style="font-size:10px;color:#9E9E9E;margin-top:2px;">Meta: ${benchmark}</div>`;
+    }
 
     return `
-      <td style="padding:6px;vertical-align:top;">
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${sev.bg};border-radius:${this.DESIGN.BORDER.RADIUS_MD};border-left:3px solid ${sev.border};">
-          <tr>
-            <td style="padding:16px 18px;vertical-align:top;">
-              <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.2;">
-                ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
-              </div>
-              <div style="color:#666666;font-size:${labelSize};margin-top:6px;text-transform:uppercase;letter-spacing:0.3px;">${label}</div>
-              <div style="font-size:11px;color:${delta ? sev.text : 'transparent'};margin-top:4px;opacity:0.85;">${deltaContent}</div>
-              <div style="font-size:10px;color:${benchmarkContent ? '#9E9E9E' : 'transparent'};margin-top:2px;">${benchmarkContent || '&nbsp;'}</div>
-            </td>
-          </tr>
-        </table>
+      <td style="padding:6px;vertical-align:top;background:${sev.bg};border-left:3px solid ${sev.border};border-radius:${this.DESIGN.BORDER.RADIUS_MD};">
+        <div style="padding:12px 14px;">
+          <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.2;">
+            ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
+          </div>
+          <div style="color:#666666;font-size:${labelSize};margin-top:6px;text-transform:uppercase;letter-spacing:0.3px;">${label}</div>
+          ${deltaHtml}
+          ${benchmarkHtml}
+        </div>
       </td>
     `;
   },
@@ -482,13 +480,14 @@ const EmailTemplateKit = {
    * Grid de KPIs (scoreboard)
    */
   kpiGrid(kpis, columns = 4) {
-    let html = '<table role="presentation" cellpadding="0" cellspacing="0" width="100%">';
-    
+    let html = '<table role="presentation" cellpadding="6" cellspacing="0" width="100%">';
+
     for (let i = 0; i < kpis.length; i += columns) {
       html += '<tr>';
       for (let j = 0; j < columns && (i + j) < kpis.length; j++) {
         const width = Math.floor(100 / columns);
-        html += `<td width="${width}%" valign="top">${this.kpiCard(kpis[i + j])}</td>`;
+        // kpiCard retorna un <td> completo con estilos de fondo
+        html += this.kpiCard(kpis[i + j]);
       }
       // Rellenar celdas vacías si es necesario
       const remaining = columns - (kpis.length - i);
@@ -499,7 +498,7 @@ const EmailTemplateKit = {
       }
       html += '</tr>';
     }
-    
+
     html += '</table>';
     return html;
   },
