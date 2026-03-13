@@ -464,16 +464,18 @@ const EmailTemplateKit = {
 
     return `
       <td style="padding:6px;vertical-align:top;">
-        <div style="background:${sev.bg};border-radius:${this.DESIGN.BORDER.RADIUS_MD};border-left:3px solid ${sev.border};padding:${padding};min-height:110px;box-sizing:border-box;">
-          <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" width="100%" height="110"><tr><td style="padding:0;"><![endif]-->
-          <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.2;">
-            ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
-          </div>
-          <div style="color:#666666;font-size:${labelSize};margin-top:6px;text-transform:uppercase;letter-spacing:0.3px;">${label}</div>
-          ${deltaHtml}
-          ${benchmarkHtml}
-          <!--[if mso]></td></tr></table><![endif]-->
-        </div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${sev.bg};border-radius:${this.DESIGN.BORDER.RADIUS_MD};border-left:3px solid ${sev.border};">
+          <tr>
+            <td height="118" style="padding:${padding};vertical-align:top;">
+              <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.2;">
+                ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
+              </div>
+              <div style="color:#666666;font-size:${labelSize};margin-top:6px;text-transform:uppercase;letter-spacing:0.3px;">${label}</div>
+              ${deltaHtml}
+              ${benchmarkHtml}
+            </td>
+          </tr>
+        </table>
       </td>
     `;
   },

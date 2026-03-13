@@ -273,10 +273,17 @@ const ReportScheduler = {
                     const todayMid = new Date();
                     todayMid.setHours(0, 0, 0, 0);
 
-                    let pendientes = 0, vencidos = 0, montoComprometidoTotal = 0;
+                    let pendientes = 0, vencidos = 0, montoComprometidoPEN = 0, montoComprometidoUSD = 0;
                     compromisos.forEach(c => {
                         const monto = c.montoCompromiso || c.montoComprometido || c.snapshotVencidoPEN || c.montoPEN || c.monto || 0;
-                        if (monto > 0) montoComprometidoTotal += monto;
+                        if (monto > 0) {
+                            const moneda = (c.moneda || '').toUpperCase();
+                            if (moneda.includes('USD') || moneda.includes('US$') || moneda.includes('DOLAR')) {
+                                montoComprometidoUSD += monto;
+                            } else {
+                                montoComprometidoPEN += monto;
+                            }
+                        }
                         if (c.fechaCompromiso) {
                             const fechaComp = new Date(c.fechaCompromiso);
                             if (fechaComp < todayMid) {
@@ -289,7 +296,9 @@ const ReportScheduler = {
 
                     data.ptpsPendientes = pendientes;
                     data.ptpsIncumplidos = vencidos;
-                    data.montoComprometido = montoComprometidoTotal;
+                    data.montoComprometido = montoComprometidoPEN + montoComprometidoUSD;
+                    data.montoComprometidoPEN = montoComprometidoPEN;
+                    data.montoComprometidoUSD = montoComprometidoUSD;
                 }
 
                 // Casos cerrados pagados en la semana (métrica de gestión, NO de PTP)
@@ -489,7 +498,11 @@ const ReportScheduler = {
         }
         if (data.montoRecuperado > 0) {
             const kit = typeof EmailTemplateKit !== 'undefined' ? EmailTemplateKit : getEmailTemplateKit();
-            improvements.push(`Se recuperaron ${kit.formatCurrency(data.montoRecuperado)}`);
+            const recParts = [];
+            if ((data.montoRecuperadoPEN || 0) > 0) recParts.push(kit.formatCurrency(data.montoRecuperadoPEN, 'PEN'));
+            if ((data.montoRecuperadoUSD || 0) > 0) recParts.push(kit.formatCurrency(data.montoRecuperadoUSD, 'USD'));
+            const recDisplay = recParts.length > 0 ? recParts.join(' + ') : kit.formatCurrency(data.montoRecuperado);
+            improvements.push(`Se recuperaron ${recDisplay}`);
         }
         
         if (improvements.length > 0) {
@@ -971,9 +984,12 @@ const ReportScheduler = {
             });
         }
         if (data.montoComprometido > 0) {
+            const compParts = [];
+            if ((data.montoComprometidoPEN || 0) > 0) compParts.push(kit.formatCurrency(data.montoComprometidoPEN, 'PEN'));
+            if ((data.montoComprometidoUSD || 0) > 0) compParts.push(kit.formatCurrency(data.montoComprometidoUSD, 'USD'));
             pipelineItems.push({
                 label: 'Monto Comprometido',
-                value: kit.formatCurrency(data.montoComprometido),
+                value: compParts.length > 0 ? compParts.join(' + ') : kit.formatCurrency(data.montoComprometido),
                 detail: 'en PTPs activos'
             });
         }
@@ -981,13 +997,20 @@ const ReportScheduler = {
         // Proyección de cobro basada en tasa de recuperación
         let proyeccionHtml = '';
         if (data.montoComprometido > 0 && data.tasaRecuperacion > 0) {
-            const proyeccion = data.montoComprometido * (data.tasaRecuperacion / 100);
+            const proyParts = [];
+            if ((data.montoComprometidoPEN || 0) > 0) {
+                proyParts.push(kit.formatCurrency(data.montoComprometidoPEN * (data.tasaRecuperacion / 100), 'PEN'));
+            }
+            if ((data.montoComprometidoUSD || 0) > 0) {
+                proyParts.push(kit.formatCurrency(data.montoComprometidoUSD * (data.tasaRecuperacion / 100), 'USD'));
+            }
+            const proyDisplay = proyParts.length > 0 ? proyParts.join(' + ') : kit.formatCurrency(data.montoComprometido * (data.tasaRecuperacion / 100));
             proyeccionHtml = `
                 <tr>
                     <td style="padding:12px 16px;background:#E8F5E9;border-radius:0 0 8px 8px;border-top:1px dashed #4CAF50;">
                         <div style="font-size:12px;color:#2E7D32;">
                             <strong>📊 Proyección:</strong> Con tasa histórica de ${kit.formatPct(data.tasaRecuperacion)}, se estima recuperar
-                            <strong>${kit.formatCurrency(proyeccion)}</strong> de los compromisos activos.
+                            <strong>${proyDisplay}</strong> de los compromisos activos.
                         </div>
                     </td>
                 </tr>
