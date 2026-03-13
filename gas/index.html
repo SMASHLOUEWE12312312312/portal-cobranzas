@@ -1225,13 +1225,17 @@
 
                                         <!-- Responsable -->
                                         <div class="form-group">
-                                            <label class="form-label"
-                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-tertiary);">
-                                                <span style="font-size: 1rem;">👤</span> Responsable
+                                            <label class="form-label" for="gestionResponsableEmb"
+                                                style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tp-text-primary);">
+                                                <span style="font-size: 1rem;">👤</span> Responsable <span style="color: var(--tp-primary); font-weight: 700;">*</span>
                                             </label>
-                                            <input type="text" id="gestionResponsableEmb" readonly
-                                                placeholder="Usuario actual"
-                                                style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; background: var(--tp-surface-overlay); color: var(--tp-text-secondary); cursor: not-allowed;">
+                                            <select id="gestionResponsableEmb" required
+                                                onchange="validateFormV4()"
+                                                style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--tp-border-light); border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer; transition: border-color 0.15s ease;">
+                                                <option value="">Selecciona responsable</option>
+                                                <option value="Pilar">Pilar</option>
+                                                <option value="Gladys">Gladys</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -6139,12 +6143,6 @@
                 // Cargar automáticamente la fecha de envío EECC para este cliente
                 cargarFechaEnvioEECCAutoEmb(asegurado);
 
-                // Establecer responsable
-                const inputResponsable = document.getElementById('gestionResponsableEmb');
-                if (inputResponsable && CURRENT_USER) {
-                    inputResponsable.value = CURRENT_USER.nombre || CURRENT_USER.email || 'Usuario actual';
-                }
-
                 // Establecer fecha de gestión como HOY
                 setFechaGestionHoyEmb();
 
@@ -7118,6 +7116,7 @@
             const fechaCompromiso = document.getElementById('gestionFechaCompromisoEmb')?.value;
             const proximaAccion = document.getElementById('gestionProximaAccionEmb')?.value?.trim();
             const observaciones = document.getElementById('gestionObservacionesEmb')?.value?.trim();
+            const responsable = document.getElementById('gestionResponsableEmb')?.value;
 
             // AUTOMÁTICO: Derivar Canal de Contacto del Tipo de Gestión
             const canalContacto = TIPO_A_CANAL[tipoGestion] || tipoGestion || 'OTRO';
@@ -7126,7 +7125,7 @@
             const fechaGestion = new Date().toISOString().slice(0, 16);
 
             // Validación de campos obligatorios (sin canalContacto ya que es derivado)
-            if (!asegurado || !tipoGestion || !estadoGestion || !proximaAccion) {
+            if (!asegurado || !tipoGestion || !estadoGestion || !proximaAccion || !responsable) {
                 showGestionStatusEmb('error', 'Por favor completa todos los campos obligatorios');
                 _isSubmittingGestion = false; // RESET FLAG
                 return false;
@@ -7179,6 +7178,7 @@
                 tipoGestion: tipoGestion,
                 estadoGestion: estadoGestion,
                 canalContacto: canalContacto,
+                responsable: responsable,
                 fechaCompromiso: fechaCompromiso || null,
                 proximaAccion: proximaAccion,
                 observaciones: observaciones || ''
@@ -7198,7 +7198,7 @@
                 idCiclo: asegurado + '_' + fechaEnvioEECC + '_TEMP',
                 asegurado: asegurado,
                 ruc: '',
-                responsable: CURRENT_USER?.email || CURRENT_USER?.nombre || 'Usuario',
+                responsable: responsable,
                 fechaEnvioEECC: fechaEnvioEECC,
                 fechaRegistro: new Date().toISOString(),
                 tipoGestion: tipoGestion,
@@ -8183,12 +8183,6 @@
             // Establecer fecha de gestión como HOY
             setFechaGestionHoyEmb();
 
-            // Establecer responsable
-            const inputResponsable = document.getElementById('gestionResponsableEmb');
-            if (inputResponsable && CURRENT_USER) {
-                inputResponsable.value = CURRENT_USER.nombre || CURRENT_USER.email || 'Usuario actual';
-            }
-
             _log('[seleccionarOpcionEmb] Seleccionado:', opcion);
         }
 
@@ -8313,12 +8307,6 @@
                     }
                 })
                 .getClientesConCiclosActivos(TOKEN);
-
-            // Establecer responsable
-            const inputResponsable = document.getElementById('gestionResponsableEmb');
-            if (inputResponsable && CURRENT_USER) {
-                inputResponsable.value = CURRENT_USER.nombre || CURRENT_USER.email || 'Usuario actual';
-            }
 
             // Cerrar dropdown al hacer clic fuera (solo agregar una vez)
             if (!window._autocompleteEmbClickHandlerAdded) {
