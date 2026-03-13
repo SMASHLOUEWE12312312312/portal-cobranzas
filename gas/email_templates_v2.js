@@ -462,22 +462,15 @@ const EmailTemplateKit = {
       benchmarkHtml = `<div style="font-size:10px;color:#9E9E9E;margin-top:2px;">Meta: ${benchmark}</div>`;
     }
 
-    // Card con fondo blanco, borde sutil y accent color a la izquierda
+    // Estilo directo en el <td> — se estira al alto de la fila automáticamente
     return `
-      <td style="padding:5px;vertical-align:top;">
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-          <tr>
-            <td width="4" style="background:${sev.border};"></td>
-            <td style="background:#FFFFFF;border:1px solid #E0E0E0;border-left:none;padding:14px 16px;vertical-align:top;">
-              <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.3;">
-                ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
-              </div>
-              <div style="color:#757575;font-size:${labelSize};margin-top:6px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">${label}</div>
-              ${deltaHtml}
-              ${benchmarkHtml}
-            </td>
-          </tr>
-        </table>
+      <td style="background:#FFFFFF;border:1px solid #E0E0E0;border-left:4px solid ${sev.border};padding:14px 16px;vertical-align:top;">
+        <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.3;">
+          ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
+        </div>
+        <div style="color:#757575;font-size:${labelSize};margin-top:6px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">${label}</div>
+        ${deltaHtml}
+        ${benchmarkHtml}
       </td>
     `;
   },
@@ -486,7 +479,8 @@ const EmailTemplateKit = {
    * Grid de KPIs (scoreboard)
    */
   kpiGrid(kpis, columns = 4) {
-    let html = '<table role="presentation" cellpadding="0" cellspacing="0" width="100%">';
+    // border-spacing crea el gap entre celdas, y cada td tiene su propio fondo
+    let html = '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-spacing:6px;border-collapse:separate;">';
 
     for (let i = 0; i < kpis.length; i += columns) {
       html += '<tr>';
@@ -496,7 +490,7 @@ const EmailTemplateKit = {
       const remaining = columns - Math.min(columns, kpis.length - i);
       if (remaining > 0 && remaining < columns) {
         for (let k = 0; k < remaining; k++) {
-          html += '<td style="padding:5px;"></td>';
+          html += '<td></td>';
         }
       }
       html += '</tr>';
