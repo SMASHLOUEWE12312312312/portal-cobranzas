@@ -839,15 +839,14 @@ const EmailTemplateKit = {
       asegurado,
       monto,
       montoComprometido,
+      montoPEN = 0,
+      montoUSD = 0,
       moneda = 'PEN',
       fechaCompromiso,
       diasRestantes,
       vencido,
       responsable
     } = ptp;
-
-    // Usar monto o montoComprometido (lo que esté disponible)
-    const montoDisplay = monto || montoComprometido || 0;
 
     let statusColor, statusText, statusBg;
     if (vencido) {
@@ -864,6 +863,20 @@ const EmailTemplateKit = {
       statusText = `En ${diasRestantes} día(s)`;
     }
 
+    // Mostrar montos PEN y USD por separado si disponibles
+    let montoHtml = '';
+    if (montoPEN > 0 || montoUSD > 0) {
+      const parts = [];
+      if (montoPEN > 0) parts.push(`<div style="font-size:13px;font-weight:600;color:#212121;">${this.formatCurrency(montoPEN, 'PEN')}</div>`);
+      if (montoUSD > 0) parts.push(`<div style="font-size:13px;font-weight:600;color:#212121;">${this.formatCurrency(montoUSD, 'USD')}</div>`);
+      montoHtml = parts.join('');
+    } else {
+      const montoDisplay = monto || montoComprometido || 0;
+      montoHtml = montoDisplay > 0
+        ? `<div style="font-size:13px;font-weight:600;color:#212121;">${this.formatCurrency(montoDisplay, moneda)}</div>`
+        : `<div style="font-size:12px;color:#9E9E9E;">&mdash;</div>`;
+    }
+
     return `
       <tr>
         <td style="padding:8px 0;border-bottom:1px solid #EEEEEE;">
@@ -873,14 +886,11 @@ const EmailTemplateKit = {
                 <div style="font-size:13px;font-weight:500;color:#212121;">${asegurado}</div>
                 <div style="font-size:11px;color:#757575;margin-top:2px;">${this.formatDate(fechaCompromiso)}</div>
               </td>
-              <td align="center" width="110">
+              <td align="center" width="100">
                 <span style="display:inline-block;background:${statusBg};color:${statusColor};padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">${statusText}</span>
               </td>
-              <td align="right" width="110">
-                ${montoDisplay > 0
-                  ? `<div style="font-size:14px;font-weight:600;color:#212121;">${this.formatCurrency(montoDisplay, moneda)}</div>`
-                  : `<div style="font-size:12px;color:#9E9E9E;">—</div>`
-                }
+              <td align="right" width="130">
+                ${montoHtml}
               </td>
             </tr>
           </table>

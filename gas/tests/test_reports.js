@@ -214,6 +214,7 @@ console.log('\n📋 Test 2: Enriquecimiento de datos diarios');
   assert(enriched.totalVencido > 0, 'totalVencido enriquecido');
   assert(enriched.agingBuckets && enriched.agingBuckets.length > 0, 'agingBuckets cargados');
   assert(enriched.byCompany && enriched.byCompany.length > 0, 'byCompany cargado');
+  assert(enriched.byAsegurado && enriched.byAsegurado.length > 0, 'byAsegurado cargado');
   assert(enriched.byCurrency !== undefined, 'byCurrency enriquecido desde KPIService');
   assert(enriched.byCurrency.PEN.total > 0, 'byCurrency PEN total > 0');
   assert(enriched.byCurrency.USD.total > 0, 'byCurrency USD total > 0');
@@ -240,19 +241,20 @@ console.log('\n📋 Test 3: PTPs con montos (fallback BitacoraService)');
   }
 }
 
-// --- Test 4: Top deudores ---
-console.log('\n📋 Test 4: Top deudores');
+// --- Test 4: Top deudores (byAsegurado) ---
+console.log('\n📋 Test 4: Top deudores (byAsegurado)');
 {
   const deudores = EmailAutomation._generateTopDeudores({
-    byCompany: [
-      { name: 'RIMAC', total: 2000000, vencido: 600000, vencidoPct: 30 },
-      { name: 'PACIFICO', total: 1500000, vencido: 225000, vencidoPct: 15 },
-      { name: 'SIN_VENCIDO', total: 500000, vencido: 0, vencidoPct: 0 }
+    byAsegurado: [
+      { name: 'ASEGURADO_A', penTotal: 2000000, penVencido: 600000, usdTotal: 100000, usdVencido: 50000, count: 5, totalVencido: 650000 },
+      { name: 'ASEGURADO_B', penTotal: 1500000, penVencido: 225000, usdTotal: 0, usdVencido: 0, count: 3, totalVencido: 225000 },
+      { name: 'ASEGURADO_C', penTotal: 500000, penVencido: 0, usdTotal: 200000, usdVencido: 0, count: 2, totalVencido: 0 }
     ]
   });
-  assert(deudores.length === 2, 'Filtra aseguradoras sin vencido');
-  assert(deudores[0].nombre === 'RIMAC', 'Ordenado por monto vencido');
-  assert(deudores[0].montoVencido === 600000, 'Monto vencido correcto');
+  assert(deudores.length === 3, 'Retorna todos los asegurados (top 10)');
+  assert(deudores[0].name === 'ASEGURADO_A', 'Primer asegurado correcto');
+  assert(deudores[0].penVencido === 600000, 'PEN vencido correcto');
+  assert(deudores[0].usdVencido === 50000, 'USD vencido correcto');
 }
 
 // --- Test 5: HTML email diario - secciones completas ---
@@ -278,8 +280,9 @@ console.log('\n📋 Test 5: HTML email diario completo');
   assertContains(html, 'Cartera Total', 'Monto total cartera');
   assertContains(html, 'Monto Vencido', 'Monto vencido absoluto');
   assertContains(html, 'Top Prioridades de Hoy', 'Prioridades');
-  assertContains(html, 'Top Aseguradoras', 'Top deudores');
-  assertContains(html, 'PEN+USD', 'FIX: Nota moneda mixta en deudores');
+  assertContains(html, 'Top Asegurados', 'Top deudores (asegurados)');
+  assertContains(html, 'Vencido PEN', 'Columna PEN en top deudores');
+  assertContains(html, 'Vencido USD', 'Columna USD en top deudores');
   assertContains(html, 'Próximos Vencimientos', 'PTPs próximos');
   assertContains(html, 'Abrir Portal de Cobranzas', 'CTA principal');
   assertContains(html, 'Metodología', 'Footer mejorado');
@@ -518,19 +521,19 @@ console.log('\n📋 Test 16: Cartera summary con desglose PEN/USD');
   assertContains(html2, 'Cartera Total', 'Fallback: muestra cartera');
 }
 
-// --- Test 17: Top deudores section ---
+// --- Test 17: Top deudores section (byAsegurado) ---
 console.log('\n📋 Test 17: Sección Top Deudores HTML');
 {
   const kit = EmailTemplateKit;
   const html = EmailAutomation._buildTopDeudoresSection({
     topDeudores: [
-      { nombre: 'RIMAC', montoVencido: 600000, moneda: 'PEN', porcentajeVencido: 30 },
-      { nombre: 'MAPFRE', montoVencido: 180000, moneda: 'PEN', porcentajeVencido: 18 }
+      { name: 'EMPRESA ABC SAC', penVencido: 80000, usdVencido: 30000, totalVencido: 110000 },
+      { name: 'TRANSPORTES XYZ', penVencido: 95000, usdVencido: 0, totalVencido: 95000 }
     ]
   }, kit);
-  assertContains(html, 'Top Aseguradoras', 'Título sección');
-  assertContains(html, 'RIMAC', 'Primera aseguradora');
-  assertContains(html, 'MAPFRE', 'Segunda aseguradora');
+  assertContains(html, 'Top Asegurados', 'Título sección');
+  assertContains(html, 'EMPRESA ABC SAC', 'Primer asegurado');
+  assertContains(html, 'TRANSPORTES XYZ', 'Segundo asegurado');
 }
 
 // --- Test 18: Top Asegurados semanal ---

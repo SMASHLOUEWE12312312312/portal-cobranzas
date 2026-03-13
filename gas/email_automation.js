@@ -213,6 +213,7 @@ const EmailAutomation = {
                     data.bucket90 = kpis.aging.buckets.find(b => b.id === 'BUCKET_90_PLUS') || {};
                     data.bucket6190 = kpis.aging.buckets.find(b => b.id === 'BUCKET_61_90') || {};
                     data.byCompany = kpis.byCompany;
+                    data.byAsegurado = kpis.byAsegurado;
                     data.byCurrency = kpis.byCurrency;
                 }
             } catch (e) {
@@ -523,29 +524,14 @@ const EmailAutomation = {
     },
 
     /**
-     * Genera lista de top deudores por monto para el email diario
+     * Genera lista de top asegurados por monto vencido con PEN/USD
      */
     _generateTopDeudores(data) {
-        const deudores = [];
-
-        // Extraer de byCompany (aseguradoras con mayor vencido)
-        if (data.byCompany && data.byCompany.length > 0) {
-            data.byCompany
-                .filter(c => c.vencido > 0)
-                .sort((a, b) => (b.vencido || 0) - (a.vencido || 0))
-                .slice(0, 5)
-                .forEach(c => {
-                    deudores.push({
-                        nombre: c.name,
-                        montoVencido: c.vencido || 0,
-                        moneda: 'PEN',
-                        porcentajeVencido: c.vencidoPct || 0,
-                        totalCartera: c.total || 0
-                    });
-                });
+        // Usar byAsegurado (con desglose PEN/USD) si está disponible
+        if (data.byAsegurado && data.byAsegurado.length > 0) {
+            return data.byAsegurado.slice(0, 10);
         }
-
-        return deudores.slice(0, 5);
+        return [];
     },
 
     /**
@@ -841,21 +827,24 @@ const EmailAutomation = {
         if (!data.topDeudores || data.topDeudores.length === 0) return '';
 
         const headers = [
-            { label: 'Aseguradora', align: 'left' },
-            { label: 'Monto Vencido', align: 'right', width: '120px' },
-            { label: '% Vencido', align: 'center', width: '80px' }
+            { label: 'Asegurado', align: 'left' },
+            { label: 'Vencido PEN', align: 'right', width: '110px' },
+            { label: 'Vencido USD', align: 'right', width: '110px' }
         ];
 
-        const rows = data.topDeudores.map(d => {
-            const pctColor = d.porcentajeVencido > 30 ? '#C62828' : d.porcentajeVencido > 15 ? '#E65100' : '#424242';
+        const rows = data.topDeudores.map(a => {
             return [
-                d.nombre,
-                `<strong>${kit.formatCurrency(d.montoVencido, d.moneda)}</strong>`,
-                `<span style="color:${pctColor};font-weight:600;">${kit.formatPct(d.porcentajeVencido)}</span>`
+                `<strong style="font-size:12px;">${a.name}</strong>`,
+                a.penVencido > 0
+                    ? `<span style="color:#C62828;font-weight:600;">${kit.formatCurrency(a.penVencido, 'PEN')}</span>`
+                    : '<span style="color:#9E9E9E;">&mdash;</span>',
+                a.usdVencido > 0
+                    ? `<span style="color:#C62828;font-weight:600;">${kit.formatCurrency(a.usdVencido, 'USD')}</span>`
+                    : '<span style="color:#9E9E9E;">&mdash;</span>'
             ];
         });
 
-        let html = kit.sectionTitle('Top Aseguradoras con Mayor Vencimiento', '🏢', `Top ${data.topDeudores.length} por monto vencido (PEN+USD)`);
+        let html = kit.sectionTitle('Top Asegurados con Mayor Deuda Vencida', '👤', `Top ${data.topDeudores.length} por monto vencido`);
         html += kit.dataTable({ headers, rows, compact: true });
         return html;
     },
