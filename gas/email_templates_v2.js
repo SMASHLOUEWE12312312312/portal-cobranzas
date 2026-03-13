@@ -955,7 +955,10 @@ const EmailTemplateKit = {
               <tr>
                 <td></td>
                 <td colspan="3" style="padding-top:2px;font-size:11px;color:#9E9E9E;">
-                  ${this.formatCurrency(bucket.amount)}${bucket.amountPercentage ? ` (${this.formatPct(bucket.amountPercentage)} del monto)` : ''}
+                  ${bucket.amountPEN != null && bucket.amountUSD != null
+                    ? `${this.formatCurrency(bucket.amountPEN, 'PEN')}${bucket.amountUSD > 0 ? ` + ${this.formatCurrency(bucket.amountUSD, 'USD')}` : ''}${bucket.amountPercentage ? ` (${this.formatPct(bucket.amountPercentage)} del monto)` : ''}`
+                    : `${this.formatCurrency(bucket.amount)}${bucket.amountPercentage ? ` (${this.formatPct(bucket.amountPercentage)} del monto)` : ''}`
+                  }
                 </td>
               </tr>
               ` : ''}

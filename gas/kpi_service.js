@@ -148,9 +148,13 @@ const KPIService = {
 
             const bucketCounts = {};
             const bucketAmounts = {};
+            const bucketAmountsPEN = {};
+            const bucketAmountsUSD = {};
             this.AGING_BUCKETS.forEach(b => {
                 bucketCounts[b.id] = 0;
                 bucketAmounts[b.id] = 0;
+                bucketAmountsPEN[b.id] = 0;
+                bucketAmountsUSD[b.id] = 0;
             });
 
             let sumDiasMora = 0;
@@ -221,6 +225,11 @@ const KPIService = {
                 const bucket = this._getBucket(diasMora);
                 bucketCounts[bucket.id]++;
                 bucketAmounts[bucket.id] += importe;
+                if (monKey === 'USD') {
+                    bucketAmountsUSD[bucket.id] += importe;
+                } else {
+                    bucketAmountsPEN[bucket.id] += importe;
+                }
             });
 
             kpis.summary.totalRegistros = validRowCount;
@@ -236,6 +245,8 @@ const KPIService = {
                 ...b,
                 count: bucketCounts[b.id],
                 amount: bucketAmounts[b.id],
+                amountPEN: bucketAmountsPEN[b.id],
+                amountUSD: bucketAmountsUSD[b.id],
                 percentage: kpis.summary.totalRegistros > 0
                     ? parseFloat((bucketCounts[b.id] / kpis.summary.totalRegistros * 100).toFixed(1))
                     : 0,

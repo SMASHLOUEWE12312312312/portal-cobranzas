@@ -85,10 +85,10 @@ var KPIService = {
     summary: { porcentajeVencido: 22.4, totalMonto: 6500000, totalVencido: 1456000 },
     aging: {
       buckets: [
-        { id: 'CURRENT', label: 'Corriente (0-30)', count: 3361, percentage: 78.2, amountPercentage: 85.9, amount: 4879064.54, color: '#4CAF50', severity: 'OK' },
-        { id: 'BUCKET_31_60', label: '31-60 días', count: 377, percentage: 8.8, amountPercentage: 8.6, amount: 489092.14, color: '#FFC107', severity: 'WARN' },
-        { id: 'BUCKET_61_90', label: '61-90 días', count: 114, percentage: 2.7, amountPercentage: 4.4, amount: 250108.95, color: '#FF9800', severity: 'WARN' },
-        { id: 'BUCKET_90_PLUS', label: '90+ días', count: 448, percentage: 10.4, amountPercentage: 1.2, amount: 68827.60, color: '#F44336', severity: 'CRITICAL' }
+        { id: 'CURRENT', label: 'Corriente (0-30)', count: 3361, percentage: 78.2, amountPercentage: 85.9, amount: 4879064.54, amountPEN: 3200000, amountUSD: 1679064.54, color: '#4CAF50', severity: 'OK' },
+        { id: 'BUCKET_31_60', label: '31-60 días', count: 377, percentage: 8.8, amountPercentage: 8.6, amount: 489092.14, amountPEN: 350000, amountUSD: 139092.14, color: '#FFC107', severity: 'WARN' },
+        { id: 'BUCKET_61_90', label: '61-90 días', count: 114, percentage: 2.7, amountPercentage: 4.4, amount: 250108.95, amountPEN: 180000, amountUSD: 70108.95, color: '#FF9800', severity: 'WARN' },
+        { id: 'BUCKET_90_PLUS', label: '90+ días', count: 448, percentage: 10.4, amountPercentage: 1.2, amount: 68827.60, amountPEN: 50000, amountUSD: 18827.60, color: '#F44336', severity: 'CRITICAL' }
       ]
     },
     byCompany: [
@@ -628,10 +628,12 @@ console.log('\n📋 Test 23: Aging table muestra % por monto');
 {
   const kit = EmailTemplateKit;
   const html = kit.agingTable([
-    { id: 'CURRENT', label: 'Corriente (0-30)', count: 3361, percentage: 78.2, amountPercentage: 85.9, amount: 4879064 },
-    { id: 'BUCKET_90_PLUS', label: '90+ días', count: 448, percentage: 10.4, amountPercentage: 1.2, amount: 68827 }
+    { id: 'CURRENT', label: 'Corriente (0-30)', count: 3361, percentage: 78.2, amountPercentage: 85.9, amount: 4879064, amountPEN: 3200000, amountUSD: 1679064 },
+    { id: 'BUCKET_90_PLUS', label: '90+ días', count: 448, percentage: 10.4, amountPercentage: 1.2, amount: 68827, amountPEN: 50000, amountUSD: 18827 }
   ]);
   assertContains(html, 'del monto', 'Aging table muestra % del monto');
+  assertContains(html, 'S/.', 'Aging table muestra PEN');
+  assertContains(html, 'US$', 'Aging table muestra USD');
 }
 
 // --- Test 24: Top asegurados con desglose PEN/USD ---
