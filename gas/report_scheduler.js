@@ -274,19 +274,30 @@ const ReportScheduler = {
                     todayMid.setHours(0, 0, 0, 0);
 
                     let pendientes = 0, vencidos = 0, montoComprometidoPEN = 0, montoComprometidoUSD = 0;
+                    const compromisosDetalle = [];
                     compromisos.forEach(c => {
-                        // Usar snapshots PEN y USD directamente (bitácora tiene ambos campos)
                         const penAmt = parseFloat(c.snapshotVencidoPEN) || 0;
                         const usdAmt = parseFloat(c.snapshotVencidoUSD) || 0;
                         if (penAmt > 0) montoComprometidoPEN += penAmt;
                         if (usdAmt > 0) montoComprometidoUSD += usdAmt;
+                        let estado = 'pendiente';
                         if (c.fechaCompromiso) {
                             const fechaComp = new Date(c.fechaCompromiso);
                             if (fechaComp < todayMid) {
                                 vencidos++;
+                                estado = 'vencido';
                             } else {
                                 pendientes++;
                             }
+                        }
+                        if (penAmt > 0 || usdAmt > 0) {
+                            compromisosDetalle.push({
+                                asegurado: c.asegurado || 'Sin nombre',
+                                penAmt: penAmt,
+                                usdAmt: usdAmt,
+                                fechaCompromiso: c.fechaCompromiso,
+                                estado: estado
+                            });
                         }
                     });
 
@@ -295,6 +306,7 @@ const ReportScheduler = {
                     data.montoComprometido = montoComprometidoPEN + montoComprometidoUSD;
                     data.montoComprometidoPEN = montoComprometidoPEN;
                     data.montoComprometidoUSD = montoComprometidoUSD;
+                    data.compromisosDetalle = compromisosDetalle;
                 }
 
                 // Casos cerrados pagados en la semana (métrica de gestión, NO de PTP)
@@ -1019,6 +1031,35 @@ const ReportScheduler = {
             `;
         }
 
+        // Detalle de compromisos por asegurado
+        let detalleHtml = '';
+        if (data.compromisosDetalle && data.compromisosDetalle.length > 0) {
+            const rows = data.compromisosDetalle
+                .sort((a, b) => (b.penAmt + b.usdAmt) - (a.penAmt + a.usdAmt))
+                .map(c => {
+                    const montos = [];
+                    if (c.penAmt > 0) montos.push(kit.formatCurrency(c.penAmt, 'PEN'));
+                    if (c.usdAmt > 0) montos.push(kit.formatCurrency(c.usdAmt, 'USD'));
+                    const estadoColor = c.estado === 'vencido' ? '#C62828' : '#2E7D32';
+                    const estadoLabel = c.estado === 'vencido' ? 'Vencido' : 'Pendiente';
+                    return `
+                        <tr>
+                            <td style="padding:4px 0;font-size:12px;color:#424242;border-bottom:1px solid #EEEEEE;">${c.asegurado}</td>
+                            <td align="right" style="padding:4px 8px;font-size:12px;font-weight:600;color:#212121;border-bottom:1px solid #EEEEEE;white-space:nowrap;">${montos.join(' + ')}</td>
+                            <td align="center" style="padding:4px 0;border-bottom:1px solid #EEEEEE;"><span style="font-size:10px;color:${estadoColor};font-weight:600;">${estadoLabel}</span></td>
+                        </tr>`;
+                }).join('');
+            detalleHtml = `
+                <tr>
+                    <td style="padding:8px 16px 16px;">
+                        <div style="font-size:11px;font-weight:600;color:#757575;text-transform:uppercase;margin-bottom:6px;">Detalle por asegurado</div>
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                            ${rows}
+                        </table>
+                    </td>
+                </tr>`;
+        }
+
         return `
             ${kit.sectionTitle('Pipeline de Cobranza', '🔄', 'Estado actual y proyección')}
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#F5F5F5;border-radius:8px;">
@@ -1031,6 +1072,7 @@ const ReportScheduler = {
                         `).join('')}
                     </td>
                 </tr>
+                ${detalleHtml}
                 ${proyeccionHtml}
             </table>
         `;

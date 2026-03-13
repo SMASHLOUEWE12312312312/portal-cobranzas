@@ -452,29 +452,26 @@ const EmailTemplateKit = {
       trendHtml = this.trendArrow(trend, invertTrendColors);
     }
     
-    let deltaHtml = '';
-    if (delta !== undefined && delta !== null) {
-      deltaHtml = `<div style="font-size:11px;color:${sev.text};margin-top:4px;opacity:0.85;">${deltaLabel || ''} ${delta}</div>`;
-    }
-    
-    let benchmarkHtml = '';
-    if (benchmark !== undefined && benchmark !== null) {
-      benchmarkHtml = `<div style="font-size:10px;color:#9E9E9E;margin-top:2px;">Meta: ${benchmark}</div>`;
-    }
+    // Siempre generar 2 líneas debajo del label para uniformidad
+    const deltaContent = (delta !== undefined && delta !== null && delta !== '')
+      ? `${deltaLabel || ''} ${delta}`.trim()
+      : '&mdash;';
+    const benchmarkContent = (benchmark !== undefined && benchmark !== null)
+      ? `Meta: ${benchmark}`
+      : '';
 
     return `
       <td style="padding:6px;vertical-align:top;">
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${sev.bg};border-radius:${this.DESIGN.BORDER.RADIUS_MD};border-left:3px solid ${sev.border};">
           <tr>
-            <td style="padding:${padding};vertical-align:top;">
+            <td style="padding:16px 18px;vertical-align:top;">
               <div style="color:${sev.text};font-size:${valueSize};font-weight:700;line-height:1.2;">
                 ${icon ? `<span style="margin-right:4px;">${icon}</span>` : ''}${value} ${trendHtml}
               </div>
               <div style="color:#666666;font-size:${labelSize};margin-top:6px;text-transform:uppercase;letter-spacing:0.3px;">${label}</div>
-              ${deltaHtml}
-              ${benchmarkHtml}
+              <div style="font-size:11px;color:${delta ? sev.text : 'transparent'};margin-top:4px;opacity:0.85;">${deltaContent}</div>
+              <div style="font-size:10px;color:${benchmarkContent ? '#9E9E9E' : 'transparent'};margin-top:2px;">${benchmarkContent || '&nbsp;'}</div>
             </td>
-            <td width="1" style="padding:0;"><div style="width:1px;height:118px;font-size:1px;line-height:118px;">&nbsp;</div></td>
           </tr>
         </table>
       </td>
