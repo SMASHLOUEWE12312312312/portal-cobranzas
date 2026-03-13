@@ -98,6 +98,13 @@ var KPIService = {
       { name: 'LA POSITIVA', total: 800000, vencido: 120000, vencidoPct: 15, count: 60 },
       { name: 'INTERSEGURO', total: 500000, vencido: 75000, vencidoPct: 15, count: 40 }
     ],
+    byAsegurado: [
+      { name: 'EMPRESA ABC SAC', penTotal: 150000, penVencido: 80000, usdTotal: 50000, usdVencido: 30000, count: 12, totalVencido: 110000 },
+      { name: 'TRANSPORTES XYZ EIRL', penTotal: 120000, penVencido: 95000, usdTotal: 0, usdVencido: 0, count: 8, totalVencido: 95000 },
+      { name: 'CONSTRUCTORA DEL NORTE', penTotal: 0, penVencido: 0, usdTotal: 80000, usdVencido: 75000, count: 5, totalVencido: 75000 },
+      { name: 'IMPORT EXPORT PERU SAC', penTotal: 60000, penVencido: 45000, usdTotal: 25000, usdVencido: 20000, count: 7, totalVencido: 65000 },
+      { name: 'MINERA LOS ANDES', penTotal: 30000, penVencido: 25000, usdTotal: 40000, usdVencido: 35000, count: 4, totalVencido: 60000 }
+    ],
     byCurrency: { PEN: { count: 4000, total: 5000000, vencido: 1200000 }, USD: { count: 300, total: 1500000, vencido: 256000 } }
   })
 };
@@ -297,20 +304,26 @@ console.log('\n📋 Test 6: Recolección datos semanales');
   assert(data.intensidadGestion !== undefined, 'NUEVO: intensidadGestion');
   assert(data.cuentasGestionadasSemana !== undefined, 'NUEVO: cuentasGestionadasSemana');
   assert(data.totalCuentasVencidas !== undefined, 'NUEVO: totalCuentasVencidas');
-  assert(data.topAseguradoras !== undefined, 'NUEVO: topAseguradoras');
-  assert(data.topAseguradoras.length > 0, 'topAseguradoras tiene datos');
+  assert(data.topAsegurados !== undefined, 'topAsegurados (no aseguradoras)');
+  assert(data.topAsegurados.length > 0, 'topAsegurados tiene datos');
+  assert(data.topAsegurados[0].penVencido !== undefined, 'topAsegurados tiene penVencido');
+  assert(data.topAsegurados[0].usdVencido !== undefined, 'topAsegurados tiene usdVencido');
   assert(typeof data.montoRecuperado === 'number', 'FIX: montoRecuperado es número');
   assert(typeof data.montoComprometido === 'number', 'FIX: montoComprometido es número');
   assert(data.montoComprometido >= 0, 'FIX: montoComprometido >= 0');
+  assert(data.tasaCumplimiento === -1, 'FIX: tasaCumplimiento = -1 sin PTPService (no finge 100%)');
+  assert(data.casosCerradosPagados >= 0, 'casosCerradosPagados calculado');
+  assert(data.ptpsCumplidos === 0, 'ptpsCumplidos = 0 sin PTPService (no usa CERRADO_PAGADO)');
 }
 
 // --- Test 7: montoRecuperado fallback fix ---
 console.log('\n📋 Test 7: montoRecuperado con BitacoraService fallback');
 {
   const data = ReportScheduler._collectWeeklyDataEnriched();
-  assert(data.ptpsCumplidos >= 0, 'ptpsCumplidos calculado');
   assert(typeof data.montoRecuperado === 'number', 'montoRecuperado es number');
+  assert(data.montoRecuperado > 0, 'montoRecuperado > 0 (hay CERRADO_PAGADO en semana)');
   assert(typeof data.tasaRecuperacion === 'number', 'tasaRecuperacion calculada');
+  assert(typeof data.casosCerradosPagados === 'number', 'casosCerradosPagados es number');
 }
 
 // --- Test 8: HTML email semanal - secciones completas ---
@@ -323,13 +336,14 @@ console.log('\n📋 Test 8: HTML email semanal completo');
   assertContains(html, 'Reporte Semanal de Cobranzas', 'Título');
   assertContains(html, 'Resumen Ejecutivo', 'Executive Summary');
   assertContains(html, 'Métricas de la Semana', 'Sección métricas');
-  assertContains(html, 'Tasa Cumplimiento', 'KPI Tasa');
+  assertContains(html, 'Casos Pagados', 'KPI Casos Pagados (sin PTPService, no finge tasa)');
   assertContains(html, 'DSO Promedio', 'KPI DSO');
   assertContains(html, 'Monto Recuperado', 'KPI Monto Recuperado');
   assertContains(html, 'Distribución por Antigüedad', 'Aging table');
-  assertContains(html, 'Cartera por Aseguradora', 'Sección aseguradoras');
-  assertContains(html, 'PEN+USD', 'FIX: Nota moneda mixta en aseguradoras');
-  assertContains(html, 'RIMAC', 'Datos aseguradora');
+  assertContains(html, 'Top Asegurados', 'FIX: Sección top asegurados (no aseguradoras)');
+  assertContains(html, 'Vencido PEN', 'FIX: Columna PEN');
+  assertContains(html, 'Vencido USD', 'FIX: Columna USD');
+  assertContains(html, 'EMPRESA ABC', 'Datos asegurado');
   assertContains(html, 'Eficiencia Operativa', 'Sección cobertura');
   assertContains(html, 'Cobertura de Gestión', 'NUEVO: Métrica cobertura');
   assertContains(html, 'Intensidad', 'NUEVO: Métrica intensidad');
@@ -349,6 +363,7 @@ console.log('\n📋 Test 9: Executive Summary');
 {
   const summary = ReportScheduler._generateExecutiveSummary({
     tasaCumplimiento: 80, dsoPromedio: 12, montoRecuperado: 5000,
+    casosCerradosPagados: 16,
     ptpsIncumplidos: 2, porcentajeVencido: 22.4,
     agingDistribution: [
       { id: 'BUCKET_90_PLUS', percentage: 10.4, count: 448 },
@@ -515,15 +530,18 @@ console.log('\n📋 Test 17: Sección Top Deudores HTML');
   assertContains(html, 'MAPFRE', 'Segunda aseguradora');
 }
 
-// --- Test 18: Sección aseguradoras semanal ---
-console.log('\n📋 Test 18: Cartera por Aseguradora (semanal)');
+// --- Test 18: Top Asegurados semanal ---
+console.log('\n📋 Test 18: Top Asegurados con PEN/USD (semanal)');
 {
   const data = ReportScheduler._collectWeeklyDataEnriched();
   const kit = EmailTemplateKit;
-  const html = ReportScheduler._buildAseguradorasSection(data, kit);
-  assertContains(html, 'Cartera por Aseguradora', 'Título');
-  assertContains(html, 'RIMAC', 'Aseguradora principal');
-  assertContains(html, 'Cartera Total', 'Header');
+  const html = ReportScheduler._buildTopAseguradosSection(data, kit);
+  assertContains(html, 'Top Asegurados', 'Título');
+  assertContains(html, 'Vencido PEN', 'Header PEN');
+  assertContains(html, 'Vencido USD', 'Header USD');
+  assertContains(html, 'EMPRESA ABC', 'Asegurado principal');
+  assertContains(html, 'US$', 'Muestra montos en USD');
+  assertContains(html, 'S/.', 'Muestra montos en PEN');
 }
 
 // --- Test 19: Eficiencia operativa semanal ---
@@ -616,15 +634,17 @@ console.log('\n📋 Test 23: Aging table muestra % por monto');
   assertContains(html, 'del monto', 'Aging table muestra % del monto');
 }
 
-// --- Test 24: Weekly aseguradoras con nota de moneda ---
-console.log('\n📋 Test 24: Aseguradoras semanal con resumen moneda');
+// --- Test 24: Top asegurados con desglose PEN/USD ---
+console.log('\n📋 Test 24: Top asegurados con desglose completo');
 {
   const kit = EmailTemplateKit;
   const data = ReportScheduler._collectWeeklyDataEnriched();
-  const html = ReportScheduler._buildAseguradorasSection(data, kit);
-  assertContains(html, 'PEN+USD', 'Nota moneda mixta en subtítulo');
-  assertContains(html, 'PEN:', 'Resumen moneda PEN');
-  assertContains(html, 'USD:', 'Resumen moneda USD');
+  const html = ReportScheduler._buildTopAseguradosSection(data, kit);
+  assertContains(html, 'Cartera Total:', 'Resumen total cartera');
+  // Asegurado con solo PEN
+  assertContains(html, 'TRANSPORTES XYZ', 'Asegurado solo PEN');
+  // Asegurado con solo USD
+  assertContains(html, 'CONSTRUCTORA DEL NORTE', 'Asegurado solo USD');
 }
 
 // ==================== RESULTADO ====================

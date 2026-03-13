@@ -69,6 +69,7 @@ const KPIService = {
                     healthStatus: 'OK'
                 },
                 byCompany: [],
+                byAsegurado: [],
                 byCurrency: {
                     PEN: { count: 0, total: 0, vencido: 0 },
                     USD: { count: 0, total: 0, vencido: 0 }
@@ -141,6 +142,7 @@ const KPIService = {
 
             const aseguradosSet = new Set();
             const ciaMap = {};
+            const aseguradoMap = {};
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
@@ -173,6 +175,19 @@ const KPIService = {
                 ciaMap[cia].count++;
                 ciaMap[cia].total += importe;
 
+                // Tracking por asegurado con desglose PEN/USD
+                if (asegurado) {
+                    if (!aseguradoMap[asegurado]) {
+                        aseguradoMap[asegurado] = { penTotal: 0, penVencido: 0, usdTotal: 0, usdVencido: 0, count: 0 };
+                    }
+                    aseguradoMap[asegurado].count++;
+                    if (monKey === 'USD') {
+                        aseguradoMap[asegurado].usdTotal += importe;
+                    } else {
+                        aseguradoMap[asegurado].penTotal += importe;
+                    }
+                }
+
                 const fecVenc = this._parseDate(row[fecVencIdx]);
                 let diasMora = 0;
                 let isVencido = false;
@@ -191,6 +206,13 @@ const KPIService = {
                     kpis.summary.totalVencido += importe;
                     kpis.byCurrency[monKey].vencido += importe;
                     ciaMap[cia].vencido += importe;
+                    if (asegurado && aseguradoMap[asegurado]) {
+                        if (monKey === 'USD') {
+                            aseguradoMap[asegurado].usdVencido += importe;
+                        } else {
+                            aseguradoMap[asegurado].penVencido += importe;
+                        }
+                    }
                 }
 
                 const bucket = this._getBucket(diasMora);
@@ -238,6 +260,20 @@ const KPIService = {
                 }))
                 .sort((a, b) => b.total - a.total)
                 .slice(0, 10);
+
+            // Top asegurados por monto vencido total (PEN+USD) con desglose por moneda
+            kpis.byAsegurado = Object.keys(aseguradoMap)
+                .filter(name => {
+                    const a = aseguradoMap[name];
+                    return (a.penVencido + a.usdVencido) > 0;
+                })
+                .map(name => ({
+                    name: name,
+                    ...aseguradoMap[name],
+                    totalVencido: aseguradoMap[name].penVencido + aseguradoMap[name].usdVencido
+                }))
+                .sort((a, b) => b.totalVencido - a.totalVencido)
+                .slice(0, 20);
 
             kpis.dso.value = sumImportes > 0 ? Math.round(sumDiasMora / sumImportes) : 0;
             kpis.dso.trend = kpis.dso.value > kpis.dso.benchmark + 5 ? 'up' :

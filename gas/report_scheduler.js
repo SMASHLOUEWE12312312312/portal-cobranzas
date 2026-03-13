@@ -225,8 +225,10 @@ const ReportScheduler = {
             porcentajeVencido: 0,
             totalMonto: 0,
             totalVencido: 0,
+            casosCerradosPagados: 0,
             agingDistribution: [],
             byCompany: [],
+            byAsegurado: [],
             byCurrency: null,
             lastWeek: null,
             executiveSummary: [],
@@ -258,74 +260,72 @@ const ReportScheduler = {
             }
         }
         
-        // Fallback: usar compromisos de BitacoraService para métricas de PTP
+        // Fallback: usar BitacoraService para métricas de gestión (NO PTP)
+        // IMPORTANTE: CERRADO_PAGADO ≠ PTP cumplido. Son conceptos distintos.
+        // Solo PTPService tiene datos reales de compromisos cumplidos/incumplidos.
         if (!ptpMetricsObtained && typeof BitacoraService !== 'undefined') {
             try {
                 const compromisos = BitacoraService.obtenerCompromisosActivos();
                 const gestiones = BitacoraService.obtenerGestiones({ limit: 5000 });
-                
+
+                // Compromisos activos (solo datos reales de PTPs)
                 if (compromisos && compromisos.length > 0) {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    
-                    // Contar pendientes vs vencidos
-                    let pendientes = 0, vencidos = 0;
+                    const todayMid = new Date();
+                    todayMid.setHours(0, 0, 0, 0);
+
+                    let pendientes = 0, vencidos = 0, montoComprometidoTotal = 0;
                     compromisos.forEach(c => {
+                        const monto = c.montoCompromiso || c.montoComprometido || c.snapshotVencidoPEN || c.montoPEN || c.monto || 0;
+                        montoComprometidoTotal += monto;
                         if (c.fechaCompromiso) {
                             const fechaComp = new Date(c.fechaCompromiso);
-                            if (fechaComp < today) {
+                            if (fechaComp < todayMid) {
                                 vencidos++;
                             } else {
                                 pendientes++;
                             }
                         }
                     });
-                    
-                    // Contar cerrados/pagados en la semana y sumar montos recuperados
-                    const weekStart = new Date(today);
-                    weekStart.setDate(weekStart.getDate() - 7);
-                    let montoRecuperadoSemana = 0;
-                    const cerradosPagados = gestiones.filter(g => {
-                        if (g.estadoGestion !== 'CERRADO_PAGADO') return false;
-                        const fecha = new Date(g.fechaRegistro);
-                        const enSemana = fecha >= weekStart && fecha <= today;
-                        if (enSemana) {
-                            // Sumar monto recuperado de múltiples campos posibles
-                            montoRecuperadoSemana += (g.montoRecuperado || g.montoCompromiso || g.montoComprometido || g.snapshotVencidoPEN || g.montoPEN || 0);
-                        }
-                        return enSemana;
-                    }).length;
-
-                    // Sumar montos comprometidos activos
-                    let montoComprometidoTotal = 0;
-                    compromisos.forEach(c => {
-                        montoComprometidoTotal += (c.montoCompromiso || c.montoComprometido || c.snapshotVencidoPEN || c.montoPEN || c.monto || 0);
-                    });
 
                     data.ptpsPendientes = pendientes;
                     data.ptpsIncumplidos = vencidos;
-                    data.ptpsCumplidos = cerradosPagados;
-                    data.montoRecuperado = montoRecuperadoSemana;
                     data.montoComprometido = montoComprometidoTotal;
-
-                    // Calcular tasa de cumplimiento
-                    const totalProcessed = data.ptpsCumplidos + data.ptpsIncumplidos;
-                    data.tasaCumplimiento = totalProcessed > 0
-                        ? parseFloat(((data.ptpsCumplidos / totalProcessed) * 100).toFixed(1))
-                        : 0;
-
-                    // Calcular tasa de recuperación
-                    data.tasaRecuperacion = data.montoComprometido > 0
-                        ? parseFloat(((data.montoRecuperado / data.montoComprometido) * 100).toFixed(1))
-                        : 0;
-                    
-                    Logger.info('ReportScheduler._collectWeeklyDataEnriched', 'PTPs obtenidos de BitacoraService', {
-                        pendientes: data.ptpsPendientes,
-                        vencidos: data.ptpsIncumplidos,
-                        cumplidos: data.ptpsCumplidos,
-                        tasa: data.tasaCumplimiento
-                    });
                 }
+
+                // Casos cerrados pagados en la semana (métrica de gestión, NO de PTP)
+                const weekStartDate = new Date();
+                weekStartDate.setHours(0, 0, 0, 0);
+                weekStartDate.setDate(weekStartDate.getDate() - 7);
+                let montoRecuperadoSemana = 0;
+                let casosCerradosSemana = 0;
+                gestiones.forEach(g => {
+                    if (g.estadoGestion !== 'CERRADO_PAGADO') return;
+                    const fecha = new Date(g.fechaRegistro);
+                    if (fecha >= weekStartDate) {
+                        casosCerradosSemana++;
+                        montoRecuperadoSemana += (g.montoRecuperado || g.montoCompromiso || g.montoComprometido || g.snapshotVencidoPEN || g.montoPEN || 0);
+                    }
+                });
+
+                data.casosCerradosPagados = casosCerradosSemana;
+                data.montoRecuperado = montoRecuperadoSemana;
+
+                // NO calcular tasaCumplimiento desde BitacoraService (sería engañoso)
+                // tasaCumplimiento queda en 0 → el KPI card lo mostrará como "Sin datos PTP"
+                data.ptpsCumplidos = 0; // No tenemos datos reales de PTPs cumplidos
+                data.tasaCumplimiento = -1; // -1 = sin datos de PTPService
+
+                // Tasa de recuperación basada en montos
+                data.tasaRecuperacion = data.montoComprometido > 0
+                    ? parseFloat(((data.montoRecuperado / data.montoComprometido) * 100).toFixed(1))
+                    : 0;
+
+                Logger.info('ReportScheduler._collectWeeklyDataEnriched', 'Datos de BitacoraService (sin PTP real)', {
+                    pendientes: data.ptpsPendientes,
+                    vencidos: data.ptpsIncumplidos,
+                    casosCerrados: data.casosCerradosPagados,
+                    montoRecuperado: data.montoRecuperado
+                });
             } catch (e) {
                 Logger.warn('ReportScheduler._collectWeeklyDataEnriched', 'Error en BitacoraService fallback', e);
             }
@@ -352,6 +352,7 @@ const ReportScheduler = {
                         severity: b.severity
                     }));
                     data.byCompany = kpis.byCompany || [];
+                    data.byAsegurado = kpis.byAsegurado || [];
                     data.byCurrency = kpis.byCurrency;
                 }
             } catch (e) { 
@@ -425,20 +426,10 @@ const ReportScheduler = {
             }
         }
 
-        // Cartera por aseguradora (top 5 con mayor vencido)
-        data.topAseguradoras = [];
-        if (data.byCompany && data.byCompany.length > 0) {
-            data.topAseguradoras = data.byCompany
-                .filter(c => (c.vencido || 0) > 0)
-                .sort((a, b) => (b.vencido || 0) - (a.vencido || 0))
-                .slice(0, 5)
-                .map(c => ({
-                    nombre: c.name,
-                    totalCartera: c.total || 0,
-                    montoVencido: c.vencido || 0,
-                    porcentajeVencido: c.vencidoPct || 0,
-                    cuentas: c.count || 0
-                }));
+        // Top 10 asegurados con mayor deuda vencida (con desglose PEN/USD)
+        data.topAsegurados = [];
+        if (data.byAsegurado && data.byAsegurado.length > 0) {
+            data.topAsegurados = data.byAsegurado.slice(0, 10);
         }
 
         // Generar Executive Summary
@@ -474,8 +465,11 @@ const ReportScheduler = {
 
         // Qué mejoró
         const improvements = [];
-        if (data.tasaCumplimiento > (parseFloat(lastWeek['Tasa Cumplimiento']) || 0)) {
+        if (data.tasaCumplimiento > 0 && data.tasaCumplimiento > (parseFloat(lastWeek['Tasa Cumplimiento']) || 0)) {
             improvements.push(`Tasa de cumplimiento mejoró a ${data.tasaCumplimiento}%`);
+        }
+        if (data.casosCerradosPagados > 0) {
+            improvements.push(`${data.casosCerradosPagados} caso(s) cerrado(s) pagado(s) esta semana`);
         }
         if (data.dsoPromedio < (lastWeek['DSO Promedio'] || 999)) {
             improvements.push(`DSO bajó a ${data.dsoPromedio} días`);
@@ -616,21 +610,22 @@ const ReportScheduler = {
         let sheet = ss.getSheetByName(this.WEEKLY_SHEET);
         if (!sheet) {
             sheet = ss.insertSheet(this.WEEKLY_SHEET);
-            sheet.getRange(1, 1, 1, 11).setValues([['Semana', 'Fecha Inicio', 'Fecha Fin', 'PTPs Cumplidos', 'PTPs Incumplidos', 'Tasa Cumplimiento', 'DSO Promedio', 'Tendencia DSO', 'Monto Recuperado', '% Vencido', 'Total Gestiones']]).setFontWeight('bold').setBackground('#e8f5e9');
+            sheet.getRange(1, 1, 1, 12).setValues([['Semana', 'Fecha Inicio', 'Fecha Fin', 'Casos Pagados', 'Compromisos Vencidos', 'Tasa Cumplimiento', 'DSO Promedio', 'Tendencia DSO', 'Monto Recuperado', '% Vencido', 'Total Gestiones', 'Compromisos Pendientes']]).setFontWeight('bold').setBackground('#e8f5e9');
             sheet.setFrozenRows(1);
         }
         sheet.appendRow([
-            data.semana, 
-            new Date(data.fechaInicio).toLocaleDateString('es-PE'), 
-            new Date(data.fechaFin).toLocaleDateString('es-PE'), 
-            data.ptpsCumplidos, 
-            data.ptpsIncumplidos, 
-            data.tasaCumplimiento + '%', 
-            data.dsoPromedio, 
-            data.tendenciaDSO, 
+            data.semana,
+            new Date(data.fechaInicio).toLocaleDateString('es-PE'),
+            new Date(data.fechaFin).toLocaleDateString('es-PE'),
+            data.casosCerradosPagados || data.ptpsCumplidos,
+            data.ptpsIncumplidos,
+            data.tasaCumplimiento >= 0 ? data.tasaCumplimiento + '%' : 'N/D',
+            data.dsoPromedio,
+            data.tendenciaDSO,
             data.montoRecuperado,
             data.porcentajeVencido,
-            data.totalGestiones
+            data.totalGestiones,
+            data.ptpsPendientes
         ]);
         this._trimSheet(sheet, 52);
         return `WEEKLY_${data.semana}`;
@@ -687,17 +682,25 @@ const ReportScheduler = {
         const scoreboardHtml = kit.kpiGrid(kpis, 3);
 
         // 3. Aging Distribution mejorada
-        const agingHtml = data.agingDistribution && data.agingDistribution.length > 0
+        let agingHtml = data.agingDistribution && data.agingDistribution.length > 0
             ? kit.agingTable(data.agingDistribution, { showAmount: true })
             : '';
+        // Nota: los montos en aging mezclan PEN y USD (no se pueden separar por bucket)
+        if (agingHtml && data.byCurrency) {
+            const pen = data.byCurrency.PEN || {};
+            const usd = data.byCurrency.USD || {};
+            if ((usd.total || 0) > 0) {
+                agingHtml += `<div style="font-size:10px;color:#9E9E9E;margin-top:4px;padding:0 4px;">* Montos incluyen PEN y USD sin conversión. Cartera: ${kit.formatCurrency(pen.total, 'PEN')} + ${kit.formatCurrency(usd.total, 'USD')}</div>`;
+            }
+        }
 
         // 4. Performance por responsable
         const performanceHtml = data.performanceByResponsable && data.performanceByResponsable.length > 0
             ? kit.performanceTable(data.performanceByResponsable, { showTop: 5 })
             : '';
 
-        // 5. Cartera por Aseguradora (top 5)
-        const aseguradorasHtml = this._buildAseguradorasSection(data, kit);
+        // 5. Top Asegurados con mayor deuda (PEN/USD)
+        const aseguradorasHtml = this._buildTopAseguradosSection(data, kit);
 
         // 6. Cobertura e intensidad de gestión
         const coberturaHtml = this._buildCoberturaSection(data, kit);
@@ -739,7 +742,8 @@ const ReportScheduler = {
         const periodoStr = `${kit.formatDate(data.fechaInicio)} - ${kit.formatDate(data.fechaFin)}`;
 
         // Preheader
-        const preheader = `Semana ${data.semana}: Tasa ${data.tasaCumplimiento}%, DSO ${data.dsoPromedio}d, ${data.totalGestiones} gestiones, Cobertura ${data.coberturaGestion || 0}%`;
+        const tasaLabel = data.tasaCumplimiento >= 0 ? `Tasa ${data.tasaCumplimiento}%` : `${data.casosCerradosPagados || 0} pagados`;
+        const preheader = `Semana ${data.semana}: ${tasaLabel}, DSO ${data.dsoPromedio}d, ${data.totalGestiones} gestiones, Cobertura ${data.coberturaGestion || 0}%`;
 
         return kit.buildLayout({
             brandColor: '#2E7D32',
@@ -757,17 +761,32 @@ const ReportScheduler = {
     _buildWeeklyKPICards(data, kit, lastWeek) {
         const kpis = [];
 
-        // 1. Tasa de Cumplimiento PTP
-        const tasaLastWeek = parseFloat(lastWeek['Tasa Cumplimiento']) || null;
-        const tasaSeverity = data.tasaCumplimiento >= 80 ? 'OK' : 
-                           data.tasaCumplimiento >= 60 ? 'WARN' : 'CRITICAL';
-        kpis.push({
-            label: 'Tasa Cumplimiento',
-            value: kit.formatPct(data.tasaCumplimiento),
-            delta: kit.getDeltaDisplay(data.tasaCumplimiento, tasaLastWeek, { format: 'pct', invertColors: true }),
-            severity: tasaSeverity,
-            icon: '✅'
-        });
+        // 1. Tasa Cumplimiento PTP o Casos Cerrados (según fuente de datos)
+        if (data.tasaCumplimiento >= 0) {
+            // Datos reales de PTPService
+            const tasaLastWeek = parseFloat(lastWeek['Tasa Cumplimiento']) || null;
+            const tasaSeverity = data.tasaCumplimiento >= 80 ? 'OK' :
+                               data.tasaCumplimiento >= 60 ? 'WARN' : 'CRITICAL';
+            kpis.push({
+                label: 'Tasa Cumplimiento',
+                value: kit.formatPct(data.tasaCumplimiento),
+                delta: kit.getDeltaDisplay(data.tasaCumplimiento, tasaLastWeek, { format: 'pct', invertColors: true }),
+                severity: tasaSeverity,
+                icon: '✅'
+            });
+        } else {
+            // Sin PTPService: mostrar casos cerrados pagados (dato real de Bitácora)
+            const cerrados = data.casosCerradosPagados || 0;
+            kpis.push({
+                label: 'Casos Pagados',
+                value: kit.formatInt(cerrados),
+                delta: cerrados > 0
+                    ? `<span style="color:#2E7D32;font-size:11px;">esta semana</span>`
+                    : '',
+                severity: cerrados > 0 ? 'OK' : 'NEUTRAL',
+                icon: '✅'
+            });
+        }
 
         // 2. DSO Promedio
         const dsoLastWeek = lastWeek['DSO Promedio'] || null;
@@ -802,14 +821,15 @@ const ReportScheduler = {
             icon: '📉'
         });
 
-        // 5. PTPs Cumplidos vs Incumplidos
+        // 5. Compromisos activos
+        const totalCompromisos = (data.ptpsPendientes || 0) + (data.ptpsIncumplidos || 0);
         kpis.push({
-            label: 'PTPs Cumplidos',
-            value: kit.formatInt(data.ptpsCumplidos),
-            delta: data.ptpsIncumplidos > 0 
-                ? `<span style="color:#C62828;font-size:11px;">${data.ptpsIncumplidos} incumplido(s)</span>` 
-                : '<span style="color:#2E7D32;font-size:11px;">0 incumplidos</span>',
-            severity: data.ptpsIncumplidos === 0 ? 'OK' : data.ptpsIncumplidos <= 3 ? 'WARN' : 'CRITICAL',
+            label: 'Compromisos Activos',
+            value: kit.formatInt(totalCompromisos),
+            delta: data.ptpsIncumplidos > 0
+                ? `<span style="color:#C62828;font-size:11px;">${data.ptpsIncumplidos} vencido(s)</span>`
+                : totalCompromisos > 0 ? `<span style="color:#2E7D32;font-size:11px;">${data.ptpsPendientes} pendiente(s)</span>` : '',
+            severity: data.ptpsIncumplidos > 3 ? 'CRITICAL' : data.ptpsIncumplidos > 0 ? 'WARN' : 'OK',
             icon: '📋'
         });
 
@@ -829,46 +849,46 @@ const ReportScheduler = {
     /**
      * Construye sección de Cartera por Aseguradora
      */
-    _buildAseguradorasSection(data, kit) {
-        if (!data.topAseguradoras || data.topAseguradoras.length === 0) return '';
+    _buildTopAseguradosSection(data, kit) {
+        if (!data.topAsegurados || data.topAsegurados.length === 0) return '';
 
-        let html = kit.sectionTitle('Cartera por Aseguradora', '🏢', `Top ${data.topAseguradoras.length} con mayor vencimiento (PEN+USD)`);
+        let html = kit.sectionTitle('Top Asegurados con Mayor Deuda Vencida', '👤', `Top ${data.topAsegurados.length} por monto vencido`);
 
         const headers = [
-            { label: 'Aseguradora', align: 'left' },
-            { label: 'Cartera Total', align: 'right', width: '110px' },
-            { label: 'Monto Vencido', align: 'right', width: '110px' },
-            { label: '% Vencido', align: 'center', width: '80px' }
+            { label: 'Asegurado', align: 'left' },
+            { label: 'Vencido PEN', align: 'right', width: '110px' },
+            { label: 'Vencido USD', align: 'right', width: '110px' }
         ];
 
-        const rows = data.topAseguradoras.map(a => {
-            const pctColor = a.porcentajeVencido > 30 ? '#C62828' : a.porcentajeVencido > 15 ? '#E65100' : '#2E7D32';
+        const rows = data.topAsegurados.map(a => {
             return [
-                `<strong>${a.nombre}</strong>`,
-                kit.formatCurrency(a.totalCartera),
-                `<span style="color:#C62828;font-weight:600;">${kit.formatCurrency(a.montoVencido)}</span>`,
-                `<span style="display:inline-block;background:${a.porcentajeVencido > 30 ? '#FFEBEE' : a.porcentajeVencido > 15 ? '#FFF3E0' : '#E8F5E9'};color:${pctColor};padding:2px 8px;border-radius:4px;font-weight:600;font-size:12px;">${kit.formatPct(a.porcentajeVencido)}</span>`
+                `<strong style="font-size:12px;">${a.name}</strong>`,
+                a.penVencido > 0
+                    ? `<span style="color:#C62828;font-weight:600;">${kit.formatCurrency(a.penVencido, 'PEN')}</span>`
+                    : '<span style="color:#9E9E9E;">—</span>',
+                a.usdVencido > 0
+                    ? `<span style="color:#C62828;font-weight:600;">${kit.formatCurrency(a.usdVencido, 'USD')}</span>`
+                    : '<span style="color:#9E9E9E;">—</span>'
             ];
         });
 
         html += kit.dataTable({ headers, rows, compact: true });
 
-        // Mostrar resumen por moneda si hay datos
+        // Resumen total por moneda
         if (data.byCurrency) {
             const pen = data.byCurrency.PEN || {};
             const usd = data.byCurrency.USD || {};
-            if ((pen.total || 0) > 0 || (usd.total || 0) > 0) {
-                html += `
-                    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;">
-                        <tr>
-                            <td style="font-size:11px;color:#757575;padding:4px 8px;">
-                                ${(pen.total || 0) > 0 ? `<span style="margin-right:16px;">🇵🇪 PEN: ${kit.formatCurrency(pen.total, 'PEN')} (vencido: ${kit.formatCurrency(pen.vencido, 'PEN')})</span>` : ''}
-                                ${(usd.total || 0) > 0 ? `<span>🇺🇸 USD: ${kit.formatCurrency(usd.total, 'USD')} (vencido: ${kit.formatCurrency(usd.vencido, 'USD')})</span>` : ''}
-                            </td>
-                        </tr>
-                    </table>
-                `;
-            }
+            html += `
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;background:#F5F5F5;border-radius:6px;">
+                    <tr>
+                        <td style="font-size:11px;color:#616161;padding:8px 12px;">
+                            <strong>Cartera Total:</strong>
+                            ${(pen.total || 0) > 0 ? `<span style="margin-left:8px;">🇵🇪 ${kit.formatCurrency(pen.total, 'PEN')} (vencido: ${kit.formatCurrency(pen.vencido, 'PEN')})</span>` : ''}
+                            ${(usd.total || 0) > 0 ? `<span style="margin-left:8px;">🇺🇸 ${kit.formatCurrency(usd.total, 'USD')} (vencido: ${kit.formatCurrency(usd.vencido, 'USD')})</span>` : ''}
+                        </td>
+                    </tr>
+                </table>
+            `;
         }
 
         return html;
