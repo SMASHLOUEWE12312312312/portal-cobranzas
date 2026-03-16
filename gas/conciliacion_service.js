@@ -287,11 +287,24 @@ const ConciliacionServiceV2 = {
                 // fallback: no date available
             }
 
+            // Leer metadata del último upload
+            var uploadedBy = null;
+            var uploadDate = lastModified;
+            try {
+                var meta = PropertiesService.getScriptProperties().getProperty('BD_CRUCE_LAST_UPLOAD');
+                if (meta) {
+                    var parsed = JSON.parse(meta);
+                    uploadedBy = parsed.user || null;
+                    if (parsed.date) uploadDate = parsed.date;
+                }
+            } catch (e) { /* ignore */ }
+
             return {
                 ok: true,
                 loaded: lastRow > 1,
                 rows: Math.max(0, lastRow - 1),
-                lastModified: lastModified
+                lastModified: uploadDate,
+                uploadedBy: uploadedBy
             };
 
         } catch (error) {

@@ -319,7 +319,7 @@
                                 style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">🔄 Actualizar</button>
                         </div>
                         <div id="baseStatsGrid"
-                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;">
+                            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
                             <div class="stat-card"
                                 style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
                                 <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-primary);"
@@ -337,6 +337,12 @@
                                 <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-text-secondary);"
                                     id="statBaseDate">-</div>
                                 <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Última carga</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.95rem; font-weight: bold; color: var(--tp-text-secondary);"
+                                    id="statBaseUser">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Subido por</div>
                             </div>
                         </div>
                     </section>
@@ -1511,7 +1517,7 @@
                                 style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">🔄 Actualizar</button>
                         </div>
                         <div id="bdCruceStatsGrid"
-                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;">
+                            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
                             <div class="stat-card"
                                 style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
                                 <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-primary);"
@@ -1529,6 +1535,12 @@
                                 <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-text-secondary);"
                                     id="statBDCruceDate">-</div>
                                 <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Última carga</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.95rem; font-weight: bold; color: var(--tp-text-secondary);"
+                                    id="statBDCruceUser">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Subido por</div>
                             </div>
                         </div>
                     </section>
@@ -11021,6 +11033,7 @@
             const statLoaded = document.getElementById('statBaseLoaded');
             const statRows = document.getElementById('statBaseRows');
             const statDate = document.getElementById('statBaseDate');
+            const statUser = document.getElementById('statBaseUser');
 
             if (badge) {
                 badge.textContent = 'Cargando...';
@@ -11048,6 +11061,7 @@
                                     statDate.textContent = 'Cargada';
                                 }
                             }
+                            if (statUser) statUser.textContent = result.uploadedBy || '-';
                         } else {
                             if (badge) {
                                 badge.textContent = 'Sin cargar';
@@ -11057,6 +11071,7 @@
                             if (statLoaded) statLoaded.textContent = '❌';
                             if (statRows) statRows.textContent = '0';
                             if (statDate) statDate.textContent = '-';
+                            if (statUser) statUser.textContent = '-';
                         }
                     } else {
                         if (badge) {
@@ -11085,6 +11100,7 @@
             const statLoaded = document.getElementById('statBDCruceLoaded');
             const statRows = document.getElementById('statBDCruceRows');
             const statDate = document.getElementById('statBDCruceDate');
+            const statUser = document.getElementById('statBDCruceUser');
 
             if (badge) {
                 badge.textContent = 'Cargando...';
@@ -11114,6 +11130,7 @@
                                     statDate.textContent = 'Cargada';
                                 }
                             }
+                            if (statUser) statUser.textContent = result.uploadedBy || '-';
                             enablePaso2();
                         } else {
                             if (badge) {
@@ -11124,6 +11141,7 @@
                             if (statLoaded) statLoaded.textContent = '❌';
                             if (statRows) statRows.textContent = '0';
                             if (statDate) statDate.textContent = '-';
+                            if (statUser) statUser.textContent = '-';
                             disablePaso2();
                         }
                     } else {

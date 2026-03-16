@@ -139,6 +139,16 @@ const ConciliacionIOV2 = {
                 const rowsLoaded = lastRow - 1;
                 const totalTime = Date.now() - T;
 
+                // Guardar metadata del último upload de BD Cruce
+                try {
+                    var uploaderEmail = Session.getActiveUser().getEmail() || 'Desconocido';
+                    PropertiesService.getScriptProperties().setProperty('BD_CRUCE_LAST_UPLOAD', JSON.stringify({
+                        user: uploaderEmail,
+                        date: new Date().toISOString(),
+                        rows: rowsLoaded
+                    }));
+                } catch (metaErr) { /* best-effort */ }
+
                 return {
                     ok: true,
                     rowsLoaded: rowsLoaded,

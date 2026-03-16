@@ -1077,6 +1077,24 @@ function subirArchivoBase(payload, token) {
 
     CacheService.getScriptCache().remove('asegurados:v2');
 
+    // Guardar metadata del último upload
+    try {
+      var uploaderName = Session.getActiveUser().getEmail() || 'Desconocido';
+      if (token) {
+        var sess = AuthService.getSessionData(token);
+        if (sess && (sess.displayName || sess.nombre || sess.username)) {
+          uploaderName = sess.displayName || sess.nombre || sess.username;
+        }
+      }
+      PropertiesService.getScriptProperties().setProperty('BD_LAST_UPLOAD', JSON.stringify({
+        user: uploaderName,
+        date: new Date().toISOString(),
+        rows: result.rowsWritten
+      }));
+    } catch (metaErr) {
+      Logger.warn(context, 'No se pudo guardar metadata de upload', metaErr);
+    }
+
     return {
       ok: true,
       filas: result.rowsWritten,
@@ -1121,11 +1139,24 @@ function getBaseStatus(token) {
       // fallback: no date available
     }
 
+    // Leer metadata del último upload
+    var uploadedBy = null;
+    var uploadDate = lastModified;
+    try {
+      var meta = PropertiesService.getScriptProperties().getProperty('BD_LAST_UPLOAD');
+      if (meta) {
+        var parsed = JSON.parse(meta);
+        uploadedBy = parsed.user || null;
+        if (parsed.date) uploadDate = parsed.date;
+      }
+    } catch (e) { /* ignore */ }
+
     return {
       ok: true,
       loaded: lastRow > 1,
       rows: Math.max(0, lastRow - 1),
-      lastModified: lastModified
+      lastModified: uploadDate,
+      uploadedBy: uploadedBy
     };
   } catch (error) {
     Logger.error(context, 'Failed', error);
