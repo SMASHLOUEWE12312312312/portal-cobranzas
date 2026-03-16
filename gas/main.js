@@ -453,6 +453,10 @@ function doPost(e) {
         break;
 
       // ========== BASE - ACTUALIZAR ==========
+      case 'getBaseStatus':
+        result = _wrapApiResponse(getBaseStatus(token));
+        break;
+
       case 'subirArchivoBase':
         result = _wrapApiResponse(subirArchivoBase(params.payload || params, token));
         break;
@@ -1674,6 +1678,19 @@ function conciliacionGetInsurers() {
     return ConciliacionService.getInsurers();
   } catch (error) {
     Logger.log('conciliacionGetInsurers ERROR: ' + error.message);
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
+ * Get BD (base principal) status for sidebar/HTML UI
+ * @returns {Object} { ok: boolean, loaded?: boolean, rows?: number, lastModified?: string }
+ */
+function baseGetStatus() {
+  try {
+    return getBaseStatus(null);
+  } catch (error) {
+    Logger.log('baseGetStatus ERROR: ' + error.message);
     return { ok: false, error: error.message };
   }
 }

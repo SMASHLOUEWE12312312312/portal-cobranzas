@@ -1096,6 +1096,43 @@ function subirArchivoBase(payload, token) {
   }
 }
 
+// ========== BASE: ESTADO ==========
+function getBaseStatus(token) {
+  const context = 'getBaseStatus';
+  try {
+    if (token) {
+      AuthService.validateSession(token);
+    }
+
+    const sheetName = getConfig('SHEETS.BASE', 'BD');
+    const ss = SheetsIO._getSpreadsheet();
+    const sheet = ss.getSheetByName(sheetName);
+
+    if (!sheet) {
+      return { ok: true, loaded: false, rows: 0, lastModified: null };
+    }
+
+    const lastRow = sheet.getLastRow();
+    var lastModified = null;
+    try {
+      var file = DriveApp.getFileById(ss.getId());
+      lastModified = file.getLastUpdated().toISOString();
+    } catch (e) {
+      // fallback: no date available
+    }
+
+    return {
+      ok: true,
+      loaded: lastRow > 1,
+      rows: Math.max(0, lastRow - 1),
+      lastModified: lastModified
+    };
+  } catch (error) {
+    Logger.error(context, 'Failed', error);
+    return { ok: false, error: error.message };
+  }
+}
+
 // ========== MAIL: CARGAR CONTACTOS ==========
 function loadContactsFromSheet() {
   const context = 'loadContactsFromSheet';

@@ -303,6 +303,44 @@
                 <!-- VIEW: ACTUALIZAR -->
                 <div id="view-actualizar" class="view-section">
                     <h2 class="text-2xl font-bold mb-6">📤 Actualizar Base de Datos</h2>
+
+                    <!-- ESTADO DE BD PRINCIPAL -->
+                    <section class="card" style="margin-bottom: 1.5rem;" id="baseStatusCard">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3
+                                style="margin: 0; font-size: 1rem; color: var(--tp-text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                <span>📋 Estado de Base de Datos</span>
+                                <span id="baseStatusBadge" class="badge"
+                                    style="font-size: 0.7rem; padding: 2px 8px; background: var(--tp-warning-pale); color: var(--tp-warning);">Sin
+                                    cargar</span>
+                            </h3>
+                            <button onclick="refreshBaseStatus()" class="btn btn-sm"
+                                style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">🔄 Actualizar</button>
+                        </div>
+                        <div id="baseStatsGrid"
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;">
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-primary);"
+                                    id="statBaseLoaded">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Estado</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-info);"
+                                    id="statBaseRows">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Registros</div>
+                            </div>
+                            <div class="stat-card"
+                                style="background: var(--tp-bg-light, #F5F5F5); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: var(--tp-text-secondary);"
+                                    id="statBaseDate">-</div>
+                                <div style="font-size: 0.75rem; color: var(--tp-text-muted);">Última carga</div>
+                            </div>
+                        </div>
+                    </section>
+
                     <div class="card">
                         <div class="form-group">
                             <label class="form-label" for="fileInput">Archivo Excel o CSV</label>
@@ -2510,6 +2548,11 @@
                 loadBitacoraEmbeddedData();
                 // UNIFICADO: Inicializar formulario embebido
                 inicializarFormularioEmbedded();
+            }
+
+            // ACTUALIZAR: Cargar estado de BD al navegar
+            if (viewName === 'actualizar') {
+                refreshBaseStatus();
             }
 
             // CONCILIACIÓN: Inicializar módulo cuando se navega
@@ -4827,6 +4870,7 @@
                             invalidateAseguradosCache();
                             loadAsegurados();
                             loadGrupos();
+                            refreshBaseStatus();
                         } else {
                             const error = result?.mensaje || result?.error || 'Error desconocido';
                             log(`${error}`, 'error');
@@ -10967,6 +11011,70 @@
             const colors = { success: 'var(--tp-success)', error: 'var(--tp-error)', warning: 'var(--tp-warning)', info: 'var(--tp-info)' };
 
             container.innerHTML = `<div style="padding: 0.75rem 1rem; border-radius: 8px; background: ${type === 'success' ? 'var(--tp-success-pale)' : type === 'error' ? 'var(--tp-error-pale)' : 'var(--tp-info-pale)'}; color: ${colors[type]}; font-size: 0.875rem;">${icons[type] || 'ℹ️'} ${escapeHtml(message)}</div>`;
+        }
+
+        /**
+         * Actualiza el estado de BD principal (vista Actualizar)
+         */
+        function refreshBaseStatus() {
+            const badge = document.getElementById('baseStatusBadge');
+            const statLoaded = document.getElementById('statBaseLoaded');
+            const statRows = document.getElementById('statBaseRows');
+            const statDate = document.getElementById('statBaseDate');
+
+            if (badge) {
+                badge.textContent = 'Cargando...';
+                badge.style.background = 'var(--tp-info-pale)';
+                badge.style.color = 'var(--tp-info)';
+            }
+
+            google.script.run
+                .withSuccessHandler(result => {
+                    if (result && result.ok) {
+                        if (result.loaded) {
+                            if (badge) {
+                                badge.textContent = 'CARGADA ✓';
+                                badge.style.background = 'var(--tp-success-pale)';
+                                badge.style.color = 'var(--tp-success)';
+                            }
+                            if (statLoaded) statLoaded.textContent = '✅';
+                            if (statRows) statRows.textContent = (result.rows || 0).toLocaleString();
+                            if (statDate) {
+                                if (result.lastModified) {
+                                    const d = new Date(result.lastModified);
+                                    statDate.textContent = d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+                                    statDate.style.fontSize = '0.95rem';
+                                } else {
+                                    statDate.textContent = 'Cargada';
+                                }
+                            }
+                        } else {
+                            if (badge) {
+                                badge.textContent = 'Sin cargar';
+                                badge.style.background = 'var(--tp-warning-pale)';
+                                badge.style.color = 'var(--tp-warning)';
+                            }
+                            if (statLoaded) statLoaded.textContent = '❌';
+                            if (statRows) statRows.textContent = '0';
+                            if (statDate) statDate.textContent = '-';
+                        }
+                    } else {
+                        if (badge) {
+                            badge.textContent = 'Error';
+                            badge.style.background = 'var(--tp-error-pale)';
+                            badge.style.color = 'var(--tp-error)';
+                        }
+                    }
+                })
+                .withFailureHandler(error => {
+                    console.error('Error al obtener estado BD:', error);
+                    if (badge) {
+                        badge.textContent = 'Error';
+                        badge.style.background = 'var(--tp-error-pale)';
+                        badge.style.color = 'var(--tp-error)';
+                    }
+                })
+                .baseGetStatus();
         }
 
         /**
