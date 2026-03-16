@@ -216,8 +216,24 @@ const AutomationEngine = {
 };
 
 function runAutomationEngine() { return AutomationEngine.runScheduledTasks(); }
-function runDailySummary() { return typeof ReportScheduler !== 'undefined' ? ReportScheduler.generateDailySummary() : { ok: false, error: 'ReportScheduler no disponible' }; }
-function runWeeklyReport() { return typeof ReportScheduler !== 'undefined' ? ReportScheduler.generateWeeklyReport() : { ok: false, error: 'ReportScheduler no disponible' }; }
+function runDailySummary() {
+  // Solo lunes(1) a viernes(5) — saltar fines de semana
+  const dayOfWeek = new Date().getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    Logger.info('runDailySummary', 'Saltando fin de semana', { dayOfWeek });
+    return { ok: true, skipped: true, reason: 'Fin de semana' };
+  }
+  return typeof ReportScheduler !== 'undefined' ? ReportScheduler.generateDailySummary() : { ok: false, error: 'ReportScheduler no disponible' };
+}
+function runWeeklyReport() {
+  // Solo miércoles (3) — el trigger ya filtra por día, esto es un guard adicional
+  const dayOfWeek = new Date().getDay();
+  if (dayOfWeek !== 3) {
+    Logger.info('runWeeklyReport', 'Saltando, no es miércoles', { dayOfWeek });
+    return { ok: true, skipped: true, reason: 'No es miércoles' };
+  }
+  return typeof ReportScheduler !== 'undefined' ? ReportScheduler.generateWeeklyReport() : { ok: false, error: 'ReportScheduler no disponible' };
+}
 
 function getAutomationStatus_API() { return AutomationEngine.getStatus(); }
 function setupAutomationTriggers_API() { return AutomationEngine.setupTriggers(); }
