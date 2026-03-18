@@ -42,9 +42,9 @@ const DashboardEngine = {
     DIVIDER_STRONG: '#CBD5E0'
   },
 
-  // Fixed 6-column grid: ALL tables span B through G (same width)
+  // Base 6-column grid: tables may extend beyond for extra columns
   TABLE_SPAN: 6,
-  COL_WIDTHS: [280, 100, 115, 115, 95, 95],  // B, C, D, E, F, G = 800px total
+  COL_WIDTHS: [280, 100, 115, 115, 95, 95, 95, 95],  // B-I (extra H, I for wider tables)
 
   // ==================================================================
   // CANVAS SETUP
@@ -79,13 +79,13 @@ const DashboardEngine = {
     // Column A = margin
     sheet.setColumnWidth(1, 30);
 
-    // Fixed widths B through G (set ONCE, never changed)
-    for (var i = 0; i < this.TABLE_SPAN; i++) {
+    // Fixed widths B through I (set ONCE, never changed)
+    for (var i = 0; i < this.COL_WIDTHS.length; i++) {
       sheet.setColumnWidth(i + 2, this.COL_WIDTHS[i]);
     }
 
-    // Hide columns H onwards
-    try { sheet.hideColumns(2 + this.TABLE_SPAN, 24); } catch (e) { /* ignore */ }
+    // Hide columns J onwards
+    try { sheet.hideColumns(2 + this.COL_WIDTHS.length, 20); } catch (e) { /* ignore */ }
   },
 
   // ==================================================================
@@ -232,7 +232,7 @@ const DashboardEngine = {
     var rows = tableData.rows;
     var numCols = headers.length;
     var startCol = 2; // Always col B
-    var fullSpan = this.TABLE_SPAN; // Always 6 cols
+    var fullSpan = Math.max(numCols, this.TABLE_SPAN);
 
     // --- Header row (full span) ---
     var headerRange = sheet.getRange(r, startCol, 1, numCols);

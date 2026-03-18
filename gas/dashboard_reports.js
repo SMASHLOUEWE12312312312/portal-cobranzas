@@ -1243,7 +1243,8 @@ function generarReporteBitacoraConDashboard() {
       var am = asegMap[asegKeys[a]];
       var latest = am.latest;
       var estado = String(latest[iEstado] || 'SIN_RESPUESTA').trim();
-      var resp = String(latest[iResp] || 'Sin Asignar').trim().toUpperCase();
+      var respRaw = String(latest[iResp] || 'Sin Asignar').trim();
+      var resp = (respRaw.indexOf('@') !== -1 ? respRaw.split('@')[0] : respRaw).toUpperCase();
       var vPEN = _parseNum(latest[iVencPEN]);
       var vUSD = _parseNum(latest[iVencUSD]);
       var fecReg2 = _parseDateDash(latest[iFecReg]);
@@ -1254,6 +1255,8 @@ function generarReporteBitacoraConDashboard() {
       // Calculate tendencia from previous gesture
       var tendenciaPEN = 'SIN_CAMBIO';
       var deltaPEN = 0;
+      var tendenciaUSD = 'SIN_CAMBIO';
+      var deltaUSD = 0;
       if (am.gestiones.length >= 2) {
         var sorted = am.gestiones.slice().sort(function(x, y) {
           var dx = _parseDateDash(x[iFecReg]) || new Date(0);
@@ -1261,9 +1264,13 @@ function generarReporteBitacoraConDashboard() {
           return dy - dx;
         });
         var prevPEN = _parseNum(sorted[1][iVencPEN]);
+        var prevUSD = _parseNum(sorted[1][iVencUSD]);
         deltaPEN = vPEN - prevPEN;
+        deltaUSD = vUSD - prevUSD;
         if (deltaPEN > 0) tendenciaPEN = 'AUMENTO';
         else if (deltaPEN < 0) tendenciaPEN = 'DISMINUCION';
+        if (deltaUSD > 0) tendenciaUSD = 'AUMENTO';
+        else if (deltaUSD < 0) tendenciaUSD = 'DISMINUCION';
       }
 
       var isActive = estado !== 'CERRADO_PAGADO' && estado !== 'NO_COBRABLE' && estado !== 'NO_CONTACTABLE'
@@ -1275,16 +1282,17 @@ function generarReporteBitacoraConDashboard() {
 
       if (!grupoMap[grupoKey]) {
         grupoMap[grupoKey] = {
-          nombre: grupoNombre, vPEN: 0, vUSD: 0, deltaPEN: 0,
+          nombre: grupoNombre, vPEN: 0, vUSD: 0, deltaPEN: 0, deltaUSD: 0,
           dias: 0, maxDias: 0, numGestiones: 0,
           estados: {}, resp: resp, fecComp: null, obs: '',
-          miembros: [], isActive: false, tendenciaPEN: 'SIN_CAMBIO'
+          miembros: [], isActive: false, tendenciaPEN: 'SIN_CAMBIO', tendenciaUSD: 'SIN_CAMBIO'
         };
       }
       var gm = grupoMap[grupoKey];
       gm.vPEN += vPEN;
       gm.vUSD += vUSD;
       gm.deltaPEN += deltaPEN;
+      gm.deltaUSD += deltaUSD;
       gm.numGestiones += am.gestiones.length;
       if (dias > gm.maxDias) { gm.maxDias = dias; gm.dias = dias; }
       if (!gm.estados[estado]) gm.estados[estado] = 0;
@@ -1295,7 +1303,8 @@ function generarReporteBitacoraConDashboard() {
       gm.miembros.push({
         nombre: am.nombre, estado: estado, resp: resp,
         vPEN: vPEN, vUSD: vUSD, dias: dias, isActive: isActive,
-        tendenciaPEN: tendenciaPEN, deltaPEN: deltaPEN
+        tendenciaPEN: tendenciaPEN, deltaPEN: deltaPEN,
+        tendenciaUSD: tendenciaUSD, deltaUSD: deltaUSD
       });
     }
 
@@ -1332,6 +1341,12 @@ function generarReporteBitacoraConDashboard() {
       if (gd.numGestiones <= gd.miembros.length) tendencia = 'PRIMERA_VEZ_FLAG';
       gd.tendenciaPEN = tendencia === 'PRIMERA_VEZ_FLAG' ? 'SIN_CAMBIO' : tendencia;
 
+      var tendenciaU = 'SIN_CAMBIO';
+      if (gd.deltaUSD > 0) tendenciaU = 'AUMENTO';
+      else if (gd.deltaUSD < 0) tendenciaU = 'DISMINUCION';
+      if (gd.numGestiones <= gd.miembros.length) tendenciaU = 'PRIMERA_VEZ_FLAG';
+      gd.tendenciaUSD = tendenciaU === 'PRIMERA_VEZ_FLAG' ? 'SIN_CAMBIO' : tendenciaU;
+
       // Dominant responsable
       var respCount = {};
       for (var mi = 0; mi < gd.miembros.length; mi++) {
@@ -1350,6 +1365,7 @@ function generarReporteBitacoraConDashboard() {
         vPEN: gd.vPEN, vUSD: gd.vUSD, dias: gd.maxDias,
         fecComp: gd.fecComp, obs: gd.obs,
         tendenciaPEN: gd.tendenciaPEN, deltaPEN: gd.deltaPEN,
+        tendenciaUSD: gd.tendenciaUSD, deltaUSD: gd.deltaUSD,
         numGestiones: gd.numGestiones, isActive: gd.isActive,
         miembros: gd.miembros,
         isPrimeraVez: tendencia === 'PRIMERA_VEZ_FLAG'
@@ -1426,15 +1442,22 @@ function generarReporteBitacoraConDashboard() {
 
     // --- Tendencia buckets ---
     var tendBuckets = { AUMENTO: { count: 0, pen: 0 }, SIN_CAMBIO: { count: 0, pen: 0 }, DISMINUCION: { count: 0, pen: 0 }, PRIMERA_VEZ: { count: 0, pen: 0 } };
+    var tendBucketsUSD = { AUMENTO: { count: 0, usd: 0 }, SIN_CAMBIO: { count: 0, usd: 0 }, DISMINUCION: { count: 0, usd: 0 }, PRIMERA_VEZ: { count: 0, usd: 0 } };
     for (var ct = 0; ct < clientesActivos.length; ct++) {
       var clt = clientesActivos[ct];
       if (clt.isPrimeraVez) {
         tendBuckets.PRIMERA_VEZ.count++;
         tendBuckets.PRIMERA_VEZ.pen += clt.vPEN;
+        if (clt.vUSD > 0) { tendBucketsUSD.PRIMERA_VEZ.count++; tendBucketsUSD.PRIMERA_VEZ.usd += clt.vUSD; }
       } else {
         var tb = tendBuckets[clt.tendenciaPEN] || tendBuckets.SIN_CAMBIO;
         tb.count++;
         tb.pen += clt.vPEN;
+        if (clt.vUSD > 0) {
+          var tbU = tendBucketsUSD[clt.tendenciaUSD] || tendBucketsUSD.SIN_CAMBIO;
+          tbU.count++;
+          tbU.usd += clt.vUSD;
+        }
       }
     }
 
@@ -1526,6 +1549,22 @@ function generarReporteBitacoraConDashboard() {
         rows: tendRows
       }, r, { currencyCols: [2], severityCol: 3 });
 
+      // TENDENCIA DE CARTERA USD
+      var totalTendUSD = tendBucketsUSD.AUMENTO.count + tendBucketsUSD.SIN_CAMBIO.count + tendBucketsUSD.DISMINUCION.count + tendBucketsUSD.PRIMERA_VEZ.count;
+      if (totalTendUSD > 0) {
+        r = DE.writeSectionTitle(dashSheet, 'TENDENCIA DE CARTERA USD', r);
+        var tendRowsUSD = [
+          ['AUMENTO', tendBucketsUSD.AUMENTO.count, tendBucketsUSD.AUMENTO.usd, 'ROJO'],
+          ['SIN CAMBIO', tendBucketsUSD.SIN_CAMBIO.count, tendBucketsUSD.SIN_CAMBIO.usd, 'AMARILLO'],
+          ['DISMINUCIÓN', tendBucketsUSD.DISMINUCION.count, tendBucketsUSD.DISMINUCION.usd, 'VERDE'],
+          ['PRIMERA VEZ', tendBucketsUSD.PRIMERA_VEZ.count, tendBucketsUSD.PRIMERA_VEZ.usd, 'NORMAL']
+        ];
+        r = DE.writeTable(dashSheet, {
+          headers: ['Tendencia', '# Clientes', 'Cartera USD US$', 'Señal'],
+          rows: tendRowsUSD
+        }, r, { currencyCols: [2], severityCol: 3 });
+      }
+
       // ⑤ MATRIZ DE RIESGO - TOP 30 GRUPOS/CLIENTES ACTIVOS
       r = DE.writeSectionTitle(dashSheet, 'MATRIZ DE RIESGO — TOP 30 GRUPOS / CLIENTES ACTIVOS', r);
       var scored = clientesActivos.map(function(c) {
@@ -1584,12 +1623,12 @@ function generarReporteBitacoraConDashboard() {
           var diasRest = Math.floor((cc.fecComp - today) / 86400000);
           var compSev = diasRest < 0 ? 'CRITICO' : diasRest <= 3 ? 'ALTO' : diasRest <= 7 ? 'AMARILLO' : 'NORMAL';
           var fecStr = Utilities.formatDate(cc.fecComp, 'America/Lima', 'dd/MM/yyyy');
-          compRows.push([cc.nombre, cc.resp, fecStr, diasRest, cc.vPEN, compSev]);
+          compRows.push([cc.nombre, cc.resp, fecStr, diasRest, cc.vPEN, cc.vUSD, compSev]);
         }
         r = DE.writeTable(dashSheet, {
-          headers: ['Grupo / Asegurado', 'Resp.', 'Fec. Compromiso', 'Días Rest.', 'Vencido PEN', 'Alerta'],
+          headers: ['Grupo / Asegurado', 'Resp.', 'Fec. Compromiso', 'Días Rest.', 'Vencido PEN', 'Vencido USD', 'Alerta'],
           rows: compRows
-        }, r, { currencyCols: [4], severityCol: 5 });
+        }, r, { currencyCols: [4, 5], severityCol: 6 });
       }
 
       // ⑧ CLIENTES CON DEUDA EN AUMENTO
@@ -1603,12 +1642,12 @@ function generarReporteBitacoraConDashboard() {
           var ec = enAumento[ea];
           var estadoAbr = ec.estado.replace('_', ' ');
           if (estadoAbr.length > 12) estadoAbr = estadoAbr.substring(0, 12);
-          aumRows.push([ec.nombre, ec.resp, ec.dias, ec.vPEN, ec.deltaPEN, 'ROJO']);
+          aumRows.push([ec.nombre, ec.resp, ec.dias, ec.vPEN, ec.deltaPEN, ec.vUSD, ec.deltaUSD, 'ROJO']);
         }
         r = DE.writeTable(dashSheet, {
-          headers: ['Grupo / Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Delta PEN', 'Tendencia'],
+          headers: ['Grupo / Asegurado', 'Resp.', 'Días', 'Vencido PEN', 'Delta PEN', 'Vencido USD', 'Delta USD', 'Tendencia'],
           rows: aumRows
-        }, r, { currencyCols: [3, 4], severityCol: 5 });
+        }, r, { currencyCols: [3, 4, 5, 6], severityCol: 7 });
       }
 
       // ALERTAS FINALES
@@ -1616,6 +1655,7 @@ function generarReporteBitacoraConDashboard() {
       if (sinRespClientes.length > 5) alerts.push({ indicator: 'Clientes Sin Respuesta', value: sinRespClientes.length + ' clientes', status: 'CRITICO' });
       if (enAumento.length > 5) alerts.push({ indicator: 'Deuda en Aumento', value: enAumento.length + ' clientes', status: 'ROJO' });
       if (totalVencPEN > 500000) alerts.push({ indicator: 'Cartera Vencida PEN', value: DE.formatCurrency(totalVencPEN, 'PEN'), status: 'CRITICO' });
+      if (totalVencUSD > 0) alerts.push({ indicator: 'Cartera Vencida USD', value: DE.formatCurrency(totalVencUSD, 'USD'), status: totalVencUSD > 50000 ? 'CRITICO' : totalVencUSD > 10000 ? 'ROJO' : 'NARANJA' });
       var pctSinResp = totalClientes > 0 ? (sinResp / totalClientes * 100) : 0;
       if (pctSinResp > 10) alerts.push({ indicator: '% Sin Respuesta', value: pctSinResp.toFixed(1) + '%', status: 'NARANJA' });
       if (compromisos.length > 0) {
@@ -1673,7 +1713,8 @@ function generarReporteBitacoraConDashboard() {
               var bKey = aAseg.toUpperCase();
               if (asegMap[bKey] && asegMap[bKey].latest) {
                 agingGrupos[aGrupo].estado = String(asegMap[bKey].latest[iEstado] || '');
-                agingGrupos[aGrupo].resp = String(asegMap[bKey].latest[iResp] || '');
+                var agRespRaw = String(asegMap[bKey].latest[iResp] || '');
+                agingGrupos[aGrupo].resp = agRespRaw.indexOf('@') !== -1 ? agRespRaw.split('@')[0] : agRespRaw;
               }
             }
           }
@@ -1747,7 +1788,7 @@ function generarReporteBitacoraConDashboard() {
           String(lt[iEstado] || ''),
           String(lt[iTipo] || ''),
           String(lt[iCanal] || ''),
-          String(lt[iResp] || ''),
+          (function(r) { return r.indexOf('@') !== -1 ? r.split('@')[0] : r; })(String(lt[iResp] || '')),
           fReg || '',
           diasReg,
           fComp2 || '',
