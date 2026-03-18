@@ -3285,3 +3285,407 @@ function TEST_backfillSnapshots_EJECUTAR() {
   console.log(JSON.stringify(resultado, null, 2));
   return resultado;
 }
+
+// ========== ACTUALIZACIÓN MASIVA DE RESPONSABLES EN BITÁCORA ==========
+
+/**
+ * Actualiza el campo RESPONSABLE en la hoja Bitácora para los asegurados indicados.
+ * Ejecutar desde el editor de Apps Script.
+ * @param {boolean} dryRun - Si true, solo reporta sin modificar (default: true)
+ */
+function actualizarResponsablesBitacora(dryRun) {
+  if (dryRun === undefined) dryRun = true;
+
+  var MAPA_RESPONSABLES = {
+    'CORPORACION INSUMEX S.A.C.': 'Pilar',
+    'AGROPECUARIA PAMAJOSA S.A.': 'Pilar',
+    'COMEDOR EXPRESS E.I.R.L.': 'Pilar',
+    'R18 GASTRONOMICO S.R.L.': 'Pilar',
+    'POZO ALTO S.A.C.': 'Pilar',
+    'ALVARADO TRUCIOS MARIA JENIFFER': 'Gladys',
+    'OSCAR CARLOS ANDRES VALENCIA FRIEDMANN': 'Gladys',
+    'LORENA MONTENEGRO CARRION': 'Gladys',
+    'ANITA EMPERATRIZ VARGAS VENEGAS': 'Gladys',
+    'ENRIQUE GERARDO LLANOS CAMPOS': 'Gladys',
+    'INVERSIONES LOS ROSALES S.A.': 'Pilar',
+    'ROCIO VELARDE COLOMA': 'Gladys',
+    'MAYRA JUDITH FELICIANO ANCHELIA': 'Gladys',
+    'IRIS MILAGROS RAMIREZ PARODI': 'Gladys',
+    'DIEGO ALONSO GARCIA SAYAN': 'Gladys',
+    'MARISOL DEL ROSARIO PEÑALOZA RODRIGUEZ': 'Gladys',
+    'HARADA HIGASHI JUAN FERNANDO': 'Gladys',
+    'ANDUAGA GANOZA AURORA INES': 'Gladys',
+    'URSULA MARIETA HAMMERSCHMIDT RUIZ': 'Gladys',
+    'JESSICA CECILIA HARADA WAKAO': 'Gladys',
+    'LUIS FERNANDO CHAVEZ TORRES': 'Gladys',
+    'ALL BUSINESS SOLUTIONS SAC': 'Pilar',
+    'TRANSCLOT SAC': 'Pilar',
+    'CLIMA SISTEMAS SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'YEMPAC PHARMACEUTICA SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'GRUPO ONCOLOGICO MD S.A.C.': 'Pilar',
+    'CIME INGENIEROS S.R.L.': 'Pilar',
+    'ENCARGA S.R.L.': 'Pilar',
+    'JANEL S.A.C.': 'Pilar',
+    'MOTOR GAS ALVARADO S.A.C': 'Pilar',
+    'CORPORACION CREDITAXI S.A.C.': 'Pilar',
+    'MACUSANI URANIUM S.A.C.': 'Pilar',
+    'RIO EBRO S.A.C.': 'Pilar',
+    'FERCO MEDICAL S.A.C.': 'Pilar',
+    'FUNDO LA BODEGA S.A.C.': 'Pilar',
+    'SOFIA MONICA GUZMAN TORRES': 'Gladys',
+    'EQUIPHARMA HIPICA Y SERVICIOS VETERINARIOS S.A.C.': 'Pilar',
+    'CALZADO TAZ SAC': 'Pilar',
+    'JOSE ERNESTO MOSCOSO GARCIA': 'Gladys',
+    'DJK INTERNATIONAL S.A.C.': 'Pilar',
+    'ADOLPHUS S. A.': 'Pilar',
+    'CONGREGACION DE LA PASION DE JESUCRISTO': 'Pilar',
+    'ROBERTO NICANOR HERRERA CARCELEN': 'Gladys',
+    'DJM DISTRIBUTION S.A.C.': 'Pilar',
+    'MACUSANI YELLOWCAKE S.A.C.': 'Pilar',
+    'TORSA MINING SERVICES PERU S.A.C.': 'Pilar',
+    'SINO MAQUINARIAS Y TECNOLOGIA S.A.C.': 'Pilar',
+    'SOCIEDAD ANONIMA FAUSTO PIAGGIO': 'Pilar',
+    'CONSTRUMAQ CONTRATISTAS GENERALES S.A.C.': 'Pilar',
+    'MULTICARGAS EGAMILK E.I.R.L.': 'Pilar',
+    'JUNTA DE PROPIETARIOS DEL EDIFICIO LORD COCHRANE II': 'Pilar',
+    'RDD SERVICIOS S.A.C.': 'Pilar',
+    'CONSORCIO DE LIMPIEZA Y SANEAMIENTO AMBIENTAL': 'Pilar',
+    'SECURYDAT S.A.C.': 'Pilar',
+    'ORIENTARE S.A.C.': 'Pilar',
+    'INGEOSERVICE N & O S.A.C.': 'Pilar',
+    'JORGE ERNESTO SUCESION PICASSO': 'Gladys',
+    'JUNTA DE PROPIETARIOS EDIFICIO MULTIFAMILIAR VERAMAR': 'Pilar',
+    'VICTOR ALEJANDRO BRAVO CONTRERAS': 'Gladys',
+    'ALFREDO MARTIN GAVIDIA ALVAREZ': 'Gladys',
+    'MINISTERIO DEL INTERIOR': 'Pilar',
+    'CONSTRUCTORA GN GAMBOA & CIA SAC': 'Pilar',
+    'CONSORCIO SAN GABRIEL': 'Pilar',
+    'CONSORCIO GABRIEL II': 'Pilar',
+    'JUNTA DE PROPIETARIOS DEL COND. VIV.TEMPORALES KAIA BEACH': 'Pilar',
+    'THALES DIS MEXICO, S.A. DE C.V. SUCURSAL DEL PERU': 'Pilar',
+    'MARIELLA LETICIA DEXTRE CHACON DE HERRERA': 'Gladys',
+    'DIAZ PALACIOS CARMEN FRANCISCA': 'Gladys',
+    'ALESSANDRA MARIA VISCONTI JUNGE': 'Gladys',
+    'BELTRAN PAZ VENTURA': 'Gladys',
+    'ANA MARIA ALVAREZ CALDERON FERNANDINI DE OLAECHEA': 'Gladys',
+    'KARINA LIDIA MORON DIAZ': 'Gladys',
+    'JORGE ENRIQUE SAAVEDRA JORIE': 'Gladys',
+    'JULIO NICOLAS MORALES DORA': 'Gladys',
+    'CHRISLEY TEODORA ARZAPALO RECINES': 'Gladys',
+    'ANDRES RICARDO BARRAGAN ASTE': 'Gladys',
+    'GOMEZ DE LA TORRE DE LAS CASAS ALVARO': 'Gladys',
+    'JOSE MANUEL ALVILDO ENCINAS': 'Gladys',
+    'ALEJANDRO RAUL RUIZ SANCHEZ SALAZAR': 'Gladys',
+    'MARTA VERONICA MIRANDA RIVERO': 'Gladys',
+    'PATRICIA MARIA UZATEGUI DANZ': 'Gladys',
+    'ROBERTO CARLOS CARBAJAL CHIOK': 'Pilar',
+    'FORTUNIC ALVARADO MARIA ISABEL': 'Gladys',
+    'ROXANA LORENA RONCALDO VERGARA': 'Gladys',
+    'JOSE LUIS TOMAS VELARDE SANTA MARIA': 'Gladys',
+    'GRUPO GLP Y GNV': 'Pilar',
+    'SERTECPET DE PERU S.A.': 'Pilar',
+    'PROYECTO ESPECIAL CHINECAS': 'Pilar',
+    'SUBASTAS PERUANAS S.A.C.': 'Pilar',
+    'BIG DATA S.A.C.': 'Pilar',
+    'GRUPO TACAMA': 'Pilar',
+    'GRUPO INSUMEX': 'Pilar',
+    'GRUPO ALAS PERUANAS': 'Pilar',
+    'EMPRESA DE TRANSPORTES SHON\'S S.R.L.': 'Pilar',
+    'NFU PERU': 'Pilar',
+    'CHINGUDI CARGO SAC': 'Pilar',
+    'DEPOSITOS Y VENTAS SOCIEDAD ANONIMA': 'Pilar',
+    'ALE ASESORES Y CONSULTORES S.A.C.': 'Pilar',
+    'INNOVATIVE TECH AID SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'YURI ELEAZAR TORRES MIRANDA': 'Gladys',
+    'GRUPO ENERGY': 'Pilar',
+    'TWM DISTRIBUTION SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'SERVIMELSA EMPRESA INDIVIDUAL DE RESPONSABILIDAD LIMITADA': 'Pilar',
+    'DMARAN AJUSTADORES DE SINIESTROS DE SEGUROS GENERALES S.A.C.': 'Pilar',
+    'FRENO SERVO E.I.R.L.': 'Pilar',
+    'J & N SEGURIDAD Y VIGILANCIA PRIVADA S.A.C.': 'Pilar',
+    'MULTIMARCA AUTOMOTRIZ S.A.C.': 'Pilar',
+    'MC METCO SAC': 'Pilar',
+    'OMNITRACK S.A.C.': 'Pilar',
+    '3N INTEGRADORES & CONSULTORES SAC': 'Pilar',
+    'ESTUDIO ROSSELLO SCRL': 'Pilar',
+    'ESCUELA DE AVIACION CIVIL JORGE CHAVEZ DARTNELL S.A.': 'Pilar',
+    'VALLEY RUBBER SUCURSAL DEL PERU': 'Pilar',
+    'J.& R. AGRO TECHNICAL INTERNATIONAL S.A.C.': 'Pilar',
+    'CORPORACION CAMAJEA S.A.C.': 'Pilar',
+    'GRUPO LOMAS DORADAS': 'Pilar',
+    'FUSION DE TALENTOS E.I.R.L.': 'Pilar',
+    'SEGURIDAD 111 S.R.L.': 'Pilar',
+    'JS INDUSTRIAL S.A.C.': 'Pilar',
+    'OPERACIONES SERVICIOS Y SISTEMAS S.R.L.': 'Pilar',
+    'ELECTRO G & S INGENIEROS S.A.C': 'Pilar',
+    'ME ELECMETAL COMERCIAL PERU S.A.C.': 'Pilar',
+    'MERCANTIL COBREPAMPA SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'SERVICIOS INTEGRALES VALPARAISO S.R.L.': 'Pilar',
+    'DUNA CORP S.A.': 'Pilar',
+    'DRT DISTRIBUTION S.A.C.': 'Pilar',
+    'PEVISO INGENIEROS S.A.C.': 'Pilar',
+    'CONDOMINIO COCOA': 'Pilar',
+    'EMPRESA DE TRANSPORTES GRUPO HORNA SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'GERCES PROYING SOLUTIONS S.A.C.': 'Pilar',
+    'CONSORCIO CAMINO DEL HUASCARAN': 'Pilar',
+    'GRUPO PESQUERO S.A.C.': 'Pilar',
+    'AGRO INDUSTRIA EL VADO EIRL': 'Pilar',
+    'COLIBRI MINING NORTH S.A.C.': 'Pilar',
+    'RODELS SERVICE S.A.C.': 'Pilar',
+    'MP TRANSERV S.A.C.': 'Pilar',
+    'SALUD AMBIENTAL VINOS S.A.C. - SAVS SAC.': 'Pilar',
+    'DMARAN MANOMEDICA S.A.C.': 'Pilar',
+    'KJC CONSTRUCCIONES S.A.C.': 'Pilar',
+    'INVERSIONES KORCULA E.I.R.L.': 'Pilar',
+    'UNIGAS CONVERSIONES S.A.C.': 'Pilar',
+    'PRIME TRAVEL S.A.C.': 'Pilar',
+    'KHALEESI SPA SAC': 'Pilar',
+    'IMPACTUM CONSULTORES S.A.C.': 'Pilar',
+    'MINERA COLIBRI S.A.C.': 'Pilar',
+    'INVERSIONES EDUCATIVAS IESCOOP S.A.C.': 'Pilar',
+    'PLANTA YURACMAYO SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'ESTUDIO OLAECHEA SOCIEDAD CIVIL DE RESPONSABILIDAD LIMITADA': 'Pilar',
+    'TECNOLOGIA Y PROYECTOS S.A.C. (TECPROSA)': 'Pilar',
+    'FUTURA TECHNOLOGIES S.A.C': 'Pilar',
+    'ABUGATTAS & PERATA INTERNACIONAL SAC': 'Pilar',
+    'TRANSPERUANA CORREDORES DE SEGUROS S.A.': 'Pilar',
+    'CORPORACION MATERIALES PLASTICOS SRL': 'Pilar',
+    'JUNTA DE PROPIETARIOS AVENIDA SAN FELIPE NUMERO 347-349-351 URBANIZACION BOSQUE BOLIVARIANO JESUS MA': 'Pilar',
+    'JUNTA DE PROPIETARIOS DEL CONDOMINIO PASO CHICO': 'Pilar',
+    'GJW GROUP S.A.C.': 'Pilar',
+    'MAGNUS QUALITY S.R.L.': 'Pilar',
+    'AUTOGAS JIREH S.A.C.': 'Pilar',
+    'DP & B S.A.C': 'Pilar',
+    'SILVIA MARGARITA TORRES MARCHAND': 'Gladys',
+    'VANESSA CECILIA BECKER SALAZAR': 'Gladys',
+    'IP INFOCOM E.I.R.L.': 'Pilar',
+    'GRUPO CARLEY': 'Pilar',
+    'DOOR TO DOOR TRANSPORTS S.A.C.': 'Pilar',
+    'JANETT MAVI MUÑOZ DIAZ': 'Gladys',
+    'LISSETT DEL CARMEN MATUTE SANTANA': 'Gladys',
+    'TOMATIS VELASQUEZ BRUNO': 'Gladys',
+    'PRECOTEX S.A.C.': 'Pilar',
+    'JAIME MANUEL CALVO PEREZ BADIOLA': 'Gladys',
+    'GOMEZ DE LA TORRE MIRANDA JOSE ALEJANDRO DOMINGO': 'Gladys',
+    'DIEGO ALBERTO VILLALVA SANCHEZ': 'Pilar',
+    'PIERRE CHAUVEL PAREDES': 'Gladys',
+    'ZAMARIT PAOLA SALAS MOLINA': 'Gladys',
+    'MAGALY JESUS MEDINA VELA': 'Gladys',
+    'GRUPO ASEO, VIGILANCIA Y SALUD': 'Pilar',
+    'INVERSIONES JALI S.A.C.': 'Pilar',
+    'SERVICIOS GRALES SMP-FONBIEPOL SCRL': 'Pilar',
+    'GRUPO SP': 'Pilar',
+    'MINERA PARAISO SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'PETRUS MANAGEMENT S.A.C.': 'Pilar',
+    'OCORIS 1 S.A.C.': 'Pilar',
+    'CTP CONTRATISTAS S.A.C.': 'Pilar',
+    'AV PROYECTOS Y CONSTRUCCIONES SAC': 'Pilar',
+    'GFKNITS S.A.C.': 'Pilar',
+    'VIGILANTES PERUANOS SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'ON ENERGY STORAGE S.R.L.': 'Pilar',
+    'LUCARBAL RENT A CAR E.I.R.L.': 'Pilar',
+    'YURIKO GENESIS BANSAIS PALOMINO ARAUJO': 'Gladys',
+    'HUAMAN OBREGON PATRICIA': 'Gladys',
+    'KYAM SAC': 'Pilar',
+    'TECNIGAS HOGAR S.A.C.': 'Pilar',
+    'QUATRO BETA S.A.C.': 'Pilar',
+    'TREAM PERU S.A.C.': 'Pilar',
+    'AJ GROUP INVERGAS S.A.C.': 'Pilar',
+    'LA BONCHONA S.A.C.': 'Pilar',
+    'ASOCIACION CLUB PLAYA BONITA': 'Pilar',
+    'CONSTRUCTORA JHEMSA INGENIEROS S.A.C.': 'Pilar',
+    'EL REBOTE S.R.L.': 'Pilar',
+    'ALEJANDRO GAMBOA MARTINEZ': 'Gladys',
+    'ARMANDO LUIS CHAVEZ VERA': 'Gladys',
+    'ANA MARIA DE LA CUBA BRAVO DE MOSCOSO': 'Gladys',
+    'JORGE LUIS MORALES GALLO': 'Gladys',
+    'GOMEZ SANCHEZ TALAVERA AUGUSTO GUILLERMO': 'Gladys',
+    'NATALIA BALAREZO ESPINOZA': 'Gladys',
+    'JAVIER FERNANDO CALVO PEREZ BADIOLA': 'Gladys',
+    'ZIPPAK PERU S.A.C.': 'Pilar',
+    'ESTHER MEDINA SUSANIBAR': 'Gladys',
+    'CRISTINA ROSA SILVA LICERA': 'Gladys',
+    'MARIA CLAUDIA PICASSO BOURONCLE': 'Gladys',
+    'JOSE GEORGE RITUAY AGUILAR': 'Gladys',
+    'ALICIA TERESA GARCIA OLCESE DE GRUSLIN': 'Gladys',
+    'CONSORCIO JULIACA': 'Pilar',
+    'JMS INFRAESTRUCTURA GLOBAL E.I.R.L.': 'Pilar',
+    'UNION DE GREMIOS DE TRANSPORTE MULTIMODAL DEL PERU - UGTRANM-PERU': 'Pilar',
+    'FEDISA TRANSPORTE E.I.R.L.': 'Pilar',
+    'H L H CONTRATISTAS GENERALES SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'PUCK S.A.C.': 'Pilar',
+    'MANFREDI GAETANO': 'Gladys',
+    'NATALI ARROYO CARBAJAL': 'Gladys',
+    'SUAREZ ORBEZO ALBERTO LEONCIO': 'Gladys',
+    'MARIA ESTHER BARREDA ALEGRIA': 'Gladys',
+    'MESIA GONZALEZ DE AGUAYO PATRICIA': 'Gladys',
+    'CRISTINA MC LAUCHLAN OREJUELA': 'Gladys',
+    'KARLA ANGELICA BRICEÑO HERRERA': 'Gladys',
+    'MARIA RAQUEL COLOMA PORCARI DE VELARDE': 'Gladys',
+    'PILAR ROXANA CABREDO DE ZUNJIC': 'Gladys',
+    'GASTON ALEJANDRO CAJINA BARRERA': 'Gladys',
+    'JUAN CARLOS SEVILLA GILDEMEISTER': 'Gladys',
+    'CARLOS ENRIQUE SILVA COELLO': 'Gladys',
+    'AURORA DE LOS ANGELES CARDENAS SAENZ': 'Gladys',
+    'JORGE ERNESTO VILLA MARTIN': 'Gladys',
+    'JUAN ALFREDO CESAR BERNARDO PICASSO SALINAS': 'Gladys',
+    'HERNAN DANIEL TOMAS VELARDE SANTA MARIA': 'Gladys',
+    'IVAN GUILLERMO RAMOS DEL AGUILA': 'Gladys',
+    'CECILIA PRADO GARCIA MIRO': 'Gladys',
+    'MARCO ANTONIO VASQUEZ MORALES': 'Gladys',
+    'DORIS ZAMBRANO CCATAMAYO': 'Gladys',
+    'MADUEÑO SILVA FERNANDO': 'Gladys',
+    'SONIA ALVAREZ GARCIA': 'Gladys',
+    'ROBERTO FRANCISCO JOSE OLAECHEA MADONNA': 'Gladys',
+    'GÓMEZ DE LA TORRE MARQUINA JUAN CARLOS': 'Gladys',
+    'ALONSO DIAZ DE RAVAGO AMAT Y LEON': 'Gladys',
+    'OLGA MARLENI GARCIA BASILIO': 'Gladys',
+    'IVAN MAURICIO HIDALGO MARTINEZ': 'Gladys',
+    'CLAUDIA MARIA PAREDES VIZQUERRA': 'Gladys',
+    'JORGE LUIS VARGAS PAREJA': 'Gladys',
+    'SARMIENTO AMODEO DIEGO PACIFICO': 'Gladys',
+    'ELIO UBALDO CASARETO POSTIGO': 'Gladys',
+    'ENRIQUE GERMAN ANGULO BORJA': 'Gladys',
+    'SHEDAN MANGA AIDA VIRGINIA': 'Gladys',
+    'OSCAR ERNESTO FLOREZ COSTA': 'Gladys',
+    'MARIA DEL ROSARIO FLOREZ MIRANDA': 'Gladys',
+    'DELFINO VILLA GARCIA LUIS JOSE': 'Gladys',
+    'MARIA ISABEL GEORGINA LANATTA REATEGUI DE ATTANASIO': 'Gladys',
+    'JAIME RONALD PORTUGAL LEON': 'Gladys',
+    'IGNACIO BERCKEMEYER OLAECHEA': 'Gladys',
+    'JULIO EDUARDO RAMIREZ RUEDA': 'Gladys',
+    'ARIANA BIAGGI LLAMOSAS': 'Gladys',
+    'ENRIQUE R. FOX SANTIBAÑEZ': 'Gladys',
+    'PAMELA BATTIFORA DEL POZO': 'Gladys',
+    'VITALIANO BISEÑO SANCHEZ ESPINOZA': 'Gladys',
+    'MEDINA MALDONADO ANGELICA MARIA': 'Gladys',
+    'ZEGARRA GARCES ANDRES': 'Gladys',
+    'JULIO SEBASTIAN ALARCON ZEVALLOS': 'Gladys',
+    'MARGARET KAREN WENZEL DEL AGUILA': 'Gladys',
+    'MARIA FERNANDA CALVO PEREZ SALAZAR': 'Gladys',
+    'BERNARDO BRAVO RAGGIO': 'Gladys',
+    'GIANCARLO SANCHEZ JIMENEZ': 'Gladys',
+    'CHAVEZ JERI LUIS FERNANDO': 'Gladys',
+    'JHOAN MANUEL ALVA ACUÑA': 'Gladys',
+    'DEL CARPIO GONZALES VICTOR NAPOLEON': 'Gladys',
+    'MARIA CRISTINA PIEDRA ALVAREZ': 'Gladys',
+    'DIANA CARMEN NOYA RIVERO': 'Gladys',
+    'NELLY TERESA ZEVALLOS REGAL': 'Gladys',
+    'CHRISTIAN EMMANUEL ACOSTA VILLEGAS': 'Gladys',
+    'JOSE ANTONIO VISCONTI OLAVIDE': 'Gladys',
+    'JUAN PABLO GONZALEZ LOPEZ-TORRES': 'Gladys',
+    'CARLOS AUGUSTO MONTALVA TALLEDO': 'Gladys',
+    'LUIS PEDRO DIAZ DE RAVAGO DONOFRIO': 'Gladys',
+    'ALBERTO ENRIQUE CARRION CASTRO': 'Gladys',
+    'MARIA GABRIELA VISCONTI OLAVIDE DE BUSE': 'Gladys',
+    'JOSE ANTONIO RUBIO RONALD': 'Gladys',
+    'DANIEL OSCAR ESCURRA BALBI': 'Gladys',
+    'JOSE MIGUEL SILVA LICERA': 'Gladys',
+    'MARCO ANTONIO CASTAÑEDA MORENO': 'Gladys',
+    'GABRIELA LUCIA DIAZ TORRES': 'Gladys',
+    'MONTOYA FLORES FREDDY': 'Gladys',
+    'BRENDA ESLAVA CARDENAS': 'Gladys',
+    'JOSE MIGUEL BREÑA TRAVERSO': 'Gladys',
+    'VALERIA BREÑA TRAVERSO': 'Gladys',
+    'GÜERE DAGA URIEL': 'Gladys',
+    'KENNETH MICHAEL STEVEN OJEDA OTAROLA': 'Gladys',
+    'ROXANA HEIDI VERGARA MARTEL': 'Gladys',
+    'DIEGO GUILLERMO PEREA ZABALBEASCOA': 'Gladys',
+    'GIANCARLO CARBONE DE MORA AMPRIMO': 'Gladys',
+    'MARIO OCTAVIO SALOMON MANZUR MERINO': 'Gladys',
+    'CONSTRUCTORA MENESES S.R.L.': 'Pilar',
+    'KEVIN ALBERT MOCHCCO SAMANAMU': 'Gladys',
+    'ANA MARIA OLAECHEA ALVAREZ CALDERON': 'Gladys',
+    'URPEQUE JARANDILLA ANGEL ALBERTO': 'Gladys',
+    'AMADOR GUILLERMO DEL AGUILA RODRIGUEZ': 'Gladys',
+    'MEGAVAL INDUSTRIAL S.A.C.': 'Pilar',
+    'DANIELA BUSE VISCONTI': 'Gladys',
+    'Q R L INVERSIONES SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'ATEMPO PRODUCCIONES S.A.C.': 'Pilar',
+    'LABORATORIO GASTRONOMICO SAC - LG SAC': 'Pilar',
+    'INMOBILIARIA ALBRUSA SOCIEDAD ANONIMA CERRADA': 'Pilar',
+    'LORENA BEATRIZ ROJAS GARGUREVICH': 'Gladys',
+    'BODEGAS VISTA ALEGRE S.A.C.': 'Pilar',
+    'BF DIGITAL DEL PERU S.A.C.': 'Pilar',
+    'BAUMANN SAMANEZ HUGO': 'Gladys',
+    'PRIME FLIGHT SCHOOL S.A.C.': 'Pilar',
+    'RAFAEL ENRIQUE PIEDRA DULANTO': 'Gladys',
+    'SERVICIOS CORPORATIVOS GRUPO LOMAS S.A.C.': 'Pilar',
+    'LAMPARAS ILUMINACIÓN SERVICIOS SAN BORJA S.R.L.': 'Pilar',
+    'QUATRO LAMBDA S.A.C.': 'Pilar',
+    'MOBE PROYECTOS S.A.C.': 'Pilar',
+    'ROBIN DANIEL VARGAS ANDRE': 'Gladys',
+    'GRUPO UEZU': 'Pilar',
+    'GRUPO CARDIOVASCULAR': 'Pilar',
+    'BIO LINKS S.A.': 'Pilar',
+    'INMEDIATO S.A.C.': 'Pilar'
+  };
+
+  var sheetName = getConfig('SHEETS.BITACORA_GESTIONES', 'Bitacora_Gestiones_EECC');
+  var sheet = SheetsIO._getSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) throw new Error('Hoja ' + sheetName + ' no encontrada');
+
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+
+  // Find column indices
+  var colAseg = -1, colResp = -1;
+  for (var h = 0; h < headers.length; h++) {
+    var hdr = String(headers[h]).trim().toUpperCase();
+    if (hdr === 'ASEGURADO') colAseg = h;
+    if (hdr === 'RESPONSABLE') colResp = h;
+  }
+  if (colAseg === -1 || colResp === -1) throw new Error('Columnas ASEGURADO/RESPONSABLE no encontradas');
+
+  var updated = 0;
+  var skipped = 0;
+  var notFound = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var asegurado = String(data[i][colAseg] || '').trim();
+    if (!asegurado) continue;
+
+    var nuevoResp = MAPA_RESPONSABLES[asegurado];
+    if (!nuevoResp) {
+      notFound++;
+      continue;
+    }
+
+    var currentResp = String(data[i][colResp] || '').trim();
+    // Solo actualizar si el responsable actual NO es ya Pilar o Gladys
+    if (currentResp === 'Pilar' || currentResp === 'Gladys') {
+      skipped++;
+      continue;
+    }
+
+    if (!dryRun) {
+      sheet.getRange(i + 1, colResp + 1).setValue(nuevoResp);
+    }
+    updated++;
+  }
+
+  if (!dryRun) SpreadsheetApp.flush();
+
+  var resultado = {
+    ok: true,
+    dryRun: dryRun,
+    totalFilas: data.length - 1,
+    actualizadas: updated,
+    yaCorrectas: skipped,
+    sinMapeo: notFound
+  };
+
+  console.log('=== RESULTADO actualizarResponsablesBitacora ===');
+  console.log(JSON.stringify(resultado, null, 2));
+  return resultado;
+}
+
+/** Ejecutar en modo prueba (sin modificar) */
+function TEST_actualizarResponsables_DRYRUN() {
+  return actualizarResponsablesBitacora(true);
+}
+
+/** Ejecutar en modo real (modifica la hoja) */
+function EJECUTAR_actualizarResponsables() {
+  return actualizarResponsablesBitacora(false);
+}
