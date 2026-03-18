@@ -85,6 +85,8 @@ const MonitoringService = {
 
                 let lastActivity = null;
 
+                const displayNames = getConfig('AUTH.USER_DISPLAY_NAMES', {});
+
                 auditData.rows.forEach(row => {
                     const action = actionIdx >= 0 ? String(row[actionIdx] || '').toUpperCase() : '';
                     if (action !== 'GENERATE_EECC') return;
@@ -93,7 +95,8 @@ const MonitoringService = {
                     if (!ts) return;
 
                     const user = userIdx >= 0 ? String(row[userIdx] || '').trim() : '';
-                    const userKey = user ? user.replace(/@.*/, '') : 'sistema';
+                    const rawKey = user ? user.replace(/@.*/, '') : 'sistema';
+                    const userKey = displayNames[rawKey] || rawKey;
 
                     if (ts >= todayStart) {
                         result.eecc.today++;

@@ -209,7 +209,13 @@ const CONFIG = {
       'cobranzas1@transperuana.com',
       'cobranzas2@transperuana.com',
       'admin@transperuana.com'
-    ]
+    ],
+    USER_DISPLAY_NAMES: {
+      'cobranzas1': 'Pilar',
+      'cobranzas2': 'Gladys',
+      'admin4': 'Cristian',
+      'admin': 'Roberto'
+    }
   },
 
   // ========== FEATURE FLAGS ==========
