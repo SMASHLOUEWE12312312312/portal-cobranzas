@@ -421,8 +421,8 @@ var BitacoraService = BitacoraService || {
         ? this._parseDate(datos.fechaGestion)
         : this._getFechaPeru();
 
-      // Responsable desde sesión
-      const responsable = this._obtenerUsuarioActual();
+      // Responsable: usar el proporcionado por el formulario, o sesión como fallback
+      const responsable = datos.responsable || this._obtenerUsuarioActual();
 
       // ========== NUEVO v3.1: Calcular snapshot de vencidos ==========
       const esGrupo = datos.esGrupo || GrupoEconomicoService.esGrupo(datos.asegurado);

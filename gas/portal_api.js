@@ -1079,12 +1079,17 @@ function subirArchivoBase(payload, token) {
 
     // Guardar metadata del último upload
     try {
-      var uploaderName = Session.getActiveUser().getEmail() || 'Desconocido';
+      var uploaderName = '';
+      // 1. Intentar desde sesión del portal
       if (token) {
-        var sess = AuthService.getSessionData(token);
-        if (sess && (sess.displayName || sess.nombre || sess.username)) {
-          uploaderName = sess.displayName || sess.nombre || sess.username;
-        }
+        try {
+          var sess = AuthService.getSessionData(token);
+          if (sess) uploaderName = sess.displayName || sess.nombre || sess.username || sess.email || '';
+        } catch (e) { /* ignore */ }
+      }
+      // 2. Fallback: Session API
+      if (!uploaderName) {
+        uploaderName = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail() || 'Desconocido';
       }
       PropertiesService.getScriptProperties().setProperty('BD_LAST_UPLOAD', JSON.stringify({
         user: uploaderName,
@@ -2231,7 +2236,8 @@ function registrarGestionManualBitacora(payload, token) {
       canalContacto: payload.canalContacto,
       fechaCompromiso: payload.fechaCompromiso || null,
       proximaAccion: payload.proximaAccion,
-      observaciones: payload.observaciones || ''
+      observaciones: payload.observaciones || '',
+      responsable: payload.responsable || ''
     });
 
     if (!resultado.ok) {
