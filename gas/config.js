@@ -211,7 +211,8 @@ const CONFIG = {
       'admin@transperuana.com'
     ],
     USER_DISPLAY_NAMES: {
-      'cobranzas': 'Cristian',
+      'cobranzas': 'Cobranzas',
+      'csarapura': 'Cristian',
       'cobranzas1': 'Pilar',
       'cobranzas2': 'Gladys',
       'admin4': 'Cristian',
