@@ -991,7 +991,9 @@ function generateForAsegurado_API(nombreAseg, opts, token) {
   const context = 'generateForAsegurado_API';
 
   try {
-    AuthService.validateSession(token);
+    const portalUser = AuthService.validateSession(token);
+    opts = opts || {};
+    opts.portalUser = portalUser;
     return EECCCore.generateHeadless(nombreAseg, opts);
   } catch (error) {
     Logger.error(context, 'Failed', error);

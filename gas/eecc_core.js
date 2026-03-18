@@ -179,10 +179,14 @@ const EECCCore = {
 
       // Phase 1: Audit EECC generation (soft-fail)
       try {
+        const displayNames = getConfig('AUTH.USER_DISPLAY_NAMES', {});
+        const auditUser = opts.portalUser
+          ? (displayNames[opts.portalUser] || opts.portalUser)
+          : null;
         AuditService.log(AuditService.ACTIONS.GENERATE_EECC, nombreAsegurado, {
           pdfUrl: result.pdfUrl || null,
           xlsxUrl: result.xlsxUrl || null
-        });
+        }, null, null, auditUser);
       } catch (e) { /* ignore audit errors */ }
 
       // ========== REGISTRAR EN BITÁCORA ==========

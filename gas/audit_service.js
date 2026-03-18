@@ -48,7 +48,7 @@ const AuditService = {
      * @param {string} ip - Optional IP address
      * @return {Object} { ok: boolean, error?: string }
      */
-    log(action, target, details = {}, correlationId = null, ip = null) {
+    log(action, target, details = {}, correlationId = null, ip = null, userOverride = null) {
         const context = 'AuditService.log';
 
         try {
@@ -60,7 +60,7 @@ const AuditService = {
 
             const row = [
                 new Date(),
-                this._getUser(),
+                userOverride || this._getUser(),
                 action || 'UNKNOWN',
                 target || '',
                 Object.keys(details).length > 0 ? JSON.stringify(details) : '',
