@@ -1285,7 +1285,8 @@ function generarReporteBitacoraConDashboard() {
           nombre: grupoNombre, vPEN: 0, vUSD: 0, deltaPEN: 0, deltaUSD: 0,
           dias: 0, maxDias: 0, numGestiones: 0,
           estados: {}, resp: resp, fecComp: null, obs: '',
-          miembros: [], isActive: false, tendenciaPEN: 'SIN_CAMBIO', tendenciaUSD: 'SIN_CAMBIO'
+          miembros: [], isActive: false, tendenciaPEN: 'SIN_CAMBIO', tendenciaUSD: 'SIN_CAMBIO',
+          latestDate: null, latestEstado: 'SIN_RESPUESTA'
         };
       }
       var gm = grupoMap[grupoKey];
@@ -1298,6 +1299,11 @@ function generarReporteBitacoraConDashboard() {
       if (!gm.estados[estado]) gm.estados[estado] = 0;
       gm.estados[estado]++;
       if (isActive) gm.isActive = true;
+      // Track the estado from the most recent gestión in the grupo
+      if (am.latestDate && (!gm.latestDate || am.latestDate > gm.latestDate)) {
+        gm.latestDate = am.latestDate;
+        gm.latestEstado = estado;
+      }
       if (fecComp && (!gm.fecComp || fecComp < gm.fecComp)) gm.fecComp = fecComp;
       if (obs && !gm.obs) gm.obs = obs;
       gm.miembros.push({
@@ -1317,22 +1323,8 @@ function generarReporteBitacoraConDashboard() {
 
     for (var g = 0; g < grupoKeys.length; g++) {
       var gd = grupoMap[grupoKeys[g]];
-      // Dominant estado: most frequent among members (priority: active states first)
-      var estadoPrio = ['SIN_RESPUESTA', 'EN_SEGUIMIENTO', 'COMPROMISO_PAGO', 'REPROGRAMADO',
-        'DERIVADO_COMERCIAL', 'DERIVADO_RRHH', 'DERIVADO_RIESGOS_GENERALES',
-        'NO_COBRABLE', 'NO_CONTACTABLE', 'CERRADO_PAGADO'];
-      var dominantEstado = 'EN_SEGUIMIENTO';
-      var maxCount = 0;
-      for (var ep = 0; ep < estadoPrio.length; ep++) {
-        var ec = gd.estados[estadoPrio[ep]] || 0;
-        if (ec > maxCount) { maxCount = ec; dominantEstado = estadoPrio[ep]; }
-      }
-      // If any member is active, keep group active
-      if (gd.isActive) {
-        if (dominantEstado === 'CERRADO_PAGADO' || dominantEstado === 'NO_COBRABLE') {
-          dominantEstado = 'EN_SEGUIMIENTO';
-        }
-      }
+      // Use the estado from the most recent gestión in the grupo
+      var dominantEstado = gd.latestEstado || 'EN_SEGUIMIENTO';
 
       // Tendencia: based on aggregate delta
       var tendencia = 'SIN_CAMBIO';
@@ -1698,16 +1690,7 @@ function generarReporteBitacoraConDashboard() {
             // Get estado/resp from bitacora (check grupo first, then individual)
             var gKey = aGrupo.toUpperCase();
             if (grupoMap[gKey]) {
-              var bestEst = '';
-              var bestEstCount = 0;
-              var eKeys = Object.keys(grupoMap[gKey].estados);
-              for (var ek = 0; ek < eKeys.length; ek++) {
-                if (grupoMap[gKey].estados[eKeys[ek]] > bestEstCount) {
-                  bestEstCount = grupoMap[gKey].estados[eKeys[ek]];
-                  bestEst = eKeys[ek];
-                }
-              }
-              agingGrupos[aGrupo].estado = bestEst;
+              agingGrupos[aGrupo].estado = grupoMap[gKey].latestEstado || 'SIN_RESPUESTA';
               agingGrupos[aGrupo].resp = grupoMap[gKey].resp;
             } else {
               var bKey = aAseg.toUpperCase();
