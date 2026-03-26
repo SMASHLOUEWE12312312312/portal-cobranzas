@@ -1718,10 +1718,26 @@ function generarReporteBitacoraConDashboard() {
           var agResp = agd.resp || 'N/A';
           agRows.push([agKeys[ag], agd.pen, agd.usd, agEst, agResp]);
         }
+        var agTableStartRow = ar;
         DE.writeTable(agSheet, {
           headers: ['GRUPO_ECONOMICO', 'MONTO PEN S/', 'MONTO USD US$', 'STATUS', 'RESPONSABLE'],
           rows: agRows
         }, ar, { currencyCols: [1, 2] });
+
+        // Color rows by responsable
+        if (agRows.length > 0) {
+          var respColors = {};
+          var colorPalette = ['#DBEAFE', '#FEF3C7', '#D1FAE5', '#FCE7F3', '#E0E7FF', '#FECACA', '#CFFAFE', '#EDE9FE', '#FEF9C3', '#D5F5F3'];
+          var colorIdx = 0;
+          for (var rc = 0; rc < agRows.length; rc++) {
+            var respName = String(agRows[rc][4] || 'N/A').toUpperCase();
+            if (!respColors[respName]) {
+              respColors[respName] = colorPalette[colorIdx % colorPalette.length];
+              colorIdx++;
+            }
+            agSheet.getRange(agTableStartRow + 1 + rc, 2, 1, 5).setBackground(respColors[respName]);
+          }
+        }
       }
 
       // --- Hoja base de datos: última gestión por asegurado ---
