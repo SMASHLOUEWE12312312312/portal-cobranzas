@@ -1718,12 +1718,11 @@ function generarReporteBitacoraConDashboard() {
           var agd = agingGrupos[agKeys[ag]];
           var agEst = agd.estado || 'N/A';
           var agResp = agd.resp || 'N/A';
-          var agFecUlt = agd.ultGestion ? Utilities.formatDate(agd.ultGestion, Session.getScriptTimeZone(), 'dd/MM/yyyy') : '—';
-          agRows.push([agKeys[ag], agd.pen, agd.usd, agEst, agResp, agFecUlt]);
+          agRows.push([agKeys[ag], agd.pen, agd.usd, agEst, agResp]);
         }
         var agTableStartRow = ar;
         DE.writeTable(agSheet, {
-          headers: ['GRUPO_ECONOMICO', 'MONTO PEN S/', 'MONTO USD US$', 'STATUS', 'RESPONSABLE', 'ÚLTIMA GESTIÓN'],
+          headers: ['GRUPO_ECONOMICO', 'MONTO PEN S/', 'MONTO USD US$', 'STATUS', 'RESPONSABLE'],
           rows: agRows
         }, ar, { currencyCols: [1, 2] });
 
