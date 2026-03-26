@@ -1684,7 +1684,7 @@ function generarReporteBitacoraConDashboard() {
             var aAseg = String(aRow[bd.aseguradoIdx] || 'Sin Asegurado').trim();
             var aMon = _monKey(aRow[bd.monIdx]);
             var aGrupo = _getGrupoEconomico(aAseg);
-            if (!agingGrupos[aGrupo]) agingGrupos[aGrupo] = { pen: 0, usd: 0, estado: '', resp: '' };
+            if (!agingGrupos[aGrupo]) agingGrupos[aGrupo] = { pen: 0, usd: 0, estado: '', resp: '', ultGestion: null };
             if (aMon === 'PEN') agingGrupos[aGrupo].pen += aImp;
             else agingGrupos[aGrupo].usd += aImp;
             // Get estado/resp from bitacora (check grupo first, then individual)
@@ -1692,12 +1692,14 @@ function generarReporteBitacoraConDashboard() {
             if (grupoMap[gKey]) {
               agingGrupos[aGrupo].estado = grupoMap[gKey].latestEstado || 'SIN_RESPUESTA';
               agingGrupos[aGrupo].resp = grupoMap[gKey].resp;
+              agingGrupos[aGrupo].ultGestion = grupoMap[gKey].latestDate;
             } else {
               var bKey = aAseg.toUpperCase();
               if (asegMap[bKey] && asegMap[bKey].latest) {
                 agingGrupos[aGrupo].estado = String(asegMap[bKey].latest[iEstado] || '');
                 var agRespRaw = String(asegMap[bKey].latest[iResp] || '');
                 agingGrupos[aGrupo].resp = agRespRaw.indexOf('@') !== -1 ? agRespRaw.split('@')[0] : agRespRaw;
+                agingGrupos[aGrupo].ultGestion = asegMap[bKey].latestDate;
               }
             }
           }
@@ -1716,13 +1718,17 @@ function generarReporteBitacoraConDashboard() {
           var agd = agingGrupos[agKeys[ag]];
           var agEst = agd.estado || 'N/A';
           var agResp = agd.resp || 'N/A';
-          agRows.push([agKeys[ag], agd.pen, agd.usd, agEst, agResp]);
+          var agFecUlt = agd.ultGestion ? Utilities.formatDate(agd.ultGestion, Session.getScriptTimeZone(), 'dd/MM/yyyy') : '—';
+          agRows.push([agKeys[ag], agd.pen, agd.usd, agEst, agResp, agFecUlt]);
         }
         var agTableStartRow = ar;
         DE.writeTable(agSheet, {
-          headers: ['GRUPO_ECONOMICO', 'MONTO PEN S/', 'MONTO USD US$', 'STATUS', 'RESPONSABLE'],
+          headers: ['GRUPO_ECONOMICO', 'MONTO PEN S/', 'MONTO USD US$', 'STATUS', 'RESPONSABLE', 'ÚLTIMA GESTIÓN'],
           rows: agRows
         }, ar, { currencyCols: [1, 2] });
+
+        // Set column E (STATUS) width to fixed 15 characters (~105px)
+        agSheet.setColumnWidth(5, 105);
 
         // Color STATUS and RESPONSABLE cells
         if (agRows.length > 0) {
