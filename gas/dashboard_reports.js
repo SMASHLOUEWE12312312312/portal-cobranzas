@@ -1843,6 +1843,60 @@ function generarReporteBitacoraConDashboard() {
         bdBitSheet.getRange(2, 8, bdBitRows.length, 1).setNumberFormat('dd/mm/yyyy'); // Fecha Compromiso
       }
 
+      // Color Estado, Responsable, and Delta cells
+      if (bdBitRows.length > 0) {
+        var bitEstadoColors = {
+          'SIN_RESPUESTA': { bg: '#FFF3E0', text: '#E65100' },
+          'EN_SEGUIMIENTO': { bg: '#E3F2FD', text: '#1565C0' },
+          'COMPROMISO_PAGO': { bg: '#E8F5E9', text: '#2E7D32' },
+          'REPROGRAMADO': { bg: '#FFF3E0', text: '#F57C00' },
+          'DERIVADO_COMERCIAL': { bg: '#F3E5F5', text: '#7B1FA2' },
+          'DERIVADO_RRHH': { bg: '#F3E5F5', text: '#7B1FA2' },
+          'DERIVADO_RIESGOS_GENERALES': { bg: '#F3E5F5', text: '#7B1FA2' },
+          'CERRADO_PAGADO': { bg: '#E8F5E9', text: '#1B5E20' },
+          'NO_COBRABLE': { bg: '#FFEBEE', text: '#C62828' },
+          'NO_CONTACTABLE': { bg: '#FFEBEE', text: '#C62828' }
+        };
+        var bitRespColors = {};
+        var bitRespPalette = ['#DBEAFE', '#FEF3C7', '#D1FAE5', '#FCE7F3', '#E0E7FF', '#CFFAFE', '#EDE9FE', '#FEF9C3', '#FECACA', '#D5F5F3'];
+        var bitColorIdx = 0;
+
+        for (var br = 0; br < bdBitRows.length; br++) {
+          var rowNum = br + 2; // data starts at row 2
+
+          // Estado (col 2)
+          var bEstVal = String(bdBitRows[br][1] || '').toUpperCase();
+          var bEc = bitEstadoColors[bEstVal];
+          if (bEc) {
+            bdBitSheet.getRange(rowNum, 2).setBackground(bEc.bg).setFontColor(bEc.text).setFontWeight('bold');
+          }
+
+          // Responsable (col 5)
+          var bRespName = String(bdBitRows[br][4] || 'N/A').toUpperCase();
+          if (!bitRespColors[bRespName]) {
+            bitRespColors[bRespName] = bitRespPalette[bitColorIdx % bitRespPalette.length];
+            bitColorIdx++;
+          }
+          bdBitSheet.getRange(rowNum, 5).setBackground(bitRespColors[bRespName]).setFontWeight('bold');
+
+          // Delta PEN (col 11)
+          var deltaPenVal = bdBitRows[br][10];
+          if (deltaPenVal > 0) {
+            bdBitSheet.getRange(rowNum, 11).setBackground('#FFEBEE').setFontColor('#C62828');
+          } else if (deltaPenVal < 0) {
+            bdBitSheet.getRange(rowNum, 11).setBackground('#E8F5E9').setFontColor('#1B5E20');
+          }
+
+          // Delta USD (col 14)
+          var deltaUsdVal = bdBitRows[br][13];
+          if (deltaUsdVal > 0) {
+            bdBitSheet.getRange(rowNum, 14).setBackground('#FFEBEE').setFontColor('#C62828');
+          } else if (deltaUsdVal < 0) {
+            bdBitSheet.getRange(rowNum, 14).setBackground('#E8F5E9').setFontColor('#1B5E20');
+          }
+        }
+      }
+
       // Auto-resize columns
       for (var brc = 1; brc <= bdBitHeaders.length; brc++) {
         bdBitSheet.autoResizeColumn(brc);
