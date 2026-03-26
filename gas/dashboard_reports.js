@@ -1724,18 +1724,39 @@ function generarReporteBitacoraConDashboard() {
           rows: agRows
         }, ar, { currencyCols: [1, 2] });
 
-        // Color rows by responsable
+        // Color STATUS and RESPONSABLE cells
         if (agRows.length > 0) {
+          var estadoColors = {
+            'SIN_RESPUESTA': { bg: '#FFF3E0', text: '#E65100' },
+            'EN_SEGUIMIENTO': { bg: '#E3F2FD', text: '#1565C0' },
+            'COMPROMISO_PAGO': { bg: '#E8F5E9', text: '#2E7D32' },
+            'REPROGRAMADO': { bg: '#FFF3E0', text: '#F57C00' },
+            'DERIVADO_COMERCIAL': { bg: '#F3E5F5', text: '#7B1FA2' },
+            'DERIVADO_RRHH': { bg: '#F3E5F5', text: '#7B1FA2' },
+            'DERIVADO_RIESGOS_GENERALES': { bg: '#F3E5F5', text: '#7B1FA2' },
+            'CERRADO_PAGADO': { bg: '#E8F5E9', text: '#1B5E20' },
+            'NO_COBRABLE': { bg: '#FFEBEE', text: '#C62828' },
+            'NO_CONTACTABLE': { bg: '#FFEBEE', text: '#C62828' }
+          };
           var respColors = {};
-          var colorPalette = ['#DBEAFE', '#FEF3C7', '#D1FAE5', '#FCE7F3', '#E0E7FF', '#FECACA', '#CFFAFE', '#EDE9FE', '#FEF9C3', '#D5F5F3'];
+          var respPalette = ['#DBEAFE', '#FEF3C7', '#D1FAE5', '#FCE7F3', '#E0E7FF', '#CFFAFE', '#EDE9FE', '#FEF9C3', '#FECACA', '#D5F5F3'];
           var colorIdx = 0;
+          var statusCol = 6; // Column F (startCol=2, index 3 = col E... STATUS is 4th col = col E, RESP is 5th = col F)
+          // STATUS = column index 3 from startCol 2 → col E (2+3=5), RESPONSABLE = col F (2+4=6)
           for (var rc = 0; rc < agRows.length; rc++) {
+            // Status cell color
+            var estVal = String(agRows[rc][3] || '').toUpperCase();
+            var ec = estadoColors[estVal];
+            if (ec) {
+              agSheet.getRange(agTableStartRow + 1 + rc, 5).setBackground(ec.bg).setFontColor(ec.text).setFontWeight('bold');
+            }
+            // Responsable cell color
             var respName = String(agRows[rc][4] || 'N/A').toUpperCase();
             if (!respColors[respName]) {
-              respColors[respName] = colorPalette[colorIdx % colorPalette.length];
+              respColors[respName] = respPalette[colorIdx % respPalette.length];
               colorIdx++;
             }
-            agSheet.getRange(agTableStartRow + 1 + rc, 2, 1, 5).setBackground(respColors[respName]);
+            agSheet.getRange(agTableStartRow + 1 + rc, 6).setBackground(respColors[respName]).setFontWeight('bold');
           }
         }
       }
