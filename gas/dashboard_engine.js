@@ -420,7 +420,10 @@ const DashboardEngine = {
   },
 
   _severityColors(severity) {
-    var s = String(severity).toUpperCase();
+    var s = String(severity).toUpperCase().trim();
+    // Extract last word if string contains spaces (e.g. "75/100  CRITICO" → "CRITICO")
+    var parts = s.split(/\s+/);
+    if (parts.length > 1) s = parts[parts.length - 1];
     var C = this.COLORS;
     switch (s) {
       case 'OK': case 'NORMAL': case 'VERDE': case 'BAJO':
