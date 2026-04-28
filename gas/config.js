@@ -266,7 +266,7 @@ const CONFIG = {
     // ========== FASE 3: AUTOMATIZACIÓN (2026-01-16) ==========
     ENABLE_AUTOMATION_ENGINE: true,    // Motor de automatización y triggers
     ENABLE_EMAIL_AUTOMATION: true,     // Emails automáticos (recordatorios, alertas)
-    ENABLE_REPORT_SCHEDULER: true,     // Reportes diarios y semanales programados
+    ENABLE_REPORT_SCHEDULER: false,    // Reportes diarios y semanales programados (apagados temporalmente 2026-04-28)
     // ========== FASE 4: ANALYTICS & REPORTING (2026-01-16) ==========
     ENABLE_ANALYTICS_SERVICE: true,    // Análisis de tendencias y performance
     ENABLE_DASHBOARD_SERVICE: true,    // Dashboard ejecutivo con widgets
