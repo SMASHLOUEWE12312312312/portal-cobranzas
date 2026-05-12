@@ -3281,6 +3281,899 @@ function TEST_backfillSnapshots_EJECUTAR() {
   return resultado;
 }
 
+// ========== HISTORIAL COMPLETO CSV ==========
+
+/**
+ * Retorna TODAS las gestiones de la bitácora para exportación CSV.
+ * Excluye gestiones de corrección (reversiones automáticas).
+ */
+function obtenerHistorialCompletoCSV() {
+  const context = 'obtenerHistorialCompletoCSV';
+
+  try {
+    const todasGestiones = BitacoraService.obtenerGestiones();
+
+    // Filtrar gestiones de corrección/reversión
+    const observacionesExcluir = [
+      'Reversión automática - Cierre incorrecto del masivo 01/04/2026'
+    ];
+
+    const gestiones = todasGestiones.filter(g => {
+      const obs = String(g.observaciones || '');
+      return !observacionesExcluir.some(excl => obs.includes(excl));
+    });
+
+    // Ordenar por asegurado y luego por fecha de registro
+    gestiones.sort((a, b) => {
+      const asegA = String(a.asegurado || '').toUpperCase();
+      const asegB = String(b.asegurado || '').toUpperCase();
+      if (asegA !== asegB) return asegA.localeCompare(asegB);
+      const fA = a.fechaRegistro instanceof Date ? a.fechaRegistro.getTime() : 0;
+      const fB = b.fechaRegistro instanceof Date ? b.fechaRegistro.getTime() : 0;
+      return fA - fB;
+    });
+
+    // Convertir fechas a ISO para serialización
+    const data = gestiones.map(g => ({
+      idCiclo: g.idCiclo,
+      idGestion: g.idGestion,
+      origenRegistro: g.origenRegistro,
+      fechaEnvioEECC: g.fechaEnvioEECC instanceof Date ? g.fechaEnvioEECC.toISOString() : g.fechaEnvioEECC,
+      fechaRegistro: g.fechaRegistro instanceof Date ? g.fechaRegistro.toISOString() : g.fechaRegistro,
+      asegurado: g.asegurado,
+      ruc: g.ruc,
+      responsable: g.responsable,
+      tipoGestion: g.tipoGestion,
+      estadoGestion: g.estadoGestion,
+      canalContacto: g.canalContacto,
+      fechaCompromiso: g.fechaCompromiso instanceof Date ? g.fechaCompromiso.toISOString() : g.fechaCompromiso,
+      proximaAccion: g.proximaAccion,
+      observaciones: g.observaciones,
+      snapshotVencidoPEN: g.snapshotVencidoPEN || 0,
+      snapshotVencidoUSD: g.snapshotVencidoUSD || 0
+    }));
+
+    Logger.info(context, `Historial exportado: ${data.length} gestiones (excluidas ${todasGestiones.length - data.length} correcciones)`);
+
+    return { ok: true, data: data, total: data.length };
+
+  } catch (error) {
+    Logger.error(context, 'Error', error);
+    return { ok: false, error: error.message };
+  }
+}
+
+// ========== REGISTRO MASIVO DE GESTIONES EN BITÁCORA ==========
+
+/**
+ * API para registro masivo de gestiones en la bitácora.
+ *
+ * LÓGICA:
+ * - Excluye ciclos CERRADO_PAGADO y NO_COBRABLE
+ * - Sin deuda vencida → registra como CERRADO_PAGADO
+ * - Con deuda vencida → registra nueva gestión con mismo estado/campos
+ *
+ * USO DESDE Apps Script Editor:
+ *   registrarGestionMasiva_API({ dryRun: true })    // Preview sin cambios
+ *   registrarGestionMasiva_API({ dryRun: false })   // Ejecutar real
+ *
+ * @param {Object} opciones - { dryRun: boolean, limite: number, responsableFiltro: string }
+ * @param {string} token - Token de autenticación (opcional para ejecución directa)
+ * @return {Object} Resultado detallado del proceso masivo
+ */
+function registrarGestionMasiva_API(opciones, token) {
+  const context = 'registrarGestionMasiva_API';
+
+  try {
+    // Validar sesión si se proporciona token
+    if (token) {
+      AuthService.validateSession(token);
+    }
+
+    Logger.info(context, 'Ejecutando registro masivo de gestiones', opciones);
+
+    const resultado = BitacoraService.registrarGestionMasiva(opciones || {});
+
+    Logger.info(context, 'Registro masivo completado', {
+      dryRun: resultado.dryRun,
+      procesados: resultado.resumen ? resultado.resumen.ciclosProcesados : 0,
+      cerrados: resultado.resumen ? resultado.resumen.nuevosCerradosPagado : 0,
+      mantenidos: resultado.resumen ? resultado.resumen.mantenidosConDeuda : 0,
+      errores: resultado.resumen ? resultado.resumen.errores : 0
+    });
+
+    // Flush de todos los buffers
+    try { Logger.flush(); } catch (e) { /* no-op */ }
+    try { SpreadsheetApp.flush(); } catch (e) { /* no-op */ }
+
+    return resultado;
+
+  } catch (error) {
+    Logger.error(context, 'Error en registro masivo API', error);
+    try { Logger.flush(); } catch (e) { /* no-op */ }
+    return { ok: false, error: error.message };
+  }
+}
+
+/**
+ * DRY RUN - Vista previa de la actualización masiva definitiva
+ * Ejecutar desde el editor de Apps Script → Seleccionar función → Play
+ *
+ * Lógica unificada:
+ * - NO_COBRABLE → no tocar
+ * - CERRADO_PAGADO + deuda → reactivar EN_SEGUIMIENTO
+ * - CERRADO_PAGADO + sin deuda → no tocar
+ * - Activo + sin deuda → cerrar CERRADO_PAGADO
+ * - Activo + con deuda → mismo estado + snapshot actualizado
+ */
+function TEST_gestionMasiva_DryRun() {
+  const resultado = registrarGestionMasiva_API({ dryRun: true });
+  console.log('=== ACTUALIZACIÓN MASIVA DEFINITIVA - DRY RUN ===');
+  console.log('Resumen:', JSON.stringify(resultado.resumen, null, 2));
+  if (resultado.detalles?.cerradosPagado?.length > 0) {
+    console.log('Nuevos cierres:', JSON.stringify(resultado.detalles.cerradosPagado, null, 2));
+  }
+  if (resultado.detalles?.reactivados?.length > 0) {
+    console.log('Reactivados:', JSON.stringify(resultado.detalles.reactivados, null, 2));
+  }
+  if (resultado.detalles?.mantenidos?.length > 0) {
+    console.log('Mantenidos (primeros 10):', JSON.stringify(resultado.detalles.mantenidos.slice(0, 10), null, 2));
+  }
+  if (resultado.detalles?.errores?.length > 0) {
+    console.log('Errores:', JSON.stringify(resultado.detalles.errores, null, 2));
+  }
+  console.log('Métricas:', JSON.stringify(resultado.metrics, null, 2));
+  return resultado;
+}
+
+/**
+ * EJECUCIÓN REAL - Aplica la actualización masiva definitiva
+ * ⚠️ PRECAUCIÓN: Esta función MODIFICA datos. Ejecutar primero TEST_gestionMasiva_DryRun()
+ */
+function TEST_gestionMasiva_EJECUTAR() {
+  const resultado = registrarGestionMasiva_API({ dryRun: false });
+  console.log('=== ACTUALIZACIÓN MASIVA DEFINITIVA - EJECUCIÓN REAL ===');
+  console.log('Resumen:', JSON.stringify(resultado.resumen, null, 2));
+  console.log('Métricas:', JSON.stringify(resultado.metrics, null, 2));
+  return resultado;
+}
+
+// ========== REVERSIÓN DE CIERRES INCORRECTOS ==========
+
+/**
+ * Revierte los 18 ciclos cerrados incorrectamente por el masivo del 01/04/2026.
+ * Registra una nueva gestión restaurando el estado anterior.
+ *
+ * Ejecutar primero con dryRun=true para verificar.
+ */
+function TEST_revertirCierresIncorrectos_DryRun() {
+  const resultado = revertirCierresIncorrectos_(true);
+  console.log('=== REVERSIÓN - DRY RUN ===');
+  console.log(JSON.stringify(resultado, null, 2));
+  return resultado;
+}
+
+function TEST_revertirCierresIncorrectos_EJECUTAR() {
+  const resultado = revertirCierresIncorrectos_(false);
+  console.log('=== REVERSIÓN - EJECUCIÓN REAL ===');
+  console.log(JSON.stringify(resultado, null, 2));
+  return resultado;
+}
+
+function revertirCierresIncorrectos_(dryRun) {
+  const context = 'revertirCierresIncorrectos_';
+
+  // Los 18 ciclos cerrados incorrectamente y su estado anterior real
+  const ciclosARevertir = [
+    { asegurado: 'MARIA FERNANDA CALVO PEREZ SALAZAR', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'GRUPO SP', estadoAnterior: 'SIN_RESPUESTA' },
+    { asegurado: 'GRUPO ASEO, VIGILANCIA Y SALUD', estadoAnterior: 'SIN_RESPUESTA' },
+    { asegurado: 'PIERRE CHAUVEL PAREDES', estadoAnterior: 'SIN_RESPUESTA' },
+    { asegurado: 'GOMEZ DE LA TORRE MIRANDA JOSE ALEJANDRO DOMINGO', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'GRUPO CARLEY', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'AUTOGAS JIREH S.A.C.', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'GRUPO LOMAS DORADAS', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'MC METCO SAC', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'GRUPO ENERGY', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'GRUPO ALAS PERUANAS', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'GRUPO INSUMEX', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'GRUPO TACAMA', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'GRUPO GLP Y GNV', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'MARTA VERONICA MIRANDA RIVERO', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'GOMEZ DE LA TORRE DE LAS CASAS ALVARO', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'ANDRES RICARDO BARRAGAN ASTE', estadoAnterior: 'EN_SEGUIMIENTO' },
+    { asegurado: 'ALESSANDRA MARIA VISCONTI JUNGE', estadoAnterior: 'EN_SEGUIMIENTO' }
+  ];
+
+  Logger.info(context, 'Iniciando reversión', { dryRun, total: ciclosARevertir.length });
+
+  try {
+    // Obtener datos actuales de la bitácora para cada uno
+    const resumen = BitacoraService.obtenerResumenCiclos({}, { _noPaginate: true });
+    const ciclosMap = {};
+    resumen.data.forEach(c => { ciclosMap[Utils.cleanText(c.asegurado)] = c; });
+
+    const resultados = { revertidos: [], errores: [] };
+
+    for (const item of ciclosARevertir) {
+      try {
+        const ciclo = ciclosMap[Utils.cleanText(item.asegurado)];
+        if (!ciclo) {
+          resultados.errores.push({ asegurado: item.asegurado, error: 'Ciclo no encontrado' });
+          continue;
+        }
+
+        // Calcular snapshot real (con expansión de grupos)
+        const esGrupo = GrupoEconomicoService.esGrupo(item.asegurado);
+        const snapshot = BitacoraService._calcularSnapshotVencidos(item.asegurado, esGrupo);
+
+        if (!dryRun) {
+          BitacoraService._registrarGestionMasivaDirecta({
+            idCiclo: ciclo.idCiclo,
+            asegurado: item.asegurado,
+            ruc: ciclo.ruc || '',
+            fechaEnvioEECC: ciclo.fechaEnvioEECC,
+            tipoGestion: ciclo.tipoGestion || 'OTRO',
+            estadoGestion: item.estadoAnterior,
+            canalContacto: ciclo.canalContacto || 'OTRO',
+            fechaCompromiso: null,
+            proximaAccion: 'Seguimiento',
+            observaciones: 'Reversión automática - Cierre incorrecto del masivo 01/04/2026',
+            responsable: ciclo.responsable
+          }, snapshot);
+        }
+
+        resultados.revertidos.push({
+          asegurado: item.asegurado,
+          estadoRestaurado: item.estadoAnterior,
+          snapshotPEN: snapshot.vencidoPEN,
+          snapshotUSD: snapshot.vencidoUSD
+        });
+
+      } catch (err) {
+        resultados.errores.push({ asegurado: item.asegurado, error: err.message });
+      }
+    }
+
+    if (!dryRun && resultados.revertidos.length > 0) {
+      BitacoraService.flush();
+      SpreadsheetApp.flush();
+    }
+
+    Logger.info(context, 'Reversión completada', {
+      revertidos: resultados.revertidos.length,
+      errores: resultados.errores.length
+    });
+    Logger.flush();
+
+    return { ok: true, dryRun, ...resultados };
+
+  } catch (error) {
+    Logger.error(context, 'Error en reversión', error);
+    Logger.flush();
+    return { ok: false, error: error.message };
+  }
+}
+
+// ========== REGISTRAR NUEVOS CICLOS PARA CLIENTES SIN GESTIÓN ==========
+
+function TEST_registrarNuevosCiclos_DryRun() {
+  const resultado = registrarNuevosCiclos_({ dryRun: true });
+  console.log('=== NUEVOS CICLOS - DRY RUN ===');
+  console.log('Resumen:', JSON.stringify(resultado.resumen, null, 2));
+  console.log('Métricas:', JSON.stringify(resultado.metrics, null, 2));
+  if (resultado.registrados) {
+    console.log('Primeros 10:', JSON.stringify(resultado.registrados.slice(0, 10), null, 2));
+  }
+  return resultado;
+}
+
+function TEST_registrarNuevosCiclos_EJECUTAR() {
+  const resultado = registrarNuevosCiclos_({ dryRun: false });
+  console.log('=== NUEVOS CICLOS - EJECUCIÓN REAL ===');
+  console.log('Resumen:', JSON.stringify(resultado.resumen, null, 2));
+  console.log('Métricas:', JSON.stringify(resultado.metrics, null, 2));
+  return resultado;
+}
+
+function registrarNuevosCiclos_(opciones) {
+  const context = 'registrarNuevosCiclos_';
+  const dryRun = opciones.dryRun !== false;
+  const startTime = Date.now();
+
+  // Lista de 97 asegurados con su responsable
+  const asegurados = [
+    { nombre: 'ROMA TRADING S.A.C.', responsable: 'Pilar' },
+    { nombre: 'S ABOGADOS Y CONSULTORES ASOCIADOS SAC', responsable: 'Pilar' },
+    { nombre: 'THB PERU S.A. CORREDORES DE REASEGUROS', responsable: 'Pilar' },
+    { nombre: 'AGILE WORKS S.R.L.', responsable: 'Pilar' },
+    { nombre: 'TECH QUALITY PARTNERS S.A.C.', responsable: 'Pilar' },
+    { nombre: 'PAUL ERIC HACHMANN HORN', responsable: 'Gladys' },
+    { nombre: 'DIPROXER S.A.C', responsable: 'Pilar' },
+    { nombre: 'DERK S.A.C.', responsable: 'Pilar' },
+    { nombre: 'JIMENA GAZZO RAYGADA', responsable: 'Gladys' },
+    { nombre: 'ADOLPHUS SERVICIOS ESPECIALIZADOS S.A.C.', responsable: 'Pilar' },
+    { nombre: 'ASOCIACION EDUCATIVA SWEET ANGELS', responsable: 'Pilar' },
+    { nombre: 'DULCE HERENCIA S.A.C.', responsable: 'Pilar' },
+    { nombre: 'JOINT VENTURE COLIBRI INVERSIONES', responsable: 'Pilar' },
+    { nombre: 'LP SERVICIO TEMPORAL S.R.L.', responsable: 'Pilar' },
+    { nombre: 'YG GESTION PUBLICITARIA S.A.C.', responsable: 'Pilar' },
+    { nombre: 'COMERCIAL FRANLIZ S.A.C.', responsable: 'Pilar' },
+    { nombre: 'INVESTMENT AND SECURITIES S.A.C.', responsable: 'Pilar' },
+    { nombre: 'RAINBOW SA', responsable: 'Pilar' },
+    { nombre: 'EMPRESA EDUCATIVA GRUPO HORNA SOCIEDAD ANONIMA CERRADA', responsable: 'Pilar' },
+    { nombre: 'ADRIATICA DE IMPORTACIONES Y EXPORTAC SA', responsable: 'Pilar' },
+    { nombre: 'SISTEMAS INTEGRADOS H EIRL', responsable: 'Pilar' },
+    { nombre: 'DANTE REYDO VILLALVA MUNIVE', responsable: 'Gladys' },
+    { nombre: 'SERVICIOS LABORALES LIMA S R L', responsable: 'Pilar' },
+    { nombre: 'ELIO CASARETO WERNER', responsable: 'Gladys' },
+    { nombre: 'COOPERATIVA DE SERVICIOS MULTIPLES ALAS PERUANAS', responsable: 'Pilar' },
+    { nombre: 'M.N.S.PROYECTOS INTEGRALES S.A.C.', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS DEL EDIFICIO ALVAREZ CALDERON N° 670-680-SAN ISIDRO', responsable: 'Pilar' },
+    { nombre: 'CENTRO EDUCATIVO NO ESTATAL MEDALLA MILAGROSA', responsable: 'Pilar' },
+    { nombre: 'EDUARDO IGNACIO FLOREZ MIRANDA', responsable: 'Gladys' },
+    { nombre: 'OLIMPEX PERU S.A.C.', responsable: 'Pilar' },
+    { nombre: 'MARIE CARMEN PAJUELO BARBA', responsable: 'Gladys' },
+    { nombre: 'INVERSIONES AGROINDUSTRIALES MUNDO S.A.C.', responsable: 'Pilar' },
+    { nombre: 'GRUPO AGV S.A.C.', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS DEL EDIFICIO ANGAMOS OESTE 1431 MIRAFLORES', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS DEL EDIFICIO ALIDE', responsable: 'Pilar' },
+    { nombre: 'K&C INVERSIONES GENERALES S.A.C.', responsable: 'Pilar' },
+    { nombre: 'SANDRA FLOREZ CHANG', responsable: 'Gladys' },
+    { nombre: 'IÑIGO JOSE OLAECHEA DIEZ', responsable: 'Gladys' },
+    { nombre: 'RAFAEL LUIS CARRIQUIRY DALY', responsable: 'Gladys' },
+    { nombre: 'COO DE TRAB Y FOM DE EMP REAL FELIPE LTA', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS EDIFICIO ALFREDO SALAZAR 661-663', responsable: 'Pilar' },
+    { nombre: 'CAPITOLIUM ENTERPRISES & BUSINESS S.A.C.', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS EDIFICIO MURANO', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS DEL EDIFICIO PARQUE FEDERICO BLUME N° 186 - 188- 190A', responsable: 'Pilar' },
+    { nombre: 'DIEGO EDUARDO BARRAGAN ASTE', responsable: 'Gladys' },
+    { nombre: 'PABLO LEONARDO TRAPUNSKY VILLAR', responsable: 'Gladys' },
+    { nombre: 'LUIS FERNANDO PAINO SCARPATI', responsable: 'Gladys' },
+    { nombre: 'CONVERSIONES GN AUTOGAS S.A.C', responsable: 'Pilar' },
+    { nombre: 'GASNORT TRUJILLO S.A.C.', responsable: 'Pilar' },
+    { nombre: 'ARCADA INMOBILIARIA EIRL', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS CALLE CARLOS GRAÑA ELIZALDES NUMERO 150 SAN ISIDRO', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS PARQUE VILLENA REY N° 158-162 MIRAFLORES', responsable: 'Pilar' },
+    { nombre: 'LUJAN SARO ABOGADOS Y ASOCIADOS S.A.C.', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS EDIFICIO ABBEX', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS EDIFICIO ALMIRANTE LORD NELSON 433-433A-435', responsable: 'Pilar' },
+    { nombre: 'GRUPO CAVENAGO', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS LOTE 10 MZ C-2 AVENIDA ESMERALDA N° 290-296', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS EDIFICIO AVENIDA GENERAL JACINTO LARA N° 483', responsable: 'Pilar' },
+    { nombre: 'NATALIA MARIA HERRERA DEXTRE', responsable: 'Gladys' },
+    { nombre: 'INVERSIONES Z - TOURS .S.A.C.', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS MANUEL PRADO UGARTECHE N°335 DISTRITO DE LA MOLINA', responsable: 'Pilar' },
+    { nombre: 'LUZ MARIA LIMAYMANTA RODRIGUEZ', responsable: 'Gladys' },
+    { nombre: 'JUNT PROP EDIF VICTOR MAURTUA 459 SAN ISIDRO', responsable: 'Pilar' },
+    { nombre: 'CONURMA INGENIEROS CONSULTORES S.L. SUCURSAL DEL PERU', responsable: 'Pilar' },
+    { nombre: 'ENERCONSULT S.A.', responsable: 'Pilar' },
+    { nombre: 'GROMAR INTERNATIONAL SERVICE S.A.C', responsable: 'Pilar' },
+    { nombre: 'AUTOGAS HYM S.A.C.', responsable: 'Pilar' },
+    { nombre: 'ÑAWPA PACHA S.A.C.', responsable: 'Pilar' },
+    { nombre: 'AUTOMOTRIZ R & J SERVICIOS GENERALES E.I.R.L.', responsable: 'Pilar' },
+    { nombre: 'AUTOTRONICA JOEL CARS E.I.R.L.', responsable: 'Pilar' },
+    { nombre: 'GNC INGENIERIA S.A.C.', responsable: 'Pilar' },
+    { nombre: 'MEGA CONVERSIONES GAS DEL NORTE S.A.C. - M.G. GAS DEL NORTE S.A.C.', responsable: 'Pilar' },
+    { nombre: 'MAX EMILIO RIOS CHAVEZ', responsable: 'Gladys' },
+    { nombre: 'INVERSIONES CACATURO S.A.C.', responsable: 'Pilar' },
+    { nombre: 'BEDINI PERU S.A.C.', responsable: 'Pilar' },
+    { nombre: 'BEDITEC PERU E.I.R.L', responsable: 'Pilar' },
+    { nombre: 'CORPORACION VIGO S.A.C.', responsable: 'Pilar' },
+    { nombre: 'PS VENDING S.A.C', responsable: 'Pilar' },
+    { nombre: 'ELIAS MIGUEL CASTRO PULCHA', responsable: 'Gladys' },
+    { nombre: 'CALLE LORD NELSON NUMERO 205-207-207A MIRAFLORES', responsable: 'Pilar' },
+    { nombre: 'SERVICENTRO UNIVERSAL S.R.L.', responsable: 'Pilar' },
+    { nombre: 'JUNTA DE PROPIETARIOS EDIF CAMINO REAL 1', responsable: 'Pilar' },
+    { nombre: 'SCOBEL CORPORATION S.A.C.', responsable: 'Pilar' },
+    { nombre: 'COLIBRI COPPER S.A.C.', responsable: 'Pilar' },
+    { nombre: 'COLIBRI REFINERY S.A.C.', responsable: 'Pilar' },
+    { nombre: 'MARIA CRISTINA MUSSO CANEPA', responsable: 'Gladys' },
+    { nombre: 'ROSA LUZ BELTRAN PONCE', responsable: 'Gladys' },
+    { nombre: 'SHIRLEY SUSAN ORE RAMIREZ', responsable: 'Gladys' },
+    { nombre: 'G & J AMPAZ ASOCIADOS S.A.C.', responsable: 'Pilar' },
+    { nombre: 'MARIA FANNY LILIANA VELARDE SANTA MARIA', responsable: 'Gladys' },
+    { nombre: 'INVERSIONES GENESIS II SAC', responsable: 'Pilar' },
+    { nombre: 'MERCEDES MARIA BACA BERNUY', responsable: 'Gladys' },
+    { nombre: 'MERCHANDISING \'\'R\'\' US S.A.C.', responsable: 'Pilar' },
+    { nombre: 'ANA LUZ VASQUEZ BUSTAMANTE', responsable: 'Gladys' },
+    { nombre: 'EDITH MARIA SANCHEZ SANCHEZ', responsable: 'Gladys' },
+    { nombre: 'LA COCINA DE CHANA E.I.R.L.', responsable: 'Pilar' },
+    { nombre: 'INDIRA YOLANDA TECCO ESPINOZA', responsable: 'Gladys' }
+  ];
+
+  Logger.info(context, 'Registrando nuevos ciclos', { dryRun, total: asegurados.length });
+
+  const metrics = { startTime: new Date().toISOString() };
+
+  try {
+    // Calcular snapshots masivos (con expansión de grupos)
+    const t1 = Date.now();
+    const snapshots = BitacoraService._calcularSnapshotsMasivos(asegurados.map(a => a.nombre));
+    metrics.snapshotCalcMs = Date.now() - t1;
+
+    const registrados = [];
+    const errores = [];
+
+    const t2 = Date.now();
+    for (const item of asegurados) {
+      try {
+        const key = Utils.cleanText(item.nombre);
+        const snap = snapshots[key] || { vencidoPEN: 0, vencidoUSD: 0 };
+        const esPilar = item.responsable === 'Pilar';
+
+        const idCiclo = BitacoraService._generarIdCiclo(item.nombre);
+
+        if (!dryRun) {
+          BitacoraService._registrarGestionMasivaDirecta({
+            idCiclo: idCiclo,
+            asegurado: item.nombre,
+            ruc: '',
+            fechaEnvioEECC: BitacoraService._getFechaPeru(),
+            tipoGestion: esPilar ? 'CORREO_INDIVIDUAL' : 'LLAMADA',
+            estadoGestion: 'EN_SEGUIMIENTO',
+            canalContacto: esPilar ? 'EMAIL' : 'LLAMADA',
+            fechaCompromiso: null,
+            proximaAccion: 'Enviar recordatorio',
+            observaciones: 'A la espera de la respuesta por parte del asegurado.',
+            responsable: item.responsable
+          }, snap);
+        }
+
+        registrados.push({
+          asegurado: item.nombre,
+          responsable: item.responsable,
+          canal: esPilar ? 'EMAIL' : 'LLAMADA',
+          snapshotPEN: snap.vencidoPEN,
+          snapshotUSD: snap.vencidoUSD
+        });
+
+      } catch (err) {
+        errores.push({ asegurado: item.nombre, error: err.message });
+      }
+    }
+    metrics.registroMs = Date.now() - t2;
+
+    if (!dryRun && registrados.length > 0) {
+      const t3 = Date.now();
+      BitacoraService.flush();
+      SpreadsheetApp.flush();
+      metrics.flushMs = Date.now() - t3;
+    }
+
+    metrics.totalMs = Date.now() - startTime;
+
+    const resultado = {
+      ok: true,
+      dryRun,
+      resumen: {
+        totalAsegurados: asegurados.length,
+        registrados: registrados.length,
+        errores: errores.length
+      },
+      registrados,
+      errores,
+      metrics
+    };
+
+    Logger.info(context, 'Completado', resultado.resumen);
+    try { Logger.flush(); } catch (e) { /* no-op */ }
+
+    return resultado;
+
+  } catch (error) {
+    Logger.error(context, 'Error', error);
+    try { Logger.flush(); } catch (e) { /* no-op */ }
+    return { ok: false, error: error.message };
+  }
+}
+
+// ========== DETECTAR CLIENTES/GRUPOS SIN GESTIÓN EN BITÁCORA ==========
+
+/**
+ * Encuentra asegurados en la BD que NO tienen ninguna gestión en la bitácora.
+ * Separa en: clientes individuales (no pertenecen a grupo) y grupos económicos.
+ * Excluye miembros de grupos (se gestionan a nivel de grupo).
+ */
+function TEST_clientesSinGestion() {
+  const resultado = detectarClientesSinGestion_();
+  console.log('=== CLIENTES Y GRUPOS SIN GESTIÓN EN BITÁCORA ===');
+  console.log('Resumen:', JSON.stringify(resultado.resumen, null, 2));
+  console.log('\n--- CLIENTES INDIVIDUALES SIN GESTIÓN ---');
+  resultado.clientesSinGestion.forEach(c => {
+    console.log(`  ${c.asegurado} | PEN: ${c.vencidoPEN} | USD: ${c.vencidoUSD} | Cupones: ${c.cuponesVencidos}`);
+  });
+  console.log('\n--- GRUPOS ECONÓMICOS SIN GESTIÓN ---');
+  resultado.gruposSinGestion.forEach(g => {
+    console.log(`  ${g.grupo} | PEN: ${g.vencidoPEN} | USD: ${g.vencidoUSD} | Miembros: ${g.miembros}`);
+  });
+  return resultado;
+}
+
+function detectarClientesSinGestion_() {
+  const context = 'detectarClientesSinGestion_';
+
+  try {
+    // FASE 1: Leer BD y obtener asegurados únicos con deuda vencida
+    const bdData = SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
+    const colMap = bdData.columnMap;
+    const aseguradoIdx = colMap['ASEGURADO'] ?? -1;
+    const importeIdx = colMap['IMPORTE'] ?? -1;
+    const monIdx = colMap['MON'] ?? -1;
+    const fecVencIdx = colMap['FEC_VENCIMIENTO_COB'] ?? colMap['FEC_VENCIMIENTO COB'] ?? colMap['FEC VENCIMIENTO COB'] ?? -1;
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Acumular datos por asegurado de BD
+    const aseguradosBD = {}; // { nombre: { vencidoPEN, vencidoUSD, cuponesTotal, cuponesVencidos } }
+
+    for (const row of bdData.rows) {
+      const nombre = Utils.cleanText(String(row[aseguradoIdx] || ''));
+      if (!nombre) continue;
+
+      if (!aseguradosBD[nombre]) {
+        aseguradosBD[nombre] = { vencidoPEN: 0, vencidoUSD: 0, cuponesTotal: 0, cuponesVencidos: 0 };
+      }
+
+      aseguradosBD[nombre].cuponesTotal++;
+
+      const fecVenc = BitacoraService._parseDate(row[fecVencIdx]);
+      if (!fecVenc) continue;
+      fecVenc.setHours(0, 0, 0, 0);
+      if (fecVenc >= hoy) continue;
+
+      const importe = BitacoraService._parseNumber(row[importeIdx]);
+      if (importe <= 0) continue;
+
+      aseguradosBD[nombre].cuponesVencidos++;
+      const moneda = String(row[monIdx] || 'PEN').toUpperCase();
+      const esUSD = moneda.includes('USD') || moneda.includes('US$') || moneda.includes('DOLAR') || moneda.includes('DOLLAR');
+
+      if (esUSD) {
+        aseguradosBD[nombre].vencidoUSD += importe;
+      } else {
+        aseguradosBD[nombre].vencidoPEN += importe;
+      }
+    }
+
+    // Redondear
+    for (const k in aseguradosBD) {
+      aseguradosBD[k].vencidoPEN = Math.round(aseguradosBD[k].vencidoPEN * 100) / 100;
+      aseguradosBD[k].vencidoUSD = Math.round(aseguradosBD[k].vencidoUSD * 100) / 100;
+    }
+
+    // FASE 2: Leer asegurados únicos de la bitácora
+    const todasGestiones = BitacoraService.obtenerGestiones();
+    const aseguradosBitacora = new Set();
+    todasGestiones.forEach(g => {
+      aseguradosBitacora.add(Utils.cleanText(g.asegurado));
+    });
+
+    // FASE 3: Cargar grupos económicos
+    const todosGrupos = GrupoEconomicoService.getGrupos ? GrupoEconomicoService.getGrupos() : [];
+    const gruposSet = new Set(todosGrupos.map(g => Utils.cleanText(g)));
+
+    // Obtener todos los miembros de todos los grupos
+    const miembrosDeGrupos = new Set();
+    const grupoMiembrosMap = {};
+    for (const grupo of todosGrupos) {
+      const miembros = GrupoEconomicoService.getAsegurados(grupo);
+      grupoMiembrosMap[Utils.cleanText(grupo)] = miembros || [];
+      (miembros || []).forEach(m => miembrosDeGrupos.add(Utils.cleanText(m)));
+    }
+
+    // FASE 4: Clasificar
+    const clientesSinGestion = [];
+    const gruposSinGestion = [];
+    const miembrosExcluidos = [];
+
+    for (const nombre in aseguradosBD) {
+      const data = aseguradosBD[nombre];
+
+      // Solo incluir los que tienen deuda vencida
+      if (data.vencidoPEN === 0 && data.vencidoUSD === 0) continue;
+
+      // Verificar si ya tiene gestión en bitácora
+      if (aseguradosBitacora.has(nombre)) continue;
+
+      // Verificar si es miembro de un grupo → excluir (se gestiona a nivel grupo)
+      if (miembrosDeGrupos.has(nombre)) {
+        miembrosExcluidos.push({ asegurado: nombre, grupo: GrupoEconomicoService.getGrupo ? GrupoEconomicoService.getGrupo(nombre) : '?' });
+        continue;
+      }
+
+      clientesSinGestion.push({
+        asegurado: nombre,
+        vencidoPEN: data.vencidoPEN,
+        vencidoUSD: data.vencidoUSD,
+        cuponesVencidos: data.cuponesVencidos
+      });
+    }
+
+    // Verificar grupos que no tienen gestión
+    for (const grupo of todosGrupos) {
+      const grupoKey = Utils.cleanText(grupo);
+      if (aseguradosBitacora.has(grupoKey)) continue;
+
+      // Calcular deuda total del grupo sumando miembros
+      const miembros = grupoMiembrosMap[grupoKey] || [];
+      let vencidoPEN = 0, vencidoUSD = 0;
+      for (const m of miembros) {
+        const mKey = Utils.cleanText(m);
+        if (aseguradosBD[mKey]) {
+          vencidoPEN += aseguradosBD[mKey].vencidoPEN;
+          vencidoUSD += aseguradosBD[mKey].vencidoUSD;
+        }
+      }
+
+      if (vencidoPEN > 0 || vencidoUSD > 0) {
+        gruposSinGestion.push({
+          grupo,
+          miembros: miembros.length,
+          vencidoPEN: Math.round(vencidoPEN * 100) / 100,
+          vencidoUSD: Math.round(vencidoUSD * 100) / 100
+        });
+      }
+    }
+
+    // Ordenar por deuda total descendente
+    clientesSinGestion.sort((a, b) => (b.vencidoPEN + b.vencidoUSD) - (a.vencidoPEN + a.vencidoUSD));
+    gruposSinGestion.sort((a, b) => (b.vencidoPEN + b.vencidoUSD) - (a.vencidoPEN + a.vencidoUSD));
+
+    const resultado = {
+      ok: true,
+      resumen: {
+        totalAseguradosBD: Object.keys(aseguradosBD).length,
+        totalEnBitacora: aseguradosBitacora.size,
+        clientesSinGestion: clientesSinGestion.length,
+        gruposSinGestion: gruposSinGestion.length,
+        miembrosExcluidosPorGrupo: miembrosExcluidos.length
+      },
+      clientesSinGestion,
+      gruposSinGestion,
+      miembrosExcluidos: miembrosExcluidos.slice(0, 10)
+    };
+
+    Logger.info(context, 'Detección completada', resultado.resumen);
+    try { Logger.flush(); } catch (e) { /* no-op */ }
+
+    return resultado;
+
+  } catch (error) {
+    Logger.error(context, 'Error', error);
+    try { Logger.flush(); } catch (e) { /* no-op */ }
+    return { ok: false, error: error.message };
+  }
+}
+
+// ========== ELIMINAR REGISTROS DE MIEMBROS INDIVIDUALES DE GRUPOS ==========
+
+/**
+ * Elimina filas de la bitácora que pertenecen a miembros individuales de grupos económicos.
+ * Estos miembros se gestionan a nivel de grupo, no individual.
+ */
+function TEST_eliminarMiembroGrupo_DryRun() {
+  const resultado = eliminarRegistrosMiembroGrupo_('CORPORACION INSUMEX S.A.C.', true);
+  console.log('=== ELIMINAR MIEMBRO GRUPO - DRY RUN ===');
+  console.log(JSON.stringify(resultado, null, 2));
+  return resultado;
+}
+
+function TEST_eliminarMiembroGrupo_EJECUTAR() {
+  const resultado = eliminarRegistrosMiembroGrupo_('CORPORACION INSUMEX S.A.C.', false);
+  console.log('=== ELIMINAR MIEMBRO GRUPO - EJECUCIÓN REAL ===');
+  console.log(JSON.stringify(resultado, null, 2));
+  return resultado;
+}
+
+/**
+ * Elimina todas las filas de un asegurado específico de la hoja Bitacora_Gestiones_EECC.
+ * @param {string} asegurado - Nombre exacto del asegurado
+ * @param {boolean} dryRun - Si true, solo reporta sin eliminar
+ */
+function eliminarRegistrosMiembroGrupo_(asegurado, dryRun) {
+  const context = 'eliminarRegistrosMiembroGrupo_';
+
+  try {
+    Logger.info(context, 'Buscando registros a eliminar', { asegurado, dryRun });
+
+    const bitacoraSpreadsheetId = getConfig('BITACORA.SPREADSHEET_ID', getConfig('SPREADSHEET_ID', ''));
+    const ss = SheetsIO._getSpreadsheet(bitacoraSpreadsheetId);
+    const sheet = ss.getSheetByName('Bitacora_Gestiones_EECC');
+
+    if (!sheet) {
+      return { ok: false, error: 'Hoja Bitacora_Gestiones_EECC no encontrada' };
+    }
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      return { ok: true, dryRun, eliminadas: 0, message: 'Hoja vacía' };
+    }
+
+    // Leer columna ASEGURADO (columna 6)
+    const data = sheet.getRange(2, 1, lastRow - 1, 16).getValues();
+    const aseguradoNorm = Utils.cleanText(asegurado);
+
+    // Encontrar filas que coinciden (de abajo hacia arriba para no afectar índices al eliminar)
+    const filasAEliminar = [];
+    for (let i = data.length - 1; i >= 0; i--) {
+      const filaAsegurado = Utils.cleanText(String(data[i][5] || ''));
+      if (filaAsegurado === aseguradoNorm) {
+        filasAEliminar.push({
+          rowNum: i + 2, // Fila real en la hoja
+          idCiclo: data[i][0],
+          idGestion: data[i][1],
+          estado: data[i][9],
+          fecha: data[i][4]
+        });
+      }
+    }
+
+    Logger.info(context, `Filas encontradas: ${filasAEliminar.length}`, { asegurado });
+
+    if (!dryRun && filasAEliminar.length > 0) {
+      // Eliminar de abajo hacia arriba
+      for (const fila of filasAEliminar) {
+        sheet.deleteRow(fila.rowNum);
+      }
+      SpreadsheetApp.flush();
+      BitacoraService._clearCache();
+    }
+
+    try { Logger.flush(); } catch (e) { /* no-op */ }
+
+    return {
+      ok: true,
+      dryRun,
+      asegurado,
+      filasEliminadas: filasAEliminar.length,
+      detalles: filasAEliminar
+    };
+
+  } catch (error) {
+    Logger.error(context, 'Error', error);
+    return { ok: false, error: error.message };
+  }
+}
+
+// ========== REACTIVACIÓN DE CERRADOS CON NUEVA DEUDA ==========
+
+/**
+ * Revisa ciclos CERRADO_PAGADO: si tienen nueva deuda vencida → los reactiva a EN_SEGUIMIENTO.
+ * Usa _calcularSnapshotsMasivos (optimizado, 1 pasada) con expansión de grupos.
+ */
+function TEST_reactivarCerradosConDeuda_DryRun() {
+  const resultado = reactivarCerradosConDeuda_({ dryRun: true });
+  console.log('=== REACTIVACIÓN CERRADOS - DRY RUN ===');
+  console.log('Resumen:', JSON.stringify(resultado.resumen, null, 2));
+  if (resultado.reactivados) {
+    console.log('Reactivados:', JSON.stringify(resultado.reactivados.slice(0, 20), null, 2));
+  }
+  if (resultado.sinDeuda) {
+    console.log('Sin deuda (OK):', resultado.sinDeuda.length);
+  }
+  console.log('Métricas:', JSON.stringify(resultado.metrics, null, 2));
+  return resultado;
+}
+
+function TEST_reactivarCerradosConDeuda_EJECUTAR() {
+  const resultado = reactivarCerradosConDeuda_({ dryRun: false });
+  console.log('=== REACTIVACIÓN CERRADOS - EJECUCIÓN REAL ===');
+  console.log('Resumen:', JSON.stringify(resultado.resumen, null, 2));
+  console.log('Métricas:', JSON.stringify(resultado.metrics, null, 2));
+  return resultado;
+}
+
+function reactivarCerradosConDeuda_(opciones) {
+  const context = 'reactivarCerradosConDeuda_';
+  const dryRun = opciones.dryRun !== false;
+  const startTime = Date.now();
+
+  Logger.info(context, 'Iniciando revisión de cerrados con nueva deuda', { dryRun });
+
+  const metrics = { startTime: new Date().toISOString() };
+
+  try {
+    // FASE 1: Obtener SOLO los ciclos CERRADO_PAGADO
+    const t1 = Date.now();
+    const resumen = BitacoraService.obtenerResumenCiclos({}, { _noPaginate: true });
+    metrics.bitacoraReadMs = Date.now() - t1;
+
+    const cerrados = resumen.data.filter(c => c.estadoGestion === 'CERRADO_PAGADO');
+    Logger.info(context, `Ciclos CERRADO_PAGADO encontrados: ${cerrados.length}`);
+
+    if (cerrados.length === 0) {
+      return { ok: true, dryRun, resumen: { cerrados: 0, reactivados: 0 }, metrics };
+    }
+
+    // FASE 2: Calcular snapshots masivos (con expansión de grupos)
+    const t2 = Date.now();
+    const snapshots = BitacoraService._calcularSnapshotsMasivos(cerrados.map(c => c.asegurado));
+    metrics.snapshotCalcMs = Date.now() - t2;
+
+    // FASE 3: Clasificar
+    const reactivados = [];
+    const sinDeuda = [];
+    const errores = [];
+
+    const t3 = Date.now();
+    for (const ciclo of cerrados) {
+      try {
+        const key = Utils.cleanText(ciclo.asegurado);
+        const snap = snapshots[key] || { vencidoPEN: 0, vencidoUSD: 0 };
+        const tieneDeuda = snap.vencidoPEN > 0 || snap.vencidoUSD > 0;
+
+        if (tieneDeuda) {
+          // Tiene nueva deuda → reactivar a EN_SEGUIMIENTO
+          if (!dryRun) {
+            BitacoraService._registrarGestionMasivaDirecta({
+              idCiclo: ciclo.idCiclo,
+              asegurado: ciclo.asegurado,
+              ruc: ciclo.ruc || '',
+              fechaEnvioEECC: ciclo.fechaEnvioEECC,
+              tipoGestion: ciclo.tipoGestion || 'OTRO',
+              estadoGestion: 'EN_SEGUIMIENTO',
+              canalContacto: ciclo.canalContacto || 'OTRO',
+              fechaCompromiso: null,
+              proximaAccion: 'Seguimiento - Nueva deuda vencida detectada',
+              observaciones: 'Reactivación automática - Nuevos cupones vencidos detectados',
+              responsable: ciclo.responsable
+            }, snap);
+          }
+
+          reactivados.push({
+            asegurado: ciclo.asegurado,
+            responsable: ciclo.responsable,
+            snapshotPEN: snap.vencidoPEN,
+            snapshotUSD: snap.vencidoUSD
+          });
+        } else {
+          sinDeuda.push({ asegurado: ciclo.asegurado });
+        }
+      } catch (err) {
+        errores.push({ asegurado: ciclo.asegurado, error: err.message });
+      }
+    }
+    metrics.registroMs = Date.now() - t3;
+
+    // FASE 4: Flush
+    if (!dryRun && reactivados.length > 0) {
+      const t4 = Date.now();
+      BitacoraService.flush();
+      SpreadsheetApp.flush();
+      metrics.flushMs = Date.now() - t4;
+    }
+
+    metrics.totalMs = Date.now() - startTime;
+
+    const resultado = {
+      ok: true,
+      dryRun,
+      resumen: {
+        totalCerrados: cerrados.length,
+        reactivados: reactivados.length,
+        sinDeuda: sinDeuda.length,
+        errores: errores.length
+      },
+      reactivados,
+      sinDeuda: sinDeuda.slice(0, 10),
+      errores,
+      metrics
+    };
+
+    Logger.info(context, 'Revisión completada', resultado.resumen);
+    try { Logger.flush(); } catch (e) { /* no-op */ }
+
+    return resultado;
+
+  } catch (error) {
+    Logger.error(context, 'Error', error);
+    try { Logger.flush(); } catch (e) { /* no-op */ }
+    return { ok: false, error: error.message, metrics };
+  }
+}
+
 // ========== ACTUALIZACIÓN MASIVA DE RESPONSABLES EN BITÁCORA ==========
 
 /**

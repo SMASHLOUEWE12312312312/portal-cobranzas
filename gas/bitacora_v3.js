@@ -266,7 +266,7 @@ var BitacoraService = BitacoraService || {
    * @param {Object} datos - Datos en formato legacy o v3
    * @return {Object} { ok, idGestion }
    */
-  registrarGestion(datos) {
+  registrarGestion(datos, bdDataInjected = null) {
     const context = 'BitacoraService.registrarGestion (adapter)';
 
     try {
@@ -294,7 +294,7 @@ var BitacoraService = BitacoraService || {
       };
 
       // Delegar a registrarGestionManual
-      return this.registrarGestionManual(datosV3);
+      return this.registrarGestionManual(datosV3, bdDataInjected);
 
     } catch (error) {
       Logger.error(context, 'Error en adapter', error);
@@ -374,7 +374,7 @@ var BitacoraService = BitacoraService || {
    * @param {string} datos.observaciones - Detalles
    * @return {Object} { ok, idGestion }
    */
-  registrarGestionManual(datos) {
+  registrarGestionManual(datos, bdDataInjected = null) {
     const context = 'BitacoraService.registrarGestionManual';
 
     try {
@@ -426,7 +426,7 @@ var BitacoraService = BitacoraService || {
 
       // ========== NUEVO v3.1: Calcular snapshot de vencidos ==========
       const esGrupo = datos.esGrupo || GrupoEconomicoService.esGrupo(datos.asegurado);
-      const snapshotVencidos = this._calcularSnapshotVencidos(datos.asegurado, esGrupo);
+      const snapshotVencidos = this._calcularSnapshotVencidos(datos.asegurado, esGrupo, bdDataInjected);
 
       if (snapshotVencidos.error) {
         Logger.warn(context, 'Snapshot calculado con error, registrando como 0', { error: snapshotVencidos.error });
@@ -771,6 +771,21 @@ var BitacoraService = BitacoraService || {
       Logger.info(context, 'Resumen de ciclos obtenido (1 por asegurado)', { count: resultado.length });
 
       // ========== PAGINACIÓN - Contrato fijo v4.1+ ==========
+      // Flag interno: _noPaginate para uso interno (registrarGestionMasiva, etc.)
+      if (opciones._noPaginate) {
+        return {
+          data: resultado,
+          pagination: {
+            page: 1,
+            pageSize: resultado.length,
+            total: resultado.length,
+            totalPages: 1,
+            hasNext: false,
+            hasPrev: false
+          }
+        };
+      }
+
       const page = opciones.page || 1;
       const pageSize = Math.min(opciones.pageSize || 50, 100);
       const startIdx = (page - 1) * pageSize;
@@ -1043,13 +1058,14 @@ var BitacoraService = BitacoraService || {
    * @return {Object} { vencidoPEN: number, vencidoUSD: number }
    * @private
    */
-  _calcularSnapshotVencidos(asegurado, esGrupo = false) {
+  _calcularSnapshotVencidos(asegurado, esGrupo = false, bdDataInjected = null) {
     const context = 'BitacoraService._calcularSnapshotVencidos';
 
     try {
       Logger.info(context, 'Calculando snapshot de vencidos', {
         asegurado,
-        esGrupo
+        esGrupo,
+        bdInjected: !!bdDataInjected
       });
 
       // Obtener lista de asegurados a procesar
@@ -1076,48 +1092,26 @@ var BitacoraService = BitacoraService || {
       // Normalizar nombres para comparación
       const aseguradosNormalizados = aseguradosAProcesar.map(a => Utils.cleanText(a));
 
-      // OPTIMIZACIÓN v4.2: Usar caché de BD si existe (válido por 60 segundos)
-      let bdData = null;
-      const CACHE_KEY = 'SNAPSHOT_BD_CACHE';
-      const CACHE_TTL = 60; // segundos
+      // OPTIMIZACIÓN: 3 niveles de fuente de BD, en orden de costo
+      // 1) bdDataInjected: el caller ya tiene BD leída (path crítico de generateHeadless)
+      // 2) BDCache: filas pre-filtradas por asegurado, TTL 60s (~16KB cabe en CacheService)
+      // 3) SheetsIO.readSheet: fallback fresh (~1-2s)
+      let bdData = bdDataInjected;
 
-      try {
-        const cacheService = CacheService.getScriptCache();
-        const cachedBD = cacheService.get(CACHE_KEY);
-
-        if (cachedBD) {
-          bdData = JSON.parse(cachedBD);
-          Logger.info(context, 'Usando BD desde caché (ahorro ~1-2s)');
+      if (!bdData && !esGrupo && typeof BDCache !== 'undefined') {
+        try {
+          bdData = BDCache.getFiltered(asegurado, function () {
+            return SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
+          });
+          Logger.info(context, 'BD obtenida via BDCache (filtrada)', { rows: bdData.rows.length });
+        } catch (cacheError) {
+          Logger.warn(context, 'BDCache falló, leyendo fresh', { error: cacheError.message });
         }
-      } catch (cacheError) {
-        // Caché inválido o error de parse, leer fresh
-        Logger.warn(context, 'Caché BD inválido, leyendo fresh', { error: cacheError.message });
       }
 
       if (!bdData) {
-        // Leer hoja BD (operación costosa)
+        // Fallback: leer hoja BD entera
         bdData = SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
-
-        // Intentar cachear para próximas lecturas
-        try {
-          const cacheService = CacheService.getScriptCache();
-          // Solo cachear si no es muy grande (límite CacheService = 100KB)
-          const bdString = JSON.stringify({
-            headers: bdData.headers,
-            rows: bdData.rows,
-            columnMap: bdData.columnMap
-          });
-
-          if (bdString.length < 95000) { // Dejar margen
-            cacheService.put(CACHE_KEY, bdString, CACHE_TTL);
-            Logger.info(context, 'BD cacheada exitosamente', { sizeKB: Math.round(bdString.length / 1024) });
-          } else {
-            Logger.warn(context, 'BD muy grande para cachear', { sizeKB: Math.round(bdString.length / 1024) });
-          }
-        } catch (cacheError) {
-          // Ignorar error de caché - no es crítico
-          Logger.warn(context, 'No se pudo cachear BD', { error: cacheError.message });
-        }
       }
 
       if (!bdData || !bdData.rows || bdData.rows.length === 0) {
@@ -1549,6 +1543,519 @@ var BitacoraService = BitacoraService || {
     }
   },
 
+  // ========== REGISTRO MASIVO DE GESTIONES (DEFINITIVO) ==========
+
+  /**
+   * FUNCIÓN DEFINITIVA - Actualización masiva de bitácora.
+   * Procesa TODOS los ciclos en una sola pasada con la siguiente lógica:
+   *
+   * ┌─────────────────────┬──────────────┬──────────────────────────────────┐
+   * │ Estado actual        │ ¿Tiene deuda?│ Acción                           │
+   * ├─────────────────────┼──────────────┼──────────────────────────────────┤
+   * │ NO_COBRABLE          │ —            │ NO TOCAR (nunca)                 │
+   * │ CERRADO_PAGADO       │ SÍ           │ → EN_SEGUIMIENTO (reactivar)     │
+   * │ CERRADO_PAGADO       │ NO           │ NO TOCAR (correctamente cerrado) │
+   * │ Cualquier otro       │ NO           │ → CERRADO_PAGADO (cerrar)        │
+   * │ Cualquier otro       │ SÍ           │ → Mismo estado (snapshot update) │
+   * └─────────────────────┴──────────────┴──────────────────────────────────┘
+   *
+   * OPTIMIZACIÓN:
+   * - Lee BD UNA SOLA VEZ → pre-calcula snapshots para TODOS (con expansión de grupos)
+   * - Lee bitácora UNA SOLA VEZ → obtiene estado actual de todos los ciclos
+   * - Usa buffer + flush batch para escritura
+   * - Timer de seguridad (5 min) para evitar timeout de GAS (6 min)
+   *
+   * @param {Object} opciones
+   * @param {boolean} opciones.dryRun - Si true, solo reporta sin modificar (default: true)
+   * @param {number} opciones.limite - Máximo de ciclos a procesar (default: todos)
+   * @param {string} opciones.responsableFiltro - Filtrar solo ciclos de un responsable específico
+   * @return {Object} Resultado detallado del proceso masivo
+   */
+  registrarGestionMasiva(opciones = {}) {
+    const context = 'BitacoraService.registrarGestionMasiva';
+    const dryRun = opciones.dryRun !== false; // Default: true (seguro)
+    const limite = opciones.limite || 9999;
+    const responsableFiltro = opciones.responsableFiltro || null;
+    const MAX_EXECUTION_MS = 300000; // 5 min (margen de 1 min vs límite GAS de 6 min)
+    const startTime = Date.now();
+
+    Logger.info(context, 'Iniciando actualización masiva definitiva', {
+      dryRun, limite, responsableFiltro
+    });
+
+    const metrics = {
+      startTime: new Date().toISOString(),
+      bitacoraReadMs: 0,
+      snapshotCalcMs: 0,
+      registroMs: 0,
+      flushMs: 0
+    };
+
+    try {
+      // ══════════════════════════════════════════════════════════
+      // FASE 1: Leer TODOS los ciclos (1 por asegurado, sin paginación)
+      // ══════════════════════════════════════════════════════════
+      const t1 = Date.now();
+      const resumenResult = this.obtenerResumenCiclos({}, { _noPaginate: true });
+
+      if (!resumenResult || !resumenResult.data || resumenResult.data.length === 0) {
+        return { ok: false, error: 'No se encontraron ciclos en la bitácora', dryRun };
+      }
+
+      metrics.bitacoraReadMs = Date.now() - t1;
+
+      // Separar por categoría
+      const noCobrable = resumenResult.data.filter(c => c.estadoGestion === 'NO_COBRABLE');
+      let ciclosAProcesar = resumenResult.data.filter(c => c.estadoGestion !== 'NO_COBRABLE');
+
+      // Filtrar por responsable si se especificó
+      if (responsableFiltro) {
+        ciclosAProcesar = ciclosAProcesar.filter(c => c.responsable === responsableFiltro);
+      }
+
+      // Aplicar límite
+      if (ciclosAProcesar.length > limite) {
+        ciclosAProcesar = ciclosAProcesar.slice(0, limite);
+      }
+
+      Logger.info(context, 'Clasificación de ciclos', {
+        totalBitacora: resumenResult.data.length,
+        noCobrable: noCobrable.length,
+        aProcesar: ciclosAProcesar.length
+      });
+
+      if (ciclosAProcesar.length === 0) {
+        return { ok: true, dryRun, resumen: { totalCiclos: resumenResult.data.length, procesados: 0 }, metrics };
+      }
+
+      // ══════════════════════════════════════════════════════════
+      // FASE 2: Pre-calcular snapshots para TODOS en UNA pasada
+      // (con expansión de grupos económicos)
+      // ══════════════════════════════════════════════════════════
+      const t2 = Date.now();
+      const snapshotsMasivos = this._calcularSnapshotsMasivos(
+        ciclosAProcesar.map(c => c.asegurado)
+      );
+      metrics.snapshotCalcMs = Date.now() - t2;
+
+      // ══════════════════════════════════════════════════════════
+      // FASE 3: Procesar cada ciclo según la tabla de decisión
+      // ══════════════════════════════════════════════════════════
+      const t3 = Date.now();
+      const resultados = {
+        cerradosPagado: [],     // Activos sin deuda → CERRADO_PAGADO
+        mantenidos: [],         // Activos con deuda → mismo estado + snapshot
+        reactivados: [],        // CERRADO_PAGADO con nueva deuda → EN_SEGUIMIENTO
+        sinCambio: [],          // CERRADO_PAGADO sin deuda → no tocar
+        errores: [],
+        omitidos: []
+      };
+
+      for (let i = 0; i < ciclosAProcesar.length; i++) {
+        // Timer de seguridad
+        if (Date.now() - startTime > MAX_EXECUTION_MS) {
+          ciclosAProcesar.slice(i).forEach(c => {
+            resultados.omitidos.push({ asegurado: c.asegurado, motivo: 'TIMEOUT_SEGURIDAD' });
+          });
+          Logger.warn(context, 'Timer de seguridad activado', { procesados: i, omitidos: ciclosAProcesar.length - i });
+          break;
+        }
+
+        const ciclo = ciclosAProcesar[i];
+
+        try {
+          const aseguradoKey = Utils.cleanText(ciclo.asegurado);
+          const snap = snapshotsMasivos[aseguradoKey] || { vencidoPEN: 0, vencidoUSD: 0 };
+          const tieneDeuda = snap.vencidoPEN > 0 || snap.vencidoUSD > 0;
+          const esCerrado = ciclo.estadoGestion === 'CERRADO_PAGADO';
+
+          if (esCerrado && !tieneDeuda) {
+            // ── CERRADO_PAGADO sin deuda → NO TOCAR ──
+            resultados.sinCambio.push({ asegurado: ciclo.asegurado });
+
+          } else if (esCerrado && tieneDeuda) {
+            // ── CERRADO_PAGADO con nueva deuda → REACTIVAR a EN_SEGUIMIENTO ──
+            if (!dryRun) {
+              this._registrarGestionMasivaDirecta({
+                idCiclo: ciclo.idCiclo,
+                asegurado: ciclo.asegurado,
+                ruc: ciclo.ruc || '',
+                fechaEnvioEECC: ciclo.fechaEnvioEECC,
+                tipoGestion: ciclo.tipoGestion || 'OTRO',
+                estadoGestion: 'EN_SEGUIMIENTO',
+                canalContacto: ciclo.canalContacto || 'OTRO',
+                fechaCompromiso: null,
+                proximaAccion: 'Seguimiento - Nueva deuda vencida detectada',
+                observaciones: 'Reactivación automática - Nuevos cupones vencidos',
+                responsable: ciclo.responsable
+              }, snap);
+            }
+            resultados.reactivados.push({
+              asegurado: ciclo.asegurado,
+              responsable: ciclo.responsable,
+              snapshotPEN: snap.vencidoPEN,
+              snapshotUSD: snap.vencidoUSD
+            });
+
+          } else if (!esCerrado && !tieneDeuda) {
+            // ── ACTIVO sin deuda → CERRAR como CERRADO_PAGADO ──
+            if (!dryRun) {
+              this._registrarGestionMasivaDirecta({
+                idCiclo: ciclo.idCiclo,
+                asegurado: ciclo.asegurado,
+                ruc: ciclo.ruc || '',
+                fechaEnvioEECC: ciclo.fechaEnvioEECC,
+                tipoGestion: ciclo.tipoGestion || 'OTRO',
+                estadoGestion: 'CERRADO_PAGADO',
+                canalContacto: ciclo.canalContacto || 'OTRO',
+                fechaCompromiso: null,
+                proximaAccion: 'Archivar gestión - Caso cerrado',
+                observaciones: 'Cierre automático - Sin importes vencidos en soles ni dólares',
+                responsable: ciclo.responsable
+              }, snap);
+            }
+            resultados.cerradosPagado.push({
+              asegurado: ciclo.asegurado,
+              responsable: ciclo.responsable,
+              estadoAnterior: ciclo.estadoGestion,
+              snapshotPEN: snap.vencidoPEN,
+              snapshotUSD: snap.vencidoUSD
+            });
+
+          } else {
+            // ── ACTIVO con deuda → MISMO ESTADO + snapshot actualizado ──
+            if (!dryRun) {
+              this._registrarGestionMasivaDirecta({
+                idCiclo: ciclo.idCiclo,
+                asegurado: ciclo.asegurado,
+                ruc: ciclo.ruc || '',
+                fechaEnvioEECC: ciclo.fechaEnvioEECC,
+                tipoGestion: ciclo.tipoGestion,
+                estadoGestion: ciclo.estadoGestion,
+                canalContacto: ciclo.canalContacto,
+                fechaCompromiso: ciclo.fechaCompromiso || null,
+                proximaAccion: ciclo.proximaAccion || 'Seguimiento',
+                observaciones: ciclo.observaciones || '',
+                responsable: ciclo.responsable
+              }, snap);
+            }
+            resultados.mantenidos.push({
+              asegurado: ciclo.asegurado,
+              responsable: ciclo.responsable,
+              estadoGestion: ciclo.estadoGestion,
+              snapshotPEN: snap.vencidoPEN,
+              snapshotUSD: snap.vencidoUSD,
+              deltaVsPrevPEN: Math.round((snap.vencidoPEN - (ciclo.snapshotVencidoPEN || 0)) * 100) / 100,
+              deltaVsPrevUSD: Math.round((snap.vencidoUSD - (ciclo.snapshotVencidoUSD || 0)) * 100) / 100
+            });
+          }
+
+        } catch (error) {
+          resultados.errores.push({ asegurado: ciclo.asegurado, error: error.message });
+          Logger.error(context, `Error: ${ciclo.asegurado}`, error);
+        }
+      }
+
+      metrics.registroMs = Date.now() - t3;
+
+      // ══════════════════════════════════════════════════════════
+      // FASE 4: Flush del buffer (escritura batch)
+      // ══════════════════════════════════════════════════════════
+      if (!dryRun) {
+        const t4 = Date.now();
+        this.flush();
+        SpreadsheetApp.flush();
+        metrics.flushMs = Date.now() - t4;
+
+        // Invalidar caches de paginación
+        try {
+          const cache = CacheService.getScriptCache();
+          const keys = [];
+          for (let p = 1; p <= 10; p++) {
+            keys.push(`BITACORA_RESUMEN_P${p}_S50`);
+            keys.push(`BITACORA_RESUMEN_P${p}_S100`);
+          }
+          cache.removeAll(keys);
+        } catch (e) { /* no-op */ }
+      }
+
+      // ══════════════════════════════════════════════════════════
+      // FASE 5: Resultado final
+      // ══════════════════════════════════════════════════════════
+      metrics.totalMs = Date.now() - startTime;
+      metrics.endTime = new Date().toISOString();
+
+      const totalRegistrados = resultados.cerradosPagado.length +
+        resultados.mantenidos.length + resultados.reactivados.length;
+
+      const resultado = {
+        ok: true,
+        dryRun,
+        resumen: {
+          totalCiclosBitacora: resumenResult.data.length,
+          noCobrable: noCobrable.length,
+          ciclosProcesados: ciclosAProcesar.length,
+          gestionsRegistradas: totalRegistrados,
+          nuevosCerradosPagado: resultados.cerradosPagado.length,
+          mantenidosConDeuda: resultados.mantenidos.length,
+          reactivadosDesdeCerrado: resultados.reactivados.length,
+          sinCambio: resultados.sinCambio.length,
+          errores: resultados.errores.length,
+          omitidosPorTimeout: resultados.omitidos.length
+        },
+        detalles: {
+          cerradosPagado: resultados.cerradosPagado,
+          mantenidos: resultados.mantenidos,
+          reactivados: resultados.reactivados,
+          errores: resultados.errores,
+          omitidos: resultados.omitidos
+        },
+        metrics
+      };
+
+      Logger.info(context, 'Actualización masiva completada', resultado.resumen);
+
+      return resultado;
+
+    } catch (error) {
+      Logger.error(context, 'Error fatal', error);
+      return {
+        ok: false, dryRun, error: error.message,
+        metrics: { ...metrics, totalMs: Date.now() - startTime }
+      };
+    }
+  },
+
+  /**
+   * Pre-calcula snapshots de vencidos para TODOS los asegurados en UNA sola pasada por BD.
+   * Optimización: O(N) en vez de O(N × M) donde N=filas BD, M=asegurados.
+   *
+   * @param {Array<string>} asegurados - Lista de nombres de asegurados
+   * @return {Object} Mapa { aseguradoNormalizado: { vencidoPEN, vencidoUSD } }
+   * @private
+   */
+  _calcularSnapshotsMasivos(asegurados) {
+    const context = 'BitacoraService._calcularSnapshotsMasivos';
+
+    try {
+      // Expandir grupos económicos a sus miembros individuales
+      // La BD tiene nombres individuales (ej: "CORPORACION INSUMEX S.A.C."),
+      // no nombres de grupo (ej: "GRUPO INSUMEX")
+      const grupoToMiembros = {};  // grupo → [miembros normalizados]
+      const miembroToGrupo = {};   // miembro normalizado → grupo normalizado
+      const todosAsegurados = [];  // Lista expandida con individuales
+
+      for (const nombre of asegurados) {
+        const esGrupo = GrupoEconomicoService.esGrupo(nombre);
+        if (esGrupo) {
+          const miembros = GrupoEconomicoService.getAsegurados(nombre);
+          const grupoKey = Utils.cleanText(nombre);
+          grupoToMiembros[grupoKey] = [];
+
+          if (miembros && miembros.length > 0) {
+            for (const miembro of miembros) {
+              const miembroKey = Utils.cleanText(miembro);
+              todosAsegurados.push(miembro);
+              grupoToMiembros[grupoKey].push(miembroKey);
+              miembroToGrupo[miembroKey] = grupoKey;
+            }
+          }
+          // También incluir el nombre del grupo por si hay filas directas en BD
+          todosAsegurados.push(nombre);
+        } else {
+          todosAsegurados.push(nombre);
+        }
+      }
+
+      // Normalizar y crear Set para búsqueda O(1)
+      const aseguradosSet = new Set(todosAsegurados.map(a => Utils.cleanText(a)));
+
+      Logger.info(context, 'Asegurados expandidos (grupos → miembros)', {
+        originales: asegurados.length,
+        expandidos: aseguradosSet.size,
+        gruposDetectados: Object.keys(grupoToMiembros).length
+      });
+
+      // Leer BD (usa caché si disponible)
+      let bdData = null;
+      const CACHE_KEY = 'SNAPSHOT_BD_CACHE';
+      const CACHE_TTL = 60;
+
+      try {
+        const cacheService = CacheService.getScriptCache();
+        const cachedBD = cacheService.get(CACHE_KEY);
+        if (cachedBD) {
+          bdData = JSON.parse(cachedBD);
+          Logger.info(context, 'Usando BD desde caché');
+        }
+      } catch (cacheError) {
+        Logger.warn(context, 'Caché BD inválido', { error: cacheError.message });
+      }
+
+      if (!bdData) {
+        bdData = SheetsIO.readSheet(getConfig('SHEETS.BASE', 'BD'));
+        try {
+          const cacheService = CacheService.getScriptCache();
+          const bdString = JSON.stringify({
+            headers: bdData.headers,
+            rows: bdData.rows,
+            columnMap: bdData.columnMap
+          });
+          if (bdString.length < 95000) {
+            cacheService.put(CACHE_KEY, bdString, CACHE_TTL);
+          }
+        } catch (cacheError) {
+          // No crítico
+        }
+      }
+
+      if (!bdData || !bdData.rows || bdData.rows.length === 0) {
+        Logger.warn(context, 'Hoja BD vacía');
+        return {};
+      }
+
+      // Obtener índices de columnas
+      const colMap = bdData.columnMap;
+      const aseguradoIdx = colMap['ASEGURADO'] ?? -1;
+      const importeIdx = colMap['IMPORTE'] ?? -1;
+      const monIdx = colMap['MON'] ?? -1;
+      const fecVencIdx = colMap['FEC_VENCIMIENTO_COB'] ?? colMap['FEC_VENCIMIENTO COB'] ?? colMap['FEC VENCIMIENTO COB'] ?? -1;
+
+      if (aseguradoIdx === -1 || importeIdx === -1 || fecVencIdx === -1) {
+        Logger.error(context, 'Columnas requeridas no encontradas en BD');
+        return {};
+      }
+
+      // Fecha de hoy normalizada
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      // Inicializar mapa de resultados por asegurado ORIGINAL (incluyendo nombres de grupo)
+      const resultados = {};
+      for (const nombre of asegurados) {
+        resultados[Utils.cleanText(nombre)] = { vencidoPEN: 0, vencidoUSD: 0 };
+      }
+
+      // UNA SOLA PASADA por todas las filas de BD
+      let filasRevisadas = 0;
+      let filasCoincidentes = 0;
+
+      for (const row of bdData.rows) {
+        filasRevisadas++;
+        const aseguradoFila = Utils.cleanText(String(row[aseguradoIdx] || ''));
+
+        // Verificar si está en el set expandido (O(1))
+        if (!aseguradosSet.has(aseguradoFila)) {
+          continue;
+        }
+
+        filasCoincidentes++;
+
+        // Verificar vencimiento
+        const fecVencValue = row[fecVencIdx];
+        const fecVenc = this._parseDate(fecVencValue);
+        if (!fecVenc) continue;
+
+        fecVenc.setHours(0, 0, 0, 0);
+        if (fecVenc >= hoy) continue; // No vencido
+
+        // Parsear importe
+        const importe = this._parseNumber(row[importeIdx]);
+        if (importe <= 0) continue;
+
+        // Determinar moneda
+        const moneda = String(row[monIdx] || 'PEN').toUpperCase();
+        const esUSD = moneda.includes('USD') || moneda.includes('US$') ||
+          moneda.includes('DOLAR') || moneda.includes('DOLLAR');
+
+        // Determinar la key de destino: si es miembro de un grupo, acumular al grupo
+        const targetKey = miembroToGrupo[aseguradoFila] || aseguradoFila;
+
+        // Acumular
+        if (resultados[targetKey]) {
+          if (esUSD) {
+            resultados[targetKey].vencidoUSD += importe;
+          } else {
+            resultados[targetKey].vencidoPEN += importe;
+          }
+        }
+      }
+
+      // Redondear todos los valores
+      for (const key in resultados) {
+        resultados[key].vencidoPEN = Math.round(resultados[key].vencidoPEN * 100) / 100;
+        resultados[key].vencidoUSD = Math.round(resultados[key].vencidoUSD * 100) / 100;
+      }
+
+      Logger.info(context, 'Snapshots masivos calculados en 1 pasada', {
+        filasRevisadas,
+        filasCoincidentes,
+        aseguradosProcesados: Object.keys(resultados).length
+      });
+
+      return resultados;
+
+    } catch (error) {
+      Logger.error(context, 'Error en cálculo masivo de snapshots', error);
+      return {};
+    }
+  },
+
+  /**
+   * Registra una gestión directamente al buffer con snapshot pre-calculado.
+   * Versión optimizada que NO recalcula el snapshot (ya viene pre-calculado del masivo).
+   *
+   * @param {Object} datos - Datos de la gestión
+   * @param {Object} snapshot - { vencidoPEN, vencidoUSD } pre-calculado
+   * @private
+   */
+  _registrarGestionMasivaDirecta(datos, snapshot) {
+    const idGestion = this._generarIdGestion();
+    const fechaRegistro = this._getFechaPeru();
+
+    // Obtener FECHA_ENVIO_EECC del ciclo existente
+    let fechaEnvioEECC;
+    if (datos.fechaEnvioEECC) {
+      fechaEnvioEECC = this._parseDate(datos.fechaEnvioEECC);
+    } else {
+      fechaEnvioEECC = this._obtenerFechaEnvioEECC(datos.idCiclo) || fechaRegistro;
+    }
+
+    // Construir fila (16 columnas)
+    const fila = [
+      datos.idCiclo,                                          // 1. ID_CICLO
+      idGestion,                                              // 2. ID_GESTION
+      getConfig('BITACORA.ORIGENES.MASIVO_PORTAL', 'MASIVO_PORTAL'), // 3. ORIGEN_REGISTRO
+      fechaEnvioEECC,                                         // 4. FECHA_ENVIO_EECC
+      fechaRegistro,                                          // 5. FECHA_REGISTRO
+      datos.asegurado,                                        // 6. ASEGURADO
+      datos.ruc || '',                                        // 7. RUC
+      datos.responsable,                                      // 8. RESPONSABLE
+      datos.tipoGestion,                                      // 9. TIPO_GESTION
+      datos.estadoGestion,                                    // 10. ESTADO_GESTION
+      datos.canalContacto,                                    // 11. CANAL_CONTACTO
+      datos.fechaCompromiso || '',                             // 12. FECHA_COMPROMISO
+      datos.proximaAccion,                                    // 13. PROXIMA_ACCION
+      datos.observaciones || '',                              // 14. OBSERVACIONES
+      snapshot.vencidoPEN ?? 0,                                // 15. SNAPSHOT_VENCIDO_PEN
+      snapshot.vencidoUSD ?? 0                                 // 16. SNAPSHOT_VENCIDO_USD
+    ];
+
+    // Agregar al buffer
+    if (!this._buffer) this._buffer = [];
+    this._buffer.push({
+      fila: fila,
+      estado: datos.estadoGestion,
+      idCiclo: datos.idCiclo,
+      idGestion: idGestion
+    });
+
+    // Auto-flush si buffer lleno
+    if (this._buffer.length >= this._maxBufferSize) {
+      this.flush();
+    }
+  },
+
   // ========== CICLOS ACTIVOS (para AlertService) ==========
 
   /**
@@ -1567,8 +2074,8 @@ var BitacoraService = BitacoraService || {
         'NO_CONTACTABLE'
       ];
 
-      // Obtener resumen de ciclos (1 por asegurado)
-      const resultado = this.obtenerResumenCiclos({}, { page: 1, pageSize: 1000 });
+      // Obtener resumen de ciclos (1 por asegurado, sin paginación para uso interno)
+      const resultado = this.obtenerResumenCiclos({}, { _noPaginate: true });
 
       if (!resultado || !resultado.data) {
         return [];

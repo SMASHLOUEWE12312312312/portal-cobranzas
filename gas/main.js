@@ -303,7 +303,9 @@ function doGet(e) {
             canalContacto: row[10] || '',
             fechaCompromiso: row[11] ? row[11].toISOString() : null,
             proximaAccion: row[12] || '',
-            observaciones: row[13] || ''
+            observaciones: row[13] || '',
+            snapshotVencidoPEN: row[14] || 0,
+            snapshotVencidoUSD: row[15] || 0
           }));
 
         Logger.log(`Pre-cargadas ${bitacoraData.length} gestiones`);
@@ -581,6 +583,10 @@ function doPost(e) {
 
       case 'bitacoraGetCompromisosActivos':
         result = _wrapApiResponse(bitacoraGetCompromisosActivos(token));
+        break;
+
+      case 'registrarGestionMasiva_API':
+        result = _wrapApiResponse(registrarGestionMasiva_API(params.opciones || params.options || params, token));
         break;
 
       // Legacy alias
@@ -1546,37 +1552,6 @@ function testBitacoraV3Initialize() {
 /**
  * @fileoverview Entry point principal
  */
-
-// Trigger para procesar trabajos programados (ejecuta cada hora)
-function runScheduledJobsTrigger() {
-  try {
-    SchedulerService.processPendingJobs();
-  } catch (error) {
-    Logger.error('runScheduledJobsTrigger', 'Error processing scheduled jobs', error);
-  }
-}
-
-/**
- * Setup trigger automático para scheduler (ejecutar una vez manualmente)
- */
-function setupSchedulerTrigger() {
-  // Eliminar trigger anterior si existe
-  const triggers = ScriptApp.getProjectTriggers();
-  triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'runScheduledJobsTrigger') {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  });
-
-  // Crear trigger horario
-  ScriptApp.newTrigger('runScheduledJobsTrigger')
-    .timeBased()
-    .everyHours(1) // Ejecutar cada hora
-    .create();
-
-  Logger.info('setupSchedulerTrigger', 'Scheduler trigger created successfully');
-  return { ok: true, message: 'Trigger creado: ejecutará cada hora' };
-}
 
 /**
  * Obtiene el contenido HTML del drawer para inyección SPA

@@ -712,8 +712,12 @@
                                     style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #E0E0E0; background: white; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;">❌</button>
                             </div>
                             <button onclick="exportarBitacoraCSV()" class="btn btn-outline-secondary"
-                                style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" title="Exportar CSV">
+                                style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" title="Exportar CSV Resumen">
                                 📥 CSV
+                            </button>
+                            <button onclick="exportarHistorialCompletaCSV()" class="btn btn-outline-secondary"
+                                style="padding: 0.4rem 0.8rem; font-size: 0.8rem; margin-left: 0.3rem;" title="Exportar historial completo de todos los ciclos">
+                                📋 Historial CSV
                             </button>
                         </div>
 
@@ -5134,7 +5138,7 @@
             const badge = document.getElementById('liveBadge_' + index);
             if (!badge) return;
             badge.className = 'eecc-live-badge ' + status;
-            const labels = { pending: 'Pendiente', generating: 'Generando...', done: 'Listo', error: 'Error' };
+            const labels = { pending: 'Pendiente', generating: 'Generando...', done: 'Listo', error: 'Error', 'no-data': 'Sin datos en BD' };
             badge.textContent = labels[status] || status;
             // Auto-scroll to show current item
             if (status === 'generating') {
@@ -5144,15 +5148,17 @@
         }
 
         /** Muestra el resumen final */
-        function showSummary(successCount, errorCount, total, durationMs) {
+        function showSummary(successCount, errorCount, total, durationMs, noDataCount = 0) {
             const summary = document.getElementById('eeccSummary');
             const content = document.getElementById('eeccSummaryContent');
-            const type = errorCount > 0 ? (successCount > 0 ? 'warning' : 'error') : 'success';
+            const realErrors = Math.max(0, errorCount - noDataCount);
+            const type = realErrors > 0 ? (successCount > 0 ? 'warning' : 'error') : 'success';
             summary.className = 'eecc-summary active ' + type;
 
             const durationStr = durationMs > 0 ? Math.round(durationMs / 1000) + 's' : '';
             let html = `<span class="eecc-summary-stat">${successCount}/${total} generados</span>`;
-            if (errorCount > 0) html += `<span class="eecc-summary-stat" style="color: var(--tp-error)">${errorCount} con error</span>`;
+            if (realErrors > 0) html += `<span class="eecc-summary-stat" style="color: var(--tp-error)">${realErrors} con error</span>`;
+            if (noDataCount > 0) html += `<span class="eecc-summary-stat" style="color: var(--tp-warning, #92400e)">${noDataCount} sin datos en BD</span>`;
             if (durationStr) html += `<span class="eecc-summary-stat">${durationStr}</span>`;
             content.innerHTML = html;
         }
@@ -5254,13 +5260,20 @@
                         initLiveStatus(asegurados);
 
                         const SUB_BATCH_SIZE = 5;
-                        const BATCH_TIMEOUT_MS = 120000;
+                        const BATCH_TIMEOUT_MS = 180000; // 3 min (antes 120s) — da margen a retries de Drive
+                        const PER_ASEG_ETA_S = 13; // promedio observado en logs
                         const chunks = [];
                         for (let i = 0; i < asegurados.length; i += SUB_BATCH_SIZE) {
                             chunks.push(asegurados.slice(i, i + SUB_BATCH_SIZE));
                         }
 
-                        log(`Grupo ${asegurado}: ${total} asegurados en ${chunks.length} sub-batch(es) de ${SUB_BATCH_SIZE}`);
+                        // ETA inicial: muestra estimación apenas arranca para que el usuario vea progreso desde t=0
+                        const etaSeconds = Math.round(asegurados.length * PER_ASEG_ETA_S / Math.max(1, chunks.length) * chunks.length / Math.max(1, Math.ceil(asegurados.length / SUB_BATCH_SIZE)));
+                        const etaMin = Math.floor(etaSeconds / 60);
+                        const etaSec = etaSeconds % 60;
+                        const etaText = etaMin > 0 ? `~${etaMin}m ${etaSec}s` : `~${etaSec}s`;
+                        updateProgress(2, `Iniciando · ETA ${etaText}`);
+                        log(`Grupo ${asegurado}: ${total} asegurados en ${chunks.length} sub-batch(es) de ${SUB_BATCH_SIZE} — ETA ${etaText}`);
 
                         const allResults = [];
                         const allErrors = [];
@@ -5293,7 +5306,7 @@
                                                 obsForRAM: obsForRAM
                                             }, TOKEN);
                                     }),
-                                    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout: batch ${c + 1} excedio 120s`)), BATCH_TIMEOUT_MS))
+                                    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout: batch ${c + 1} excedió 180s`)), BATCH_TIMEOUT_MS))
                                 ]);
 
                                 if (batchResult && batchResult.ok) {
@@ -5320,10 +5333,11 @@
                                 if (batchResult && batchResult.errors) {
                                     allErrors.push(...batchResult.errors);
                                     batchResult.errors.forEach(e => {
-                                        log(`${e.asegurado}: ${e.error}`, 'error');
-                                        // Mark specific errors
+                                        const isNoData = e.error === 'Sin datos en BD';
+                                        log(`${e.asegurado}: ${e.error}`, isNoData ? 'warning' : 'error');
+                                        // Mark specific items: differentiate "no data" from real errors
                                         const errIdx = asegurados.indexOf(e.asegurado);
-                                        if (errIdx >= 0) updateLiveBadge(errIdx, 'error');
+                                        if (errIdx >= 0) updateLiveBadge(errIdx, isNoData ? 'no-data' : 'error');
                                     });
                                 }
 
@@ -5335,20 +5349,22 @@
                             // Completion
                             const successCount = allResults.length;
                             const errorCount = allErrors.length;
+                            const noDataCount = allErrors.filter(e => e.error === 'Sin datos en BD').length;
+                            const realErrorCount = errorCount - noDataCount;
 
                             // Final progress bar state
                             updateProgress(100, 'Completado');
                             const fill = document.getElementById('eeccProgressFill');
-                            fill.classList.add(errorCount > 0 ? 'has-errors' : 'complete');
+                            fill.classList.add(realErrorCount > 0 ? 'has-errors' : 'complete');
 
                             stopElapsedTimer();
                             resetGenerateUI();
 
-                            // Show summary
-                            showSummary(successCount, errorCount, total, totalDurationMs);
+                            // Show summary (real errors and "no data" counted separately)
+                            showSummary(successCount, errorCount, total, totalDurationMs, noDataCount);
 
                             const finalMsg = `Completado: ${successCount}/${total} generados`;
-                            showToast(finalMsg, errorCount > 0 ? 'warning' : 'success');
+                            showToast(finalMsg, realErrorCount > 0 ? 'warning' : 'success');
 
                             // Mostrar tabla de resultados
                             if (allResults.length > 0) {
@@ -5393,12 +5409,15 @@
                                     `;
                                 });
 
-                                // Add error rows to the table
+                                // Add error rows to the table — differentiate "Sin datos en BD" (warning) from real errors
                                 allErrors.forEach(err => {
+                                    const isNoData = err.error === 'Sin datos en BD';
+                                    const bg = isNoData ? 'var(--tp-warning-pale, #fef3c7)' : 'var(--tp-error-pale)';
+                                    const fg = isNoData ? 'var(--tp-warning, #92400e)' : 'var(--tp-error)';
                                     tableHtml += `
-                                        <tr style="background: var(--tp-error-pale);">
+                                        <tr style="background: ${bg};">
                                             <td>${escapeHtml(err.asegurado)}</td>
-                                            <td colspan="2" class="text-center" style="color: var(--tp-error); font-size: 0.75rem;">${escapeHtml(err.error)}</td>
+                                            <td colspan="2" class="text-center" style="color: ${fg}; font-size: 0.75rem;">${escapeHtml(err.error)}</td>
                                         </tr>
                                     `;
                                 });
@@ -5479,7 +5498,9 @@
                             updateProgress(100, 'Error');
                             document.getElementById('eeccProgressFill').style.background = 'var(--tp-error)';
                             showSummary(0, 1, 1, 0);
-                            showToast('Error al generar EECC', 'error');
+                            const errMsg = (result && result.error) ? result.error : 'Error al generar EECC';
+                            showToast('Error: ' + errMsg, 'error');
+                            log('Error: ' + errMsg, 'error');
                         }
                     })
                     .withFailureHandler(error => {
@@ -9844,6 +9865,101 @@
             URL.revokeObjectURL(url);
 
             showToast(`Exportado: ${BITACORA_FILTERED.length} registros`, 'success');
+        }
+
+        // ========== EXPORT CSV HISTORIAL COMPLETO ==========
+
+        async function exportarHistorialCompletaCSV() {
+            showToast('Cargando historial completo...', 'info');
+
+            try {
+                // Llamar al backend para obtener TODAS las gestiones
+                const result = await new Promise((resolve, reject) => {
+                    google.script.run
+                        .withSuccessHandler(resolve)
+                        .withFailureHandler(reject)
+                        .obtenerHistorialCompletoCSV();
+                });
+
+                if (!result || !result.ok || !result.data || result.data.length === 0) {
+                    showToast('No hay datos en el historial', 'warning');
+                    return;
+                }
+
+                const gestiones = result.data;
+
+                const headers = [
+                    'ID Ciclo', 'ID Gestión', 'Origen', 'Fecha Envío EECC', 'Fecha Registro',
+                    'Asegurado', 'RUC', 'Responsable', 'Tipo Gestión', 'Estado Gestión',
+                    'Canal Contacto', 'Fecha Compromiso', 'Próxima Acción', 'Observaciones',
+                    'Vencido PEN', 'Vencido USD'
+                ];
+
+                function escapeCsvField(value) {
+                    if (value == null) return '';
+                    const str = String(value);
+                    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+                        return '"' + str.replace(/"/g, '""') + '"';
+                    }
+                    return str;
+                }
+
+                function formatearFechaCSV(fechaStr) {
+                    if (!fechaStr) return '';
+                    try {
+                        const fecha = new Date(fechaStr);
+                        if (isNaN(fecha.getTime())) return '';
+                        const dia = String(fecha.getDate()).padStart(2, '0');
+                        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                        const anio = fecha.getFullYear();
+                        const hora = String(fecha.getHours()).padStart(2, '0');
+                        const min = String(fecha.getMinutes()).padStart(2, '0');
+                        return `${dia}/${mes}/${anio} ${hora}:${min}`;
+                    } catch (e) {
+                        return '';
+                    }
+                }
+
+                const rows = gestiones.map(g => [
+                    escapeCsvField(g.idCiclo),
+                    escapeCsvField(g.idGestion),
+                    escapeCsvField(g.origenRegistro),
+                    escapeCsvField(formatearFechaCSV(g.fechaEnvioEECC)),
+                    escapeCsvField(formatearFechaCSV(g.fechaRegistro)),
+                    escapeCsvField(g.asegurado),
+                    escapeCsvField(g.ruc),
+                    escapeCsvField(g.responsable),
+                    escapeCsvField(g.tipoGestion),
+                    escapeCsvField(g.estadoGestion),
+                    escapeCsvField(g.canalContacto),
+                    escapeCsvField(formatearFechaCSV(g.fechaCompromiso)),
+                    escapeCsvField(g.proximaAccion),
+                    escapeCsvField(g.observaciones),
+                    escapeCsvField(g.snapshotVencidoPEN || 0),
+                    escapeCsvField(g.snapshotVencidoUSD || 0)
+                ]);
+
+                const BOM = '\uFEFF';
+                let csv = BOM + headers.join(',') + '\n';
+                rows.forEach(row => { csv += row.join(',') + '\n'; });
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                const fecha = new Date().toISOString().split('T')[0];
+                link.setAttribute('download', `historial_gestiones_completo_${fecha}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                showToast(`Historial exportado: ${gestiones.length} gestiones`, 'success');
+
+            } catch (error) {
+                console.error('Error exportando historial:', error);
+                showToast('Error al exportar historial: ' + error.message, 'error');
+            }
         }
 
         // ========== KEYBOARD SHORTCUTS ==========

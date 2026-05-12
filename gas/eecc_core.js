@@ -207,7 +207,7 @@ const EECCCore = {
           idGestionPadre: ''
         };
 
-        const bitacoraResult = BitacoraService.registrarGestion(datosGestion);
+        const bitacoraResult = BitacoraService.registrarGestion(datosGestion, baseData);
 
         if (bitacoraResult.ok) {
           Logger.info(context, 'Gestión registrada en bitácora', {
@@ -234,12 +234,19 @@ const EECCCore = {
         }
       } catch (e) { /* ignore pipeline errors */ }
 
+      let folderPath = null;
+      try {
+        folderPath = DriveIO.getFolderPath(folder);
+      } catch (e) {
+        Logger.warn(context, 'getFolderPath failed (non-critical)', { error: e.message });
+      }
+
       return {
         ok: true,
         message: `EECC generado para ${nombreAsegurado}`,
         pdfUrl: result.pdfUrl || null,
         xlsxUrl: result.xlsxUrl || null,
-        folderPath: DriveIO.getFolderPath(folder),
+        folderPath: folderPath,
         pipelineId: pipelineId // Phase 1: Return pipelineId for email step
       };
 
@@ -313,6 +320,14 @@ const EECCCore = {
         throw new Error('Columna ASEGURADO no encontrada en BD');
       }
 
+      // OPTIMIZACIÓN: getOutputFolder una sola vez (ahorra N-1 llamadas a Drive)
+      const sharedFolder = DriveIO.getOutputFolder();
+      const optsWithFolder = Object.assign({}, opts, { folderInjected: sharedFolder });
+
+      // Helper: detecta errores transitorios de Drive que ameritan retry
+      const isTransientDriveError = (msg) =>
+        typeof msg === 'string' && /Drive|servicio|service/i.test(msg);
+
       // 3. Dividir en batches de 3 para evitar timeouts (3 × 3seg ≈ 9seg < 30seg)
       // Nota: Reducido de 6 a 3 por seguridad tras diagnóstico de performance
       const BATCH_SIZE = 3;
@@ -345,7 +360,14 @@ const EECCCore = {
             }
 
             // Generar usando datos pre-filtrados
-            const result = this._generateFromFilteredData(asegurado, rowsAsegurado, baseData.headers, opts);
+            let result = this._generateFromFilteredData(asegurado, rowsAsegurado, baseData.headers, optsWithFolder);
+
+            // Retry transitorio: si falló por Drive intermitente, reintentar 1 vez tras pausa
+            if (!result.ok && isTransientDriveError(result.error)) {
+              Logger.warn(context, `Reintentando ${asegurado} tras error transitorio de Drive`, { error: result.error });
+              Utilities.sleep(3000);
+              result = this._generateFromFilteredData(asegurado, rowsAsegurado, baseData.headers, optsWithFolder);
+            }
 
             if (result.ok) {
               results.push({
@@ -364,9 +386,9 @@ const EECCCore = {
           }
         }
 
-        // Pausa breve entre batches para evitar rate limits (excepto en el último)
+        // Pausa entre batches para evitar rate limits de Drive (2s, antes 1s)
         if (batchIndex < batches.length - 1) {
-          Utilities.sleep(1000);
+          Utilities.sleep(2000);
         }
       }
 
@@ -455,6 +477,9 @@ const EECCCore = {
       const results = [];
       const errors = [];
 
+      // OPTIMIZACIÓN: getOutputFolder una sola vez (config tiene SUBFOLDER_BY_ASEGURADO=false)
+      const sharedFolder = DriveIO.getOutputFolder();
+
       for (const nombre of asegurados) {
         const cleanName = Utils.cleanText(nombre);
         const rows = baseData.rows.filter(row => Utils.cleanText(row[aseguradoCol]) === cleanName);
@@ -466,8 +491,13 @@ const EECCCore = {
 
         try {
           const byMoneda = this._groupByMoneda(rows, columnMap);
-          const folder = DriveIO.getOutputFolder(nombre);
-          const tempSpreadsheet = SpreadsheetApp.create('TMP_EECC_' + Date.now() + '_' + tempIds.length);
+          const folder = sharedFolder;
+          // Retry SpreadsheetApp.create: Drive falla bajo carga ("Error de servicio: Drive")
+          const tempSpreadsheet = Utils.retryWithBackoff(
+            () => SpreadsheetApp.create('TMP_EECC_' + Date.now() + '_' + tempIds.length),
+            3,
+            2000
+          );
           const tempId = tempSpreadsheet.getId();
           tempIds.push(tempId);
 
@@ -530,19 +560,31 @@ const EECCCore = {
         const xlsxResults = xlsxItems.length > 0 ? ExportService.batchExportSpreadsheets(xlsxItems, { format: 'xlsx' }) : [];
 
         // ── 5. Upload to Drive ──
+        // Cachear folderPath una vez (no cambia entre asegurados con folder compartido)
+        let cachedFolderPath = null;
+        try { cachedFolderPath = DriveIO.getFolderPath(sharedFolder); } catch (e) { /* non-critical */ }
+
         for (let i = 0; i < exportRegistry.length; i++) {
           const reg = exportRegistry[i];
           let pdfUrl = null;
           let xlsxUrl = null;
 
           if (pdfResults[i] && pdfResults[i].ok) {
-            const file = reg.folder.createFile(pdfResults[i].blob);
-            pdfUrl = file.getUrl();
+            try {
+              const file = Utils.retryWithBackoff(() => reg.folder.createFile(pdfResults[i].blob), 3, 1500);
+              pdfUrl = file.getUrl();
+            } catch (e) {
+              Logger.warn(context, `createFile PDF failed for ${reg.asegurado}`, { error: e.message });
+            }
           }
 
           if (xlsxResults[i] && xlsxResults[i].ok) {
-            const file = reg.folder.createFile(xlsxResults[i].blob);
-            xlsxUrl = file.getUrl();
+            try {
+              const file = Utils.retryWithBackoff(() => reg.folder.createFile(xlsxResults[i].blob), 3, 1500);
+              xlsxUrl = file.getUrl();
+            } catch (e) {
+              Logger.warn(context, `createFile XLSX failed for ${reg.asegurado}`, { error: e.message });
+            }
           }
 
           if (pdfUrl || xlsxUrl) {
@@ -550,7 +592,7 @@ const EECCCore = {
               asegurado: reg.asegurado,
               pdfUrl: pdfUrl,
               xlsxUrl: xlsxUrl,
-              folderPath: DriveIO.getFolderPath(reg.folder),
+              folderPath: cachedFolderPath,
               ok: true
             });
           } else {
@@ -566,8 +608,14 @@ const EECCCore = {
         });
 
       } finally {
-        // ── 6. Cleanup ALL temp spreadsheets ──
-        tempIds.forEach(id => { try { DriveIO.deleteFile(id); } catch (e) { /* ignore */ } });
+        // ── 6. Cleanup ALL temp spreadsheets en paralelo (UrlFetchApp.fetchAll) ──
+        if (tempIds.length > 0) {
+          try { DriveIO.deleteBatch(tempIds); }
+          catch (e) {
+            // Fallback secuencial si la versión batch falla
+            tempIds.forEach(id => { try { DriveIO.deleteFile(id); } catch (e2) { /* ignore */ } });
+          }
+        }
       }
 
       const duration = Date.now() - startTime;
@@ -641,8 +689,8 @@ const EECCCore = {
         }
       }
 
-      // Generar
-      const folder = DriveIO.getOutputFolder(nombreAsegurado);
+      // Reusar folder inyectado (ahorra ~3-5s en generación grupal de N asegurados)
+      const folder = opts.folderInjected || DriveIO.getOutputFolder(nombreAsegurado);
       const result = this._generateCore(nombreAsegurado, filteredRows, headers, {
         exportPdf,
         exportXlsx,
@@ -677,8 +725,12 @@ const EECCCore = {
     // Agrupar por moneda
     const byMoneda = this._groupByMoneda(rows, columnMap);
 
-    // Crear spreadsheet temporal
-    const tempSpreadsheet = SpreadsheetApp.create('TMP_EECC_' + Date.now());
+    // Crear spreadsheet temporal con retry (Drive puede tirar "Error de servicio" bajo carga)
+    const tempSpreadsheet = Utils.retryWithBackoff(
+      () => SpreadsheetApp.create('TMP_EECC_' + Date.now()),
+      3,
+      2000
+    );
     const tempId = tempSpreadsheet.getId();
 
     try {

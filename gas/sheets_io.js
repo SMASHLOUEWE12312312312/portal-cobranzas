@@ -149,6 +149,11 @@ const SheetsIO = {
     const context = 'SheetsIO.updateBaseSheet';
     Logger.info(context, 'Starting update', { inputRows: rows.length });
 
+    // Invalidar BD cache: subir BD fresca debe invalidar cache de filas pre-filtradas
+    try {
+      if (typeof BDCache !== 'undefined') BDCache.invalidateAll();
+    } catch (e) { /* non-critical */ }
+
     try {
       const sheetName = getConfig('SHEETS.BASE', 'BD');
       const headerRow = getConfig('BD.HEADER_ROW', 1);

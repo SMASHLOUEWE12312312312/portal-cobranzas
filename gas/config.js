@@ -77,7 +77,7 @@ const CONFIG = {
   // ========== DRIVE ========== 
   DRIVE: {
     OUTPUT_FOLDER_ID: '1bMRp8-0hxRXSi2B9TYdGe7XwsPeysfEe',  // ← MODIFICADO: Cobranzas_Transperuana
-    LOGO_FILE_ID: '1i0eW14i890ka597hcGbtTnediUPBJy7Q',
+    LOGO_FILE_ID: '', // Logo embebido en EECC_Template; vacío evita 4s de fetch a Drive
     USE_DATE_SUBFOLDERS: true,
     SUBFOLDER_BY_ASEGURADO: false,
     MAX_RETRIES: 3,
@@ -532,7 +532,8 @@ const CONFIG = {
      */
     ORIGENES: {
       AUTO_ENVIO: 'AUTO_ENVIO',      // Generado automáticamente al enviar EECC
-      MANUAL_PORTAL: 'MANUAL_PORTAL'  // Registrado manualmente desde el portal
+      MANUAL_PORTAL: 'MANUAL_PORTAL', // Registrado manualmente desde el portal
+      MASIVO_PORTAL: 'MASIVO_PORTAL'  // Registro masivo desde portal o script
     },
 
     /**

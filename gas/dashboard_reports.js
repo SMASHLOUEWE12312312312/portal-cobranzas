@@ -1664,7 +1664,8 @@ function generarReporteBitacoraConDashboard() {
       var agingSheets = [
         { name: 'Mas de 90', min: 91, max: 99999 },
         { name: '61-90', min: 61, max: 90 },
-        { name: '31-60', min: 31, max: 60 }
+        { name: '31-60', min: 31, max: 60 },
+        { name: '1-30', min: 1, max: 30 }
       ];
 
       for (var as = 0; as < agingSheets.length; as++) {
@@ -1684,9 +1685,10 @@ function generarReporteBitacoraConDashboard() {
             var aAseg = String(aRow[bd.aseguradoIdx] || 'Sin Asegurado').trim();
             var aMon = _monKey(aRow[bd.monIdx]);
             var aGrupo = _getGrupoEconomico(aAseg);
-            if (!agingGrupos[aGrupo]) agingGrupos[aGrupo] = { pen: 0, usd: 0, estado: '', resp: '', ultGestion: null };
+            if (!agingGrupos[aGrupo]) agingGrupos[aGrupo] = { pen: 0, usd: 0, estado: '', resp: '', ultGestion: null, diasList: [] };
             if (aMon === 'PEN') agingGrupos[aGrupo].pen += aImp;
             else agingGrupos[aGrupo].usd += aImp;
+            agingGrupos[aGrupo].diasList.push(aDias);
             // Get estado/resp from bitacora (check grupo first, then individual)
             var gKey = aGrupo.toUpperCase();
             if (grupoMap[gKey]) {
@@ -1718,16 +1720,29 @@ function generarReporteBitacoraConDashboard() {
           var agd = agingGrupos[agKeys[ag]];
           var agEst = agd.estado || 'N/A';
           var agResp = agd.resp || 'N/A';
-          agRows.push([agKeys[ag], agd.pen, agd.usd, agEst, agResp]);
+          // Calcular días promedio de mora para este grupo en este rango
+          var diasProm = 0;
+          if (agd.diasList && agd.diasList.length > 0) {
+            var sumaD = 0;
+            for (var di = 0; di < agd.diasList.length; di++) sumaD += agd.diasList[di];
+            diasProm = Math.round(sumaD / agd.diasList.length);
+          }
+          agRows.push([agKeys[ag], agd.pen, agd.usd, agEst, agResp, diasProm]);
         }
         var agTableStartRow = ar;
         DE.writeTable(agSheet, {
-          headers: ['GRUPO_ECONOMICO', 'MONTO PEN S/', 'MONTO USD US$', 'STATUS', 'RESPONSABLE'],
+          headers: ['GRUPO_ECONOMICO', 'MONTO PEN S/', 'MONTO USD US$', 'STATUS', 'RESPONSABLE', 'DIAS PROMEDIO'],
           rows: agRows
         }, ar, { currencyCols: [1, 2] });
 
-        // Set column E (STATUS) width to fixed 15 characters (~105px)
-        agSheet.setColumnWidth(5, 105);
+        // Set column widths
+        agSheet.setColumnWidth(5, 105);  // STATUS
+        agSheet.setColumnWidth(7, 110);  // DIAS PROMEDIO
+
+        // Format DIAS PROMEDIO column as integer
+        if (agRows.length > 0) {
+          agSheet.getRange(agTableStartRow + 1, 7, agRows.length, 1).setNumberFormat('0').setHorizontalAlignment('center');
+        }
 
         // Color STATUS and RESPONSABLE cells
         if (agRows.length > 0) {

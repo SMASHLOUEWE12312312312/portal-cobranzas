@@ -54,11 +54,13 @@ const DriveIO = {
    * @private
    */
   _getOrCreateFolder(parent, name) {
-    const it = parent.getFoldersByName(name);
-    if (it.hasNext()) {
-      return it.next();
-    }
-    return parent.createFolder(name);
+    return Utils.retryWithBackoff(() => {
+      const it = parent.getFoldersByName(name);
+      if (it.hasNext()) {
+        return it.next();
+      }
+      return parent.createFolder(name);
+    }, 3, 1500);
   },
 
   /**
@@ -136,6 +138,36 @@ const DriveIO = {
       }, 2, 500); // 2 retries, delay corto
     } catch (error) {
       Logger.warn('DriveIO.deleteFile', 'Delete failed (non-critical)', { fileId, error: error.message });
+    }
+  },
+
+  /**
+   * Elimina múltiples archivos en paralelo via UrlFetchApp.fetchAll.
+   * 1 round-trip TCP en lugar de N round-trips secuenciales.
+   * @param {Array<string>} fileIds - IDs de archivos a eliminar
+   */
+  deleteBatch(fileIds) {
+    if (!fileIds || fileIds.length === 0) return;
+    if (fileIds.length === 1) { this.deleteFile(fileIds[0]); return; }
+
+    try {
+      const token = ScriptApp.getOAuthToken();
+      const requests = fileIds.filter(Boolean).map(id => ({
+        url: `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}`,
+        method: 'delete',
+        headers: { Authorization: 'Bearer ' + token },
+        muteHttpExceptions: true
+      }));
+      const responses = UrlFetchApp.fetchAll(requests);
+      responses.forEach((res, i) => {
+        const code = res.getResponseCode();
+        if (code !== 204 && code !== 200 && code !== 404) {
+          Logger.warn('DriveIO.deleteBatch', `Delete failed for ${fileIds[i]}`, { code });
+        }
+      });
+    } catch (error) {
+      Logger.warn('DriveIO.deleteBatch', 'Batch delete failed; caller should fallback', { error: error.message });
+      throw error; // permitir fallback al caller
     }
   },
 

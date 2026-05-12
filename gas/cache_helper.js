@@ -252,3 +252,68 @@ function invalidateAseguradosCache() {
 function invalidateGruposCache() {
     return CacheHelper.remove(CacheHelper.PREFIX.GRUPOS + 'ALL');
 }
+
+// ========== BD pre-filtrada por asegurado ==========
+// Reemplaza el cache de BD entera (1316KB) que siempre fallaba el size guard.
+// Cachea solo el subset de filas del asegurado solicitado (~16KB típico).
+
+const BDCache = {
+    KEY_FILTER: function (asegurado) {
+        var norm = (typeof Utils !== 'undefined' && Utils.cleanText)
+            ? Utils.cleanText(asegurado)
+            : String(asegurado || '').trim().toUpperCase();
+        return 'BD_FILTER::' + norm.substring(0, 200);
+    },
+    KEY_VERSION: 'BD_VERSION',
+    KEY_REGISTRY: 'BD_FILTER_REGISTRY', // keys conocidas para invalidación
+
+    /**
+     * Obtiene filas de BD para un asegurado, con caché de 60s.
+     * @param {string} asegurado
+     * @param {function():{headers:Array,columnMap:Object,rows:Array}} freshLoader - lee BD entera
+     * @return {{headers:Array,columnMap:Object,rows:Array}}
+     */
+    getFiltered: function (asegurado, freshLoader) {
+        var key = this.KEY_FILTER(asegurado);
+        var cached = CacheHelper.get(key);
+        if (cached !== null) return cached;
+
+        var bd = freshLoader();
+        var idx = (bd.columnMap && bd.columnMap['ASEGURADO'] != null)
+            ? bd.columnMap['ASEGURADO']
+            : -1;
+        if (idx === -1) return bd; // sin columna ASEGURADO, retornar tal cual
+
+        var norm = Utils.cleanText(asegurado);
+        var rows = bd.rows.filter(function (r) { return Utils.cleanText(r[idx]) === norm; });
+
+        var subset = { headers: bd.headers, columnMap: bd.columnMap, rows: rows };
+        if (CacheHelper.set(key, subset, CacheHelper.TTL.VOLATILE)) {
+            this._registerKey(key);
+        }
+        return subset;
+    },
+
+    _registerKey: function (key) {
+        try {
+            var registry = CacheHelper.get(this.KEY_REGISTRY) || [];
+            if (registry.indexOf(key) === -1) {
+                registry.push(key);
+                CacheHelper.set(this.KEY_REGISTRY, registry, CacheHelper.TTL.STABLE);
+            }
+        } catch (e) { /* non-critical */ }
+    },
+
+    invalidateAll: function () {
+        try {
+            var registry = CacheHelper.get(this.KEY_REGISTRY) || [];
+            registry.forEach(function (k) { CacheHelper.remove(k); });
+            CacheHelper.remove(this.KEY_REGISTRY);
+            PropertiesService.getScriptProperties().setProperty(this.KEY_VERSION, String(Date.now()));
+        } catch (e) { /* non-critical */ }
+    }
+};
+
+function invalidateBDCache() {
+    return BDCache.invalidateAll();
+}
