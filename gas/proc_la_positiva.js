@@ -59,15 +59,22 @@ const LaPositivaProcessorV2 = {
         ProcessorBase.clearFromRow(wsTrama, 2);
         // perfLog('SHEETS_CLEARED');
 
-        // Get source data - use pre-parsed if available (SheetJS)
+        // Get source data - use pre-parsed if available (SheetJS).
+        // `srcData` (display strings) is used for text columns; `srcValues` (native
+        // types) is used for the date column to avoid the locale-dependent dd/mm
+        // vs mm/dd ambiguity introduced by getDisplayValues().
         let srcData;
+        let srcValues;
         if (convertResult.data) {
             srcData = convertResult.data;
+            srcValues = convertResult.values || convertResult.data;
             // perfLog('DATA_FROM_SHEETJS');
         } else {
             const tempSS = SpreadsheetApp.openById(convertResult.fileId);
             const tempSheet = tempSS.getSheets()[0];
-            srcData = tempSheet.getDataRange().getDisplayValues();
+            const range = tempSheet.getDataRange();
+            srcData = range.getDisplayValues();
+            srcValues = range.getValues();
             // perfLog('DATA_FROM_DRIVE');
         }
 
@@ -108,8 +115,9 @@ const LaPositivaProcessorV2 = {
 
                 const numeroCupon = giroVal > 0 ? numeroRaw + String(giroVal) : numeroRaw;
                 
-                // FIX 2026-01-26: Convert to Date object for proper date formatting
-                const fechaPago = ProcessorBase.parseToDate(row[cfg.COL_FECHA - 1]);
+                // Read the date from the native-typed array, not from the display string,
+                // to avoid the locale-dependent dd/mm vs mm/dd ambiguity.
+                const fechaPago = ProcessorBase.parseToDate(srcValues[i][cfg.COL_FECHA - 1]);
                 const factura = row[cfg.COL_FACTURA - 1];
 
                 tramaRows.push([numeroCupon, fechaPago, factura, '']);

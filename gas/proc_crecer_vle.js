@@ -55,16 +55,23 @@ const CrecerVLEProcessorV2 = {
         // Legacy code checked: let tempSheet = tempSS.getSheetByName(cfg.SOURCE_SHEET_NAME); if (!tempSheet) tempSheet = tempSS.getSheets()[0];
         // So it falls back to first sheet anyway. We can safely use the data we have.
 
+        // `srcData` (display strings) is used for text columns (cupones, factura).
+        // `srcValues` (native types) is used for the date column to avoid the
+        // locale-dependent dd/mm vs mm/dd ambiguity introduced by getDisplayValues().
         let srcData;
+        let srcValues;
         if (convertResult.data) {
             srcData = convertResult.data;
+            srcValues = convertResult.values || convertResult.data;
         } else {
             const tempSS = SpreadsheetApp.openById(convertResult.fileId);
             let tempSheet = tempSS.getSheetByName(cfg.SOURCE_SHEET_NAME);
             if (!tempSheet) {
                 tempSheet = tempSS.getSheets()[0];
             }
-            srcData = tempSheet.getDataRange().getDisplayValues();
+            const range = tempSheet.getDataRange();
+            srcData = range.getDisplayValues();
+            srcValues = range.getValues();
         }
 
         // Write to EECC
@@ -95,8 +102,9 @@ const CrecerVLEProcessorV2 = {
             // Apply BuildNumeroCupon transformation
             const numeroCupon = ProcessorBase.buildNumeroCuponVLE(nroComprobante);
             
-            // FIX 2026-01-26: Convert to Date object for proper date formatting
-            const fechaPago = ProcessorBase.parseToDate(row[cfg.COL_FECHA - 1]);
+            // Read the date from the native-typed array, not from the display string,
+            // to avoid the locale-dependent dd/mm vs mm/dd ambiguity.
+            const fechaPago = ProcessorBase.parseToDate(srcValues[i][cfg.COL_FECHA - 1]);
 
             // FACTURA is the NRO_COMPROBANTE as-is
             tramaRows.push([numeroCupon, fechaPago, nroComprobante, '']);
