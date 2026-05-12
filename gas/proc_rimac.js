@@ -61,14 +61,21 @@ const RimacProcessorV2 = {
         // Original: wsEECC.clear(); ProcessorBase.clearFromRow(wsTrama, 2);
         ProcessorBase.clearFromRow(wsTrama, 2);
 
-        // Get source data - use pre-parsed if available (SheetJS)
+        // Get source data - use pre-parsed if available (SheetJS).
+        // `srcData` (display strings) is used for text columns (factura, tipo).
+        // `srcValues` (native types) is used for the date column to avoid the
+        // locale-dependent dd/mm vs mm/dd ambiguity introduced by getDisplayValues().
         let srcData;
+        let srcValues;
         if (convertResult.data) {
             srcData = convertResult.data;
+            srcValues = convertResult.values || convertResult.data;
         } else {
             const tempSS = SpreadsheetApp.openById(convertResult.fileId);
             const tempSheet = tempSS.getSheets()[0];
-            srcData = tempSheet.getDataRange().getDisplayValues();
+            const range = tempSheet.getDataRange();
+            srcData = range.getDisplayValues();
+            srcValues = range.getValues();
         }
 
         // Write to EECC sheet (preserve text format)
@@ -116,8 +123,9 @@ const RimacProcessorV2 = {
                 // - FECHA_PAGO (col B) = Column N (FEC_EMISION)
                 // - FACTURA (col C) = Column O (has the invoice code like "FA-F581 0007375086")
                 
-                // FIX 2026-01-26: Convert to Date object for proper date formatting
-                const fechaPago = ProcessorBase.parseToDate(row[cfg.COL_FEC_EMISION - 1]);
+                // Read the date from the native-typed array, not from the display string,
+                // to avoid the locale-dependent dd/mm vs mm/dd ambiguity.
+                const fechaPago = ProcessorBase.parseToDate(srcValues[i][cfg.COL_FEC_EMISION - 1]);
                 
                 const factura = row[cfg.COL_FEC_PAG - 1];        // Col O → FACTURA
 
