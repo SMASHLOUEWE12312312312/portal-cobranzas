@@ -48,28 +48,36 @@ const CrecerProtectaProcessorV2 = {
         ProcessorBase.clearFromRow(wsTrama, 2);
 
         // Get source data
+        // `srcData` (display strings) is used for text columns (documento, comprobante)
+        // and for header detection ("Estado"). `srcValues` (native types) is used for
+        // the date column to avoid the locale-dependent dd/mm vs mm/dd ambiguity
+        // introduced by getDisplayValues().
         let srcData;
+        let srcValues;
         if (convertResult.data) {
-            srcData = convertResult.data; // Copy to avoid mutating original if passed by ref
-            // Deep copy not strictly needed if we just splice, but safer if dataContext caches it.
-            // Actually slice() logic below creates new arrays for rows.
+            srcData = convertResult.data;
+            srcValues = convertResult.values || convertResult.data;
         } else {
             const tempSS = SpreadsheetApp.openById(convertResult.fileId);
             const tempSheet = tempSS.getSheets()[0];
-            srcData = tempSheet.getDataRange().getDisplayValues();
+            const range = tempSheet.getDataRange();
+            srcData = range.getDisplayValues();
+            srcValues = range.getValues();
         }
 
-        // Clone srcData to avoid mutating validation cache?
-        // Since we modify it (delete column), we should map it.
+        // Clone both arrays defensively — we mutate them below (column splice) and
+        // they may be cached upstream.
         srcData = srcData.map(row => [...row]);
+        srcValues = srcValues.map(row => [...row]);
 
-        // Check if column E header is "Estado" and delete it
+        // Check if column E header is "Estado" and delete it from BOTH arrays so
+        // they stay aligned and `colOffset` applies uniformly to both.
         let colOffset = 0;
         if (srcData.length > 0 && srcData[0].length >= 5) {
             const headerE = String(srcData[0][4] || '').trim().toLowerCase();
             if (headerE === 'estado') {
-                // Remove column E (index 4) from all rows
                 srcData.forEach(row => row.splice(4, 1));
+                srcValues.forEach(row => row.splice(4, 1));
                 colOffset = -1; // Columns after E shift left
             }
         }
@@ -121,8 +129,10 @@ const CrecerProtectaProcessorV2 = {
 
             const numeroCupon = ProcessorBase.extraerCuponCrecerProtecta(documento);
             
-            // FIX 2026-01-26: Convert to Date object for proper date formatting
-            const fechaPago = ProcessorBase.parseToDate(row[colFecha - 1]);
+            // Read the date from the native-typed array, not from the display string,
+            // to avoid the locale-dependent dd/mm vs mm/dd ambiguity. srcValues was
+            // spliced in parallel with srcData above, so colFecha applies to both.
+            const fechaPago = ProcessorBase.parseToDate(srcValues[i][colFecha - 1]);
             
             const comprobante = String(row[colComprobante - 1] || '').trim();
 
