@@ -538,8 +538,8 @@ describe('Frontend grupo sub-batch flow - Source Analysis', () => {
         expect(source).toContain('chunks.push(asegurados.slice(i, i + SUB_BATCH_SIZE))');
     });
 
-    it('should use 120s timeout per sub-batch', () => {
-        expect(source).toContain('const BATCH_TIMEOUT_MS = 120000');
+    it('should use 180s timeout per sub-batch', () => {
+        expect(source).toContain('const BATCH_TIMEOUT_MS = 180000');
     });
 
     it('should still get grupo members first via getAseguradosPorGrupo_API', () => {
@@ -620,7 +620,25 @@ describe('Frontend grupo sub-batch flow - Source Analysis', () => {
     });
 
     it('should show timeout error with batch number', () => {
-        expect(source).toContain("Timeout: batch ${c + 1} excedio 120s");
+        expect(source).toContain("Timeout: batch ${c + 1} excedió 180s");
+    });
+
+    it('should differentiate "Sin datos en BD" from real errors in batch flow', () => {
+        // No-data items get a warning badge, not an error badge
+        expect(source).toContain("e.error === 'Sin datos en BD'");
+        expect(source).toContain("isNoData ? 'no-data' : 'error'");
+    });
+
+    it('should show ETA estimate at t=0 before first batch starts', () => {
+        // ETA is rendered into the initial progress text before any sub-batch runs
+        expect(source).toContain('PER_ASEG_ETA_S');
+        expect(source).toContain('Iniciando · ETA');
+    });
+
+    it('should expose Historial CSV button + handler', () => {
+        // New full-history export entry point
+        expect(source).toContain('exportarHistorialCompletaCSV()');
+        expect(source).toContain('obtenerHistorialCompletoCSV()');
     });
 
     it('should re-enable button after error via resetGenerateUI', () => {
