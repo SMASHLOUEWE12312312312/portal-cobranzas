@@ -141,7 +141,7 @@ const ConciliacionIOV2 = {
 
                 // Guardar metadata del último upload de BD Cruce
                 try {
-                    var uploaderEmail = Session.getActiveUser().getEmail() || 'Desconocido';
+                    var uploaderEmail = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail() || 'Desconocido';
                     PropertiesService.getScriptProperties().setProperty('BD_CRUCE_LAST_UPLOAD', JSON.stringify({
                         user: uploaderEmail,
                         date: new Date().toISOString(),
@@ -251,12 +251,19 @@ const ConciliacionIOV2 = {
 
             const tempSS = SpreadsheetApp.openById(file.id);
             const tempSheet = tempSS.getSheets()[0];
-            const data = tempSheet.getDataRange().getDisplayValues();
+            const range = tempSheet.getDataRange();
+            const data = range.getDisplayValues();
+            // Native typed values (Date for date-formatted cells, Number for numbers).
+            // Use `values` for any column where locale-dependent string parsing would be ambiguous
+            // (e.g. dd/mm vs mm/dd dates). `data` is still authoritative for text columns
+            // (cupones with leading zeros, factura with spaces, etc.).
+            const values = range.getValues();
 
             return {
                 ok: true,
                 fileId: file.id,
                 data: data,
+                values: values,
                 useSheetJS: false
             };
 

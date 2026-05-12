@@ -296,6 +296,14 @@ const ProcessorBase = {
         if (!fecha) return new Date();
         if (fecha instanceof Date && !isNaN(fecha.getTime())) return fecha;
 
+        // Excel serial number (e.g. 46178 = 2026-05-08). Reached only if a caller
+        // bypasses the typed-values path. Convert via UTC components to avoid
+        // a TZ-induced one-day shift in America/Lima.
+        if (typeof fecha === 'number' && fecha > 25569 && fecha < 80000) {
+            const utc = new Date(Math.round((fecha - 25569) * 86400 * 1000));
+            return new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate());
+        }
+
         const str = String(fecha).trim();
         if (!str) return new Date();
 

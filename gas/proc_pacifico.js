@@ -77,13 +77,20 @@ const PacificoProcessorV2 = {
         ProcessorBase.clearFromRow(wsTrama, 2);
 
         // Get source data
+        // `srcData` (display strings) is used for text columns (cupones, factura).
+        // `srcValues` (native types) is used for the date column to avoid the
+        // locale-dependent dd/mm vs mm/dd ambiguity introduced by getDisplayValues().
         let srcData;
+        let srcValues;
         if (convertResult.data) {
             srcData = convertResult.data;
+            srcValues = convertResult.values || convertResult.data;
         } else {
             const tempSS = SpreadsheetApp.openById(convertResult.fileId);
             const tempSheet = tempSS.getSheets()[0];
-            srcData = tempSheet.getDataRange().getDisplayValues();
+            const range = tempSheet.getDataRange();
+            srcData = range.getDisplayValues();
+            srcValues = range.getValues();
         }
 
         // Write to EECC
@@ -115,8 +122,10 @@ const PacificoProcessorV2 = {
             const cuponE = this._limpiarSufijoCupon(cuponERaw);
             const cuponF = this._limpiarSufijoCupon(cuponFRaw);
             
-            // FIX 2026-01-26: Convert to Date object for proper date formatting
-            const fechaPago = ProcessorBase.parseToDate(row[cfg.COL_FECHA - 1]);
+            // Read the date from the native-typed array, not from the display string.
+            // The display string is locale-dependent ("5/8/2026" is ambiguous between
+            // 5-aug and 8-may); the native value is a proper Date object.
+            const fechaPago = ProcessorBase.parseToDate(srcValues[i][cfg.COL_FECHA - 1]);
             
             const factura = row[cfg.COL_FACTURA - 1];
 
